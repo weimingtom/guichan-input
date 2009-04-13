@@ -21,6 +21,7 @@
 
 #include "chat.h"
 
+#include "gui/gui.h"
 #include "gui/itemlinkhandler.h"
 #include "gui/recorder.h"
 #include "gui/sdlinput.h"
@@ -223,7 +224,7 @@ void ChatWindow::action(const gcn::ActionEvent &event)
         if (message.empty() || !mReturnToggles)
         {
             // Remove focus and hide input
-            mFocusHandler->focusNone();
+            gui->focusTop();
 
             // If the chatWindow is shown up because you want to send a message
             // It should hide now

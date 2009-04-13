@@ -248,3 +248,8 @@ const int Gui::getFontHeight() const
 {
     return mGuiFont->getHeight();
 }
+
+void Gui::focusTop()
+{
+    mFocusHandler->requestFocus(getTop());
+}

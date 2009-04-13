@@ -909,6 +909,8 @@ int main(int argc, char *argv[])
     setupWindow = new Setup;
 
     gcn::Container *top = static_cast<gcn::Container*>(gui->getTop());
+    top->setFocusable(true);
+
     Desktop *desktop = new Desktop;
     top->add(desktop);
     ProgressBar *progressBar = new ProgressBar(0.0f, 100, 20, 168, 116, 31);
@@ -1462,6 +1464,8 @@ int main(int argc, char *argv[])
 
                     logger->log("State: GAME");
                     game = new Game;
+                    top->addKeyListener(game);
+                    gui->focusTop();
                     game->logic();
                     delete game;
                     state = STATE_EXIT;

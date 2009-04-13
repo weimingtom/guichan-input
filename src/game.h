@@ -24,6 +24,8 @@
 
 //#include <memory>
 
+#include <guichan/keylistener.hpp>
+
 #include "SDL.h"
 
 #include "configlistener.h"
@@ -32,7 +34,7 @@ extern std::string map_path;
 extern volatile int fps;
 extern volatile int tick_time;
 
-class Game : public ConfigListener
+class Game : public ConfigListener, public gcn::KeyListener
 {
     public:
         Game();
@@ -44,6 +46,10 @@ class Game : public ConfigListener
         void handleInput();
 
         void optionChanged(const std::string &name);
+
+        void keyPressed(gcn::KeyEvent &event);
+
+        void keyReleased(gcn::KeyEvent &event);
 
     private:
         /** Used to determine whether to draw the next frame. */
