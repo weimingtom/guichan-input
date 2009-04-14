@@ -22,25 +22,37 @@
 #ifndef KEYBOARDCONFIG_H
 #define KEYBOARDCONFIG_H
 
+
+#include <guichan/keylistener.hpp>
+
 #include <SDL_types.h>
+
+#include <map>
 #include <string>
 
+enum {
+    KEY_MASK_SHIFT = 1,
+    KEY_MASK_CTRL = 2,
+    KEY_MASK_ALT = 4,
+    KEY_MASK_META = 8
+};
+
 /**
- * Each key represents a key function. Such as 'Move up', 'Attack' etc.
+ * Each key represents the basic data needed for a key function.
  */
-struct KeyFunction
+struct KeyData
 {
-    const char* configField;    /** Field index that is in the config file. */
-    int defaultValue;           /** The default key value used. */
-    std::string caption;        /** The caption value for the key function. */
-    int value;                  /** The actual value that is used. */
+    int key;    /** The actual guichan keycode that is used. */
+    int mask;   /** The modifiers to be used. */
 };
 
 class Setup_Keyboard;
 
-class KeyboardConfig
+class KeyboardConfig : public gcn::KeyListener
 {
     public:
+        KeyboardConfig();
+
         /**
          * Initializes the keyboard config explicitly.
          */
@@ -57,9 +69,9 @@ class KeyboardConfig
         void store();
 
         /**
-         * Make the keys their default values.
+         * Resets all the keys to their default values.
          */
-        void makeDefault();
+        void resetToDefaults();
 
         /**
          * Determines if any key assignments are the same as each other.
@@ -72,16 +84,17 @@ class KeyboardConfig
         void callbackNewKey();
 
         /**
-         * Obtain the value stored in memory.
+         * Returns the key data for the given key.
          */
-        int getKeyValue(int index) const
-        { return mKey[index].value; }
+        KeyData getKeyData(int index);
 
         /**
-         * Get the index of the new key to be assigned.
+         * Changes the given key to match the given key data.
          */
-        int getNewKeyIndex() const
-        { return mNewKeyIndex; }
+        void setKeyData(int index, KeyData data);
+
+        // TODO: Remove me
+        bool isKeyActive(int index) { return false; }
 
         /**
          * Get the enable flag, which will stop the user from doing actions.
@@ -90,10 +103,9 @@ class KeyboardConfig
         { return mEnabled; }
 
         /**
-         * Get the key caption, providing more meaning to the user.
+         * Get the key's caption, providing more meaning to the user.
          */
-        const std::string &getKeyCaption(int index) const
-        { return mKey[index].caption; }
+        const std::string &getKeyCaption(int index) const;
 
         /**
          * Get the key function index by providing the keys value.
@@ -112,32 +124,46 @@ class KeyboardConfig
         { mEnabled = flag; }
 
         /**
-         * Set the index of the new key to be assigned.
-         */
-        void setNewKeyIndex(int value)
-        { mNewKeyIndex = value; }
-
-        /**
-         * Set the value of the new key.
-         */
-        void setNewKey(int value)
-        { mKey[mNewKeyIndex].value = value; }
-
-        /**
          * Set a reference to the key setup window.
          */
         void setSetupKeyboard(Setup_Keyboard *setupKey)
         { mSetupKey = setupKey; }
 
         /**
-         * Checks if the key is active, by providing the key function index.
+         * Returns whether the given action and event match. This is a
+         * convinience for the KeyData form.
          */
-        bool isKeyActive(int index);
+        bool keyMatch(int index, gcn::KeyEvent &event);
 
         /**
-         * Takes a snapshot of all the active keys.
+         * Returns whether the given action and key data match.
          */
-        void refreshActiveKeys();
+        bool keyMatch(KeyData data, gcn::KeyEvent &event);
+
+        /**
+         * Returns a string represnetation of the given key data.
+         */
+        std::string keyString(KeyData data);
+
+        /**
+         * Returns a string represnetation of the given key data.
+         */
+        std::string keyString(int index)
+        { return keyString(getKeyData(index));  }
+
+        /**
+         * Tries to parse the given string as a key data.
+         */
+        KeyData keyParse(std::string *keyString);
+
+        /**
+         * Turns the given event into key data.
+         */
+        KeyData keyConvert(gcn::KeyEvent &event);
+
+        void keyPressed(gcn::KeyEvent &event);
+
+        void keyReleased(gcn::KeyEvent &event);
 
         /**
          * All the key functions.
@@ -154,7 +180,6 @@ class KeyboardConfig
             KEY_MOVE_LEFT,
             KEY_MOVE_RIGHT,
             KEY_ATTACK,
-            KEY_EMOTE,
             KEY_TALK,
             KEY_TARGET,
             KEY_TARGET_CLOSEST,
@@ -209,18 +234,19 @@ class KeyboardConfig
             KEY_NEXT_CHAT_TAB,
             KEY_OK,
             KEY_QUIT,
-            KEY_IGNORE_INPUT_1,
-            KEY_IGNORE_INPUT_2,
             KEY_TOTAL
         };
 
     private:
-        int mNewKeyIndex;              /**< Index of new key to be assigned */
+        KeyboardConfig::KeyAction mNewKeyIndex; /**< Index of new key to be assigned */
         bool mEnabled;                 /**< Flag to respond to key input */
 
         Setup_Keyboard *mSetupKey;     /**< Reference to setup window */
 
-        KeyFunction mKey[KEY_TOTAL];   /**< Pointer to all the key data */
+        typedef std::map<int, std::string> KeyDescMap;
+        KeyDescMap mDescs;
+
+        KeyData mKey[KEY_TOTAL];       /**< Pointer to all the key data */
 
         Uint8 *mActiveKeys;            /**< Stores a list of all the keys */
 };

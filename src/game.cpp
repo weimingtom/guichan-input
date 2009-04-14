@@ -553,27 +553,3 @@ void Game::handleInput()
         }
     }
 }
-
-void Game::keyPressed(gcn::KeyEvent &event)
-{
-    // Ignore consumed events
-    if (event.isConsumed())
-        return;
-
-    gcn::Key key = event.getKey();
-
-    // This will open the chat input box on enter
-    if (key == gcn::Key::ENTER)
-    {
-        printf("Chat focus!\n");
-        chatWindow->requestChatFocus();
-    }
-    // Otherwise, just print the key for now
-    else
-        printf("%d %1$c\n", key.getValue());
-}
-
-void Game::keyReleased(gcn::KeyEvent &event)
-{
-    // TODO (needed?)
-}

@@ -29,12 +29,8 @@
 #include "gui/widgets/listbox.h"
 #include "gui/widgets/scrollarea.h"
 
-#include "keyboardconfig.h"
-
 #include "utils/gettext.h"
 #include "utils/stringutils.h"
-
-#include <SDL_keyboard.h>
 
 #include <guichan/listmodel.hpp>
 
@@ -147,26 +143,24 @@ void Setup_Keyboard::action(const gcn::ActionEvent &event)
         mAssignKeyButton->setEnabled(false);
         keyboard.setEnabled(false);
         int i(mKeyList->getSelected());
-        keyboard.setNewKeyIndex(i);
+        //keyboard.setNewKeyIndex(i);
         mKeyListModel->setElementAt(i, keyboard.getKeyCaption(i) + ": ?");
     }
     else if (event.getId() == "makeDefault")
     {
-        keyboard.makeDefault();
+        keyboard.resetToDefaults();
         refreshKeys();
     }
 }
 
-void Setup_Keyboard::refreshAssignedKey(int index)
+void Setup_Keyboard::refreshAssignedKey(KeyboardConfig::KeyAction index)
 {
     std::string caption;
-    char *temp = SDL_GetKeyName(
-        (SDLKey) keyboard.getKeyValue(index));
-    caption = keyboard.getKeyCaption(index) + ": " + toString(temp);
+    caption = keyboard.getKeyCaption(index) + ": " + keyboard.keyString(index);
     mKeyListModel->setElementAt(index, caption);
 }
 
-void Setup_Keyboard::newKeyCallback(int index)
+void Setup_Keyboard::newKeyCallback(KeyboardConfig::KeyAction index)
 {
     mKeySetting = false;
     refreshAssignedKey(index);
@@ -177,7 +171,7 @@ void Setup_Keyboard::refreshKeys()
 {
     for (int i = 0; i < keyboard.KEY_TOTAL; i++)
     {
-        refreshAssignedKey(i);
+        refreshAssignedKey((KeyboardConfig::KeyAction) i);
     }
 }
 
@@ -185,7 +179,17 @@ void Setup_Keyboard::keyUnresolved()
 {
     if (mKeySetting)
     {
-        newKeyCallback(keyboard.getNewKeyIndex());
-        keyboard.setNewKeyIndex(keyboard.KEY_NO_VALUE);
+        newKeyCallback(keyboard.KEY_NO_VALUE);
+        //keyboard.setNewKeyIndex(keyboard.KEY_NO_VALUE);
     }
+}
+
+void Setup_Keyboard::keyPressed(gcn::KeyEvent &event)
+{
+    // TODO
+}
+
+void Setup_Keyboard::keyReleased(gcn::KeyEvent &event)
+{
+    // TODO
 }

@@ -19,97 +19,137 @@
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#include "being.h"
 #include "configuration.h"
+#include "guichanfwd.h"
 #include "keyboardconfig.h"
+#include "localplayer.h"
 #include "log.h"
 
+#include "gui/chat.h"
 #include "gui/sdlinput.h"
 #include "gui/setup_keyboard.h"
 
 #include "utils/gettext.h"
+#include "utils/stringutils.h"
 #include "utils/strprintf.h"
 
-struct KeyData
+struct KeyDefault
 {
     const char *configField;
-    int defaultValue;
+    int key;
+    int mask;
     std::string caption;
 };
 
-// keyData must be in same order as enum keyAction.
-static KeyData const keyData[KeyboardConfig::KEY_TOTAL] = {
-    {"keyMoveUp", SDLK_UP, _("Move Up")},
-    {"keyMoveDown", SDLK_DOWN, _("Move Down")},
-    {"keyMoveLeft", SDLK_LEFT, _("Move Left")},
-    {"keyMoveRight", SDLK_RIGHT, _("Move Right")},
-    {"keyAttack", SDLK_LCTRL, _("Attack")},
-    {"keySmilie", SDLK_LALT, _("Smilie")},
-    {"keyTalk", SDLK_t, _("Talk")},
-    {"keyTarget", SDLK_LSHIFT, _("Stop Attack")},
-    {"keyTargetClosest", SDLK_a, _("Target Closest")},
-    {"keyTargetNPC", SDLK_n, _("Target NPC")},
-    {"keyTargetPlayer", SDLK_q, _("Target Player")},
-    {"keyPickup", SDLK_z, _("Pickup")},
-    {"keyHideWindows", SDLK_h, _("Hide Windows")},
-    {"keyBeingSit", SDLK_s, _("Sit")},
-    {"keyScreenshot", SDLK_p, _("Screenshot")},
-    {"keyTrade", SDLK_r, _("Enable/Disable Trading")},
-    {"keyPathfind", SDLK_f, _("Find Path to Mouse")},
-    {"keyShortcut1", SDLK_1, strprintf(_("Item Shortcut %d"), 1)},
-    {"keyShortcut2", SDLK_2, strprintf(_("Item Shortcut %d"), 2)},
-    {"keyShortcut3", SDLK_3, strprintf(_("Item Shortcut %d"), 3)},
-    {"keyShortcut4", SDLK_4, strprintf(_("Item Shortcut %d"), 4)},
-    {"keyShortcut5", SDLK_5, strprintf(_("Item Shortcut %d"), 5)},
-    {"keyShortcut6", SDLK_6, strprintf(_("Item Shortcut %d"), 6)},
-    {"keyShortcut7", SDLK_7, strprintf(_("Item Shortcut %d"), 7)},
-    {"keyShortcut8", SDLK_8, strprintf(_("Item Shortcut %d"), 8)},
-    {"keyShortcut9", SDLK_9, strprintf(_("Item Shortcut %d"), 9)},
-    {"keyShortcut10", SDLK_0, strprintf(_("Item Shortcut %d"), 10)},
-    {"keyShortcut11", SDLK_MINUS, strprintf(_("Item Shortcut %d"), 11)},
-    {"keyShortcut12", SDLK_EQUALS, strprintf(_("Item Shortcut %d"), 12)},
-    {"keyWindowHelp", SDLK_F1, _("Help Window")},
-    {"keyWindowStatus", SDLK_F2, _("Status Window")},
-    {"keyWindowInventory", SDLK_F3, _("Inventory Window")},
-    {"keyWindowEquipment", SDLK_F4, _("Equipment WIndow")},
-    {"keyWindowSkill", SDLK_F5, _("Skill Window")},
-    {"keyWindowMinimap", SDLK_F6, _("Minimap Window")},
-    {"keyWindowChat", SDLK_F7, _("Chat Window")},
-    {"keyWindowShortcut", SDLK_F8, _("Item Shortcut Window")},
-    {"keyWindowSetup", SDLK_F9, _("Setup Window")},
-    {"keyWindowDebug", SDLK_F10, _("Debug Window")},
-    {"keyWindowEmote", SDLK_F11, _("Emote Window")},
-    {"keyWindowEmoteBar", SDLK_F12, _("Emote Shortcut Window")},
-    {"keyEmoteShortcut1", SDLK_1, strprintf(_("Emote Shortcut %d"), 1)},
-    {"keyEmoteShortcut2", SDLK_2, strprintf(_("Emote Shortcut %d"), 2)},
-    {"keyEmoteShortcut3", SDLK_3, strprintf(_("Emote Shortcut %d"), 3)},
-    {"keyEmoteShortcut4", SDLK_4, strprintf(_("Emote Shortcut %d"), 4)},
-    {"keyEmoteShortcut5", SDLK_5, strprintf(_("Emote Shortcut %d"), 5)},
-    {"keyEmoteShortcut6", SDLK_6, strprintf(_("Emote Shortcut %d"), 6)},
-    {"keyEmoteShortcut7", SDLK_7, strprintf(_("Emote Shortcut %d"), 7)},
-    {"keyEmoteShortcut8", SDLK_8, strprintf(_("Emote Shortcut %d"), 8)},
-    {"keyEmoteShortcut9", SDLK_9, strprintf(_("Emote Shortcut %d"), 9)},
-    {"keyEmoteShortcut10", SDLK_0, strprintf(_("Emote Shortcut %d"), 10)},
-    {"keyEmoteShortcut11", SDLK_MINUS, strprintf(_("Emote Shortcut %d"), 11)},
-    {"keyEmoteShortcut12", SDLK_EQUALS, strprintf(_("Emote Shortcut %d"), 12)},
-    {"keyChat", SDLK_RETURN, _("Toggle Chat")},
-    {"keyChatScrollUp", SDLK_PAGEUP, _("Scroll Chat Up")},
-    {"keyChatScrollDown", SDLK_PAGEDOWN, _("Scroll Chat Down")},
-    {"keyChatPrevTab", SDLK_LEFTBRACKET, _("Previous Chat Tab")},
-    {"keyChatNextTab", SDLK_RIGHTBRACKET, _("Next Chat Tab")},
-    {"keyOK", SDLK_RETURN, _("Select OK")},
-    {"keyQuit", SDLK_ESCAPE, _("Quit")},
-    {"keyIgnoreInput1", SDLK_LSUPER, _("Ignore input 1")},
-    {"keyIgnoreInput2", SDLK_RSUPER, _("Ignore input 2")}
+static KeyDefault const keyData[KeyboardConfig::KEY_TOTAL] = {
+    {"keyMoveUp", Key::UP, 0 , _("Move Up")},
+    {"keyMoveDown", Key::DOWN, 0, _("Move Down")},
+    {"keyMoveLeft", Key::LEFT, 0, _("Move Left")},
+    {"keyMoveRight", Key::RIGHT, 0, _("Move Right")},
+    {"keyAttack", 0, KEY_MASK_CTRL, _("Attack")},
+    {"keyTalk", 't', 0, _("Talk")},
+    {"keyTarget", 0, KEY_MASK_SHIFT, _("Stop Attack")},
+    {"keyTargetClosest", 'a', 0, _("Target Closest")},
+    {"keyTargetNPC", 'n', 0, _("Target NPC")},
+    {"keyTargetPlayer", 'q', 0, _("Target Player")},
+    {"keyPickup", 'z', 0, _("Pickup")},
+    {"keyHideWindows", 'h', 0, _("Hide Windows")},
+    {"keyBeingSit", 's', 0, _("Sit")},
+    {"keyScreenshot", 'p', 0, _("Screenshot")},
+    {"keyTrade", 'r', 0, _("Enable/Disable Trading")},
+    {"keyPathfind", 'f', 0, _("Find Path to Mouse")},
+    {"keyShortcut1", '1', 0, strprintf(_("Item Shortcut %d"), 1)},
+    {"keyShortcut2", '2', 0, strprintf(_("Item Shortcut %d"), 2)},
+    {"keyShortcut3", '3', 0, strprintf(_("Item Shortcut %d"), 3)},
+    {"keyShortcut4", '4', 0, strprintf(_("Item Shortcut %d"), 4)},
+    {"keyShortcut5", '5', 0, strprintf(_("Item Shortcut %d"), 5)},
+    {"keyShortcut6", '6', 0, strprintf(_("Item Shortcut %d"), 6)},
+    {"keyShortcut7", '7', 0, strprintf(_("Item Shortcut %d"), 7)},
+    {"keyShortcut8", '8', 0, strprintf(_("Item Shortcut %d"), 8)},
+    {"keyShortcut9", '9', 0, strprintf(_("Item Shortcut %d"), 9)},
+    {"keyShortcut10", '0', 0, strprintf(_("Item Shortcut %d"), 10)},
+    {"keyShortcut11", '-', 0, strprintf(_("Item Shortcut %d"), 11)},
+    {"keyShortcut12", '=', 0, strprintf(_("Item Shortcut %d"), 12)},
+    {"keyWindowHelp", Key::F1, 0, _("Help Window")},
+    {"keyWindowStatus", Key::F2, 0, _("Status Window")},
+    {"keyWindowInventory", Key::F3, 0, _("Inventory Window")},
+    {"keyWindowEquipment", Key::F4, 0, _("Equipment WIndow")},
+    {"keyWindowSkill", Key::F5, 0, _("Skill Window")},
+    {"keyWindowMinimap", Key::F6, 0, _("Minimap Window")},
+    {"keyWindowChat", Key::F7, 0, _("Chat Window")},
+    {"keyWindowShortcut", Key::F8, 0, _("Item Shortcut Window")},
+    {"keyWindowSetup", Key::F9, 0, _("Setup Window")},
+    {"keyWindowDebug", Key::F10, 0, _("Debug Window")},
+    {"keyWindowEmote", Key::F11, 0, _("Emote Window")},
+    {"keyWindowEmoteBar", Key::F12, 0, _("Emote Shortcut Window")},
+    {"keyEmoteShortcut1", '1', KEY_MASK_ALT, strprintf(_("Emote Shortcut %d"), 1)},
+    {"keyEmoteShortcut2", '2', KEY_MASK_ALT, strprintf(_("Emote Shortcut %d"), 2)},
+    {"keyEmoteShortcut3", '3', KEY_MASK_ALT, strprintf(_("Emote Shortcut %d"), 3)},
+    {"keyEmoteShortcut4", '4', KEY_MASK_ALT, strprintf(_("Emote Shortcut %d"), 4)},
+    {"keyEmoteShortcut5", '5', KEY_MASK_ALT, strprintf(_("Emote Shortcut %d"), 5)},
+    {"keyEmoteShortcut6", '6', KEY_MASK_ALT, strprintf(_("Emote Shortcut %d"), 6)},
+    {"keyEmoteShortcut7", '7', KEY_MASK_ALT, strprintf(_("Emote Shortcut %d"), 7)},
+    {"keyEmoteShortcut8", '8', KEY_MASK_ALT, strprintf(_("Emote Shortcut %d"), 8)},
+    {"keyEmoteShortcut9", '9', KEY_MASK_ALT, strprintf(_("Emote Shortcut %d"), 9)},
+    {"keyEmoteShortcut10", '0', KEY_MASK_ALT, strprintf(_("Emote Shortcut %d"), 10)},
+    {"keyEmoteShortcut11", '-', KEY_MASK_ALT, strprintf(_("Emote Shortcut %d"), 11)},
+    {"keyEmoteShortcut12", '=', KEY_MASK_ALT, strprintf(_("Emote Shortcut %d"), 12)},
+    {"keyChat", Key::ENTER, 0, _("Toggle Chat")},
+    {"keyChatScrollUp", Key::PAGE_UP, 0, _("Scroll Chat Up")},
+    {"keyChatScrollDown", Key::PAGE_DOWN, 0, _("Scroll Chat Down")},
+    {"keyChatPrevTab", '[', 0, _("Previous Chat Tab")},
+    {"keyChatNextTab", ']', 0, _("Next Chat Tab")},
+    {"keyOK", Key::ENTER, 0, _("Select OK")},
+    {"keyQuit", Key::ESCAPE, 0, _("Quit")},
 };
+
+KeyboardConfig::KeyboardConfig()
+{
+    mDescs[0] = "None";
+    mDescs[Key::BACKSPACE] = "Backspace";
+    mDescs[Key::CAPS_LOCK] = "CapsLock";
+    mDescs[Key::DELETE] = "Delete";
+    mDescs[Key::DOWN] = "Down";
+    mDescs[Key::END] = "End";
+    mDescs[Key::ENTER] = "Enter";
+    mDescs[Key::ESCAPE] = "Escape";
+    mDescs[Key::F1] = "F1";
+    mDescs[Key::F2] = "F2";
+    mDescs[Key::F3] = "F3";
+    mDescs[Key::F4] = "F4";
+    mDescs[Key::F5] = "F5";
+    mDescs[Key::F6] = "F6";
+    mDescs[Key::F7] = "F7";
+    mDescs[Key::F8] = "F8";
+    mDescs[Key::F9] = "F9";
+    mDescs[Key::F10] = "F10";
+    mDescs[Key::F11] = "F11";
+    mDescs[Key::F12] = "F12";
+    mDescs[Key::F13] = "F13";
+    mDescs[Key::F14] = "F14";
+    mDescs[Key::F15] = "F15";
+    mDescs[Key::HOME] = "Home";
+    mDescs[Key::INSERT] = "Insert";
+    mDescs[Key::LEFT] = "Left";
+    mDescs[Key::NUM_LOCK] = "NumLock";
+    mDescs[Key::PAGE_DOWN] = "PageDown";
+    mDescs[Key::PAGE_UP] = "PageUp";
+    mDescs[Key::PAUSE] = "Pause";
+    mDescs[Key::PRINT_SCREEN] = "PrintScreen";
+    mDescs[Key::RIGHT] = "Right";
+    mDescs[Key::SCROLL_LOCK] = "ScrollLock";
+    mDescs[Key::SPACE] = "Space";
+    mDescs[Key::TAB] = "Tab";
+    mDescs[Key::UP] = "Up";
+}
 
 void KeyboardConfig::init()
 {
     for (int i = 0; i < KEY_TOTAL; i++)
     {
-        mKey[i].configField = keyData[i].configField;
-        mKey[i].defaultValue = keyData[i].defaultValue;
-        mKey[i].caption = keyData[i].caption;
-        mKey[i].value = KEY_NO_VALUE;
+        mKey[i].key = keyData[i].key;
+        mKey[i].mask = keyData[i].mask;
     }
     mNewKeyIndex = KEY_NO_VALUE;
     mEnabled = true;
@@ -121,8 +161,11 @@ void KeyboardConfig::retrieve()
 {
     for (int i = 0; i < KEY_TOTAL; i++)
     {
-        mKey[i].value = (int) config.getValue(
-            mKey[i].configField, mKey[i].defaultValue);
+        //mKey[i] = keyParse(config.getValue(keyData[i].configField));
+        KeyData kd = {keyData[i].key, keyData[i].mask};
+        mKey[i] = kd;
+        //std::string str = keyString(kd);
+        //printf("%s\n", str.c_str());
     }
 }
 
@@ -130,15 +173,16 @@ void KeyboardConfig::store()
 {
     for (int i = 0; i < KEY_TOTAL; i++)
     {
-        config.setValue(mKey[i].configField, mKey[i].value);
+        config.setValue(keyData[i].configField, keyString(mKey[i]));
     }
 }
 
-void KeyboardConfig::makeDefault()
+void KeyboardConfig::resetToDefaults()
 {
     for (int i = 0; i < KEY_TOTAL; i++)
     {
-        mKey[i].value = mKey[i].defaultValue;
+        mKey[i].key = mKey[i].key;
+        mKey[i].mask = mKey[i].mask;
     }
 }
 
@@ -157,7 +201,7 @@ bool KeyboardConfig::hasConflicts()
             if (!((((i >= KEY_SHORTCUT_1) && (i <= KEY_SHORTCUT_12)) &&
                    ((j >= KEY_EMOTE_1) && (j <= KEY_EMOTE_12))) ||
                    ((i == KEY_TOGGLE_CHAT) && (j == KEY_OK))) &&
-                   (mKey[i].value == mKey[j].value)
+                   (mKey[i].key == mKey[j].key)
                )
             {
                 return true;
@@ -176,7 +220,7 @@ int KeyboardConfig::getKeyIndex(int keyValue) const
 {
     for (int i = 0; i < KEY_TOTAL; i++)
     {
-        if (keyValue == mKey[i].value)
+        if (keyValue == mKey[i].key)
         {
             return i;
         }
@@ -189,7 +233,7 @@ int KeyboardConfig::getKeyEmoteOffset(int keyValue) const
 {
     for (int i = KEY_EMOTE_1; i <= KEY_EMOTE_12; i++)
     {
-        if (keyValue == mKey[i].value)
+        if (keyValue == mKey[i].key)
         {
             return 1 + i - KEY_EMOTE_1;
         }
@@ -197,13 +241,120 @@ int KeyboardConfig::getKeyEmoteOffset(int keyValue) const
     return 0;
 }
 
-bool KeyboardConfig::isKeyActive(int index)
+KeyData KeyboardConfig::getKeyData(int index)
 {
-    if (!mActiveKeys) return false;
-    return mActiveKeys[mKey[index].value];
+    return mKey[index];
 }
 
-void KeyboardConfig::refreshActiveKeys()
+void KeyboardConfig::setKeyData(int index, KeyData data)
 {
-    mActiveKeys = SDL_GetKeyState(NULL);
+    mKey[index] = data;
+}
+
+const std::string &KeyboardConfig::getKeyCaption(int index) const
+{
+    return keyData[index].caption;
+}
+
+bool KeyboardConfig::keyMatch(int index, gcn::KeyEvent &event)
+{
+    return keyMatch(getKeyData(index), event);
+}
+
+bool KeyboardConfig::keyMatch(KeyData data, gcn::KeyEvent &event)
+{
+    KeyData ev = keyConvert(event);
+
+    return (ev.key == data.key) && (ev.mask == data.mask);
+}
+
+std::string KeyboardConfig::keyString(KeyData data)
+{
+    std::stringstream out;
+
+    if (data.mask & KEY_MASK_SHIFT)
+        out << "Shift+";
+
+    if (data.mask & KEY_MASK_CTRL)
+        out << "Ctrl+";
+
+    if (data.mask & KEY_MASK_ALT)
+        out << "Alt+";
+
+    if (data.mask & KEY_MASK_META)
+        out << "Meta+";
+
+    // If it's printable, then do so
+    if (data.key > 32 && data.key < 256)
+        out << (char) data.key;
+    // Otherwise, check our map
+    else
+    {
+        KeyDescMap::iterator it = mDescs.find(data.key);
+        if (it != mDescs.end())
+            out << it->second;
+        // Anything else, just quote the numeric value
+        else
+            out << "'" + toString(data.key) + "'";
+    }
+
+    return out.str();
+}
+
+KeyData KeyboardConfig::keyParse(std::string *keyString)
+{
+    // TODO
+    KeyData ret = {0, 0};
+    return ret;
+}
+
+KeyData KeyboardConfig::keyConvert(gcn::KeyEvent &event)
+{
+    KeyData ret;
+    ret.key = event.getKey().getValue();
+    ret.mask = 0;
+
+    if (event.isShiftPressed())
+        ret.mask |= KEY_MASK_SHIFT;
+
+    if (event.isControlPressed())
+        ret.mask |= KEY_MASK_CTRL;
+
+    if (event.isAltPressed())
+        ret.mask |= KEY_MASK_ALT;
+
+    if (event.isMetaPressed())
+        ret.mask |= KEY_MASK_META;
+
+    if (ret.key < 0)
+        ret.key = 0;
+
+    return ret;
+}
+
+void KeyboardConfig::keyPressed(gcn::KeyEvent &event)
+{
+    // Ignore consumed events
+    if (event.isConsumed())
+        return;
+
+    gcn::Key key = event.getKey();
+
+    // This will open the chat input box on enter
+    if (keyMatch(KEY_TOGGLE_CHAT, event))
+    {
+        chatWindow->requestChatFocus();
+    }
+    // Otherwise, just print the key for now
+    else
+        printf("%d %1$c\n", key.getValue());
+}
+
+void KeyboardConfig::keyReleased(gcn::KeyEvent &event)
+{
+    // Ignore consumed events
+    if (event.isConsumed())
+        return;
+
+    // TODO
 }
