@@ -20,6 +20,7 @@
  */
 
 #include "gui/status.h"
+#include "gui/palette.h"
 
 #include "localplayer.h"
 #include "units.h"
@@ -34,6 +35,7 @@
 #include "net/ea/playerhandler.h"
 
 #include "utils/gettext.h"
+#include "utils/mathutils.h"
 #include "utils/strprintf.h"
 #include "utils/stringutils.h"
 
@@ -291,18 +293,69 @@ void StatusWindow::updateHPBar(ProgressBar *bar, bool showMax)
         bar->setText(toString(player_node->getHp()));
 
     // HP Bar coloration
-    if (player_node->getHp() < player_node->getMaxHp() / 3)
+    float r1 = 255;
+    float g1 = 255;
+    float b1 = 255;
+
+    float r2 = 255;
+    float g2 = 255;
+    float b2 = 255;
+
+    float weight = 1.0f;
+
+    int curHP = player_node->getHp();
+    int thresholdLevel = player_node->getMaxHp() / 4;
+    int thresholdProgress = curHP % thresholdLevel;
+    weight = 1-((float)thresholdProgress) / ((float)thresholdLevel);
+
+    if (curHP < (thresholdLevel))
     {
-        bar->setColor(223, 32, 32); // Red
+        gcn::Color color1 = guiPalette->getColor(Palette::HPBAR_ONE_HALF);
+        gcn::Color color2 = guiPalette->getColor(Palette::HPBAR_ONE_QUARTER);
+        r1 = color1.r; r2 = color2.r;
+        g1 = color1.g; g2 = color2.g;
+        b1 = color1.b; b2 = color2.b;
     }
-    else if (player_node->getHp() < (player_node->getMaxHp() / 3) * 2)
+    else if (curHP < (thresholdLevel*2))
     {
-        bar->setColor(230, 171, 34); // Orange
+        gcn::Color color1 = guiPalette->getColor(Palette::HPBAR_THREE_QUARTERS);
+        gcn::Color color2 = guiPalette->getColor(Palette::HPBAR_ONE_HALF);
+        r1 = color1.r; r2 = color2.r;
+        g1 = color1.g; g2 = color2.g;
+        b1 = color1.b; b2 = color2.b;
+    }
+    else if (curHP < thresholdLevel*3)
+    {
+        gcn::Color color1 = guiPalette->getColor(Palette::HPBAR_FULL);
+        gcn::Color color2 = guiPalette->getColor(Palette::HPBAR_THREE_QUARTERS);
+        r1 = color1.r; r2 = color2.r;
+        g1 = color1.g; g2 = color2.g;
+        b1 = color1.b; b2 = color2.b;
     }
     else
     {
-        bar->setColor(0, 171, 34); // Green
+        gcn::Color color1 = guiPalette->getColor(Palette::HPBAR_FULL);
+        gcn::Color color2 = guiPalette->getColor(Palette::HPBAR_FULL);
+        r1 = color1.r; r2 = color2.r;
+        g1 = color1.g; g2 = color2.g;
+        b1 = color1.b; b2 = color2.b;
     }
+
+    //safety checks
+    if (weight>1.0f) weight=1.0f;
+    if (weight<0.0f) weight=0.0f;
+
+    //Do the color blend
+    r1 = (int) weightedAverage(r1, r2,weight);
+    g1 = (int) weightedAverage(g1, g2, weight);
+    b1 = (int) weightedAverage(b1, b2, weight);
+
+    //more safety checks
+    if (r1 > 255) r1 = 255;
+    if (g1 > 255) g1 = 255;
+    if (b1 > 255) b1 = 255;
+
+    bar->setColor(r1, g1, b1);
 
     bar->setProgress((float) player_node->getHp() / (float) player_node->getMaxHp());
 }

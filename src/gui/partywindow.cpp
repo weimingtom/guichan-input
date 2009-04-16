@@ -26,6 +26,7 @@
 #include "net/net.h"
 #include "net/partyhandler.h"
 
+#include "utils/dtor.h"
 #include "utils/gettext.h"
 #include "utils/strprintf.h"
 
@@ -45,7 +46,7 @@ PartyWindow::PartyWindow() : Window(_("Party"))
 
 PartyWindow::~PartyWindow()
 {
-    mMembers.clear();
+    delete_all(mMembers);
 }
 
 void PartyWindow::draw(gcn::Graphics *graphics)
@@ -53,7 +54,17 @@ void PartyWindow::draw(gcn::Graphics *graphics)
     Window::draw(graphics);
 }
 
-PartyMember *PartyWindow::findMember2(int id)
+PartyMember *PartyWindow::findMember(int id) const
+{
+    PartyList::const_iterator it = mMembers.find(id);
+
+    if (it == mMembers.end())
+        return NULL;
+    else
+        return it->second;
+}
+
+PartyMember *PartyWindow::findOrCreateMember(int id)
 {
     PartyMember *member = findMember(id);
 
@@ -68,10 +79,10 @@ PartyMember *PartyWindow::findMember2(int id)
     return member;
 }
 
-int PartyWindow::findMember(const std::string &name)
+int PartyWindow::findMember(const std::string &name) const
 {
-    PartyList::iterator itr = mMembers.begin(),
-                        itr_end = mMembers.end();
+    PartyList::const_iterator itr = mMembers.begin(),
+                              itr_end = mMembers.end();
 
     while (itr != itr_end)
     {
@@ -86,10 +97,10 @@ int PartyWindow::findMember(const std::string &name)
 }
 
 void PartyWindow::updateMember(int id, const std::string &memberName,
-                                 bool leader, bool online)
+                               bool leader, bool online)
 {
     // create new party member
-    PartyMember *player = findMember2(id);
+    PartyMember *player = findOrCreateMember(id);
     player->id = id;
     player->name = memberName;
     player->leader = leader;

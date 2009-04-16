@@ -32,6 +32,7 @@
 #include "gui/widgets/textfield.h"
 
 #include "configuration.h"
+#include "engine.h"
 #include "graphics.h"
 #include "localplayer.h"
 #include "log.h"
@@ -109,13 +110,13 @@ Setup_Video::Setup_Video():
     mFullScreenEnabled(config.getValue("screen", false)),
     mOpenGLEnabled(config.getValue("opengl", false)),
     mCustomCursorEnabled(config.getValue("customcursor", true)),
-    mVisibleNamesEnabled(config.getValue("visiblenames", 1)),
+    mVisibleNamesEnabled(config.getValue("visiblenames", true)),
     mParticleEffectsEnabled(config.getValue("particleeffects", true)),
     mNameEnabled(config.getValue("showownname", false)),
     mPickupChatEnabled(config.getValue("showpickupchat", true)),
     mPickupParticleEnabled(config.getValue("showpickupparticle", false)),
     mOpacity(config.getValue("guialpha", 0.8)),
-    mFps((int) config.getValue("fpslimit", 0)),
+    mFps((int) config.getValue("fpslimit", 60)),
     mSpeechMode((int) config.getValue("speech", 3)),
     mModeListModel(new ModeListModel),
     mModeList(new ListBox(mModeListModel)),
@@ -351,13 +352,13 @@ void Setup_Video::apply()
                          _("Restart needed for changes to take effect."));
         }
 #endif
-        config.setValue("screen", fullscreen ? true : false);
+        config.setValue("screen", fullscreen);
     }
 
     // OpenGL change
     if (mOpenGLCheckBox->isSelected() != mOpenGLEnabled)
     {
-        config.setValue("opengl", mOpenGLCheckBox->isSelected() ? true : false);
+        config.setValue("opengl", mOpenGLCheckBox->isSelected());
 
         // OpenGL can currently only be changed by restarting, notify user.
         new OkDialog(_("Changing OpenGL"),
@@ -370,7 +371,7 @@ void Setup_Video::apply()
     // We sync old and new values at apply time
     mFullScreenEnabled = config.getValue("screen", false);
     mCustomCursorEnabled = config.getValue("customcursor", true);
-    mVisibleNamesEnabled = config.getValue("visiblenames", 1);
+    mVisibleNamesEnabled = config.getValue("visiblenames", true);
     mParticleEffectsEnabled = config.getValue("particleeffects", true);
     mNameEnabled = config.getValue("showownname", false);
     mSpeechMode = (int) config.getValue("speech", 3);
@@ -419,19 +420,18 @@ void Setup_Video::cancel()
     updateSlider(mScrollRadiusSlider, mScrollRadiusField, "ScrollRadius");
     updateSlider(mScrollLazinessSlider, mScrollLazinessField, "ScrollLaziness");
 
-    config.setValue("screen", mFullScreenEnabled ? true : false);
-    config.setValue("customcursor", mCustomCursorEnabled ? true : false);
-    config.setValue("visiblenames", mVisibleNamesEnabled ? 1 : 0);
-    config.setValue("particleeffects", mParticleEffectsEnabled ? true : false);
+    config.setValue("screen", mFullScreenEnabled);
+    config.setValue("customcursor", mCustomCursorEnabled);
+    config.setValue("visiblenames", mVisibleNamesEnabled);
+    config.setValue("particleeffects", mParticleEffectsEnabled);
     config.setValue("speech", mSpeechMode);
-    config.setValue("showownname", mNameEnabled ? true : false);
+    config.setValue("showownname", mNameEnabled);
     if (player_node)
         player_node->mUpdateName = true;
     config.setValue("guialpha", mOpacity);
-    config.setValue("opengl", mOpenGLEnabled ? true : false);
-    config.setValue("showpickupchat", mPickupChatEnabled ? true : false);
-    config.setValue("showpickupparticle", mPickupParticleEnabled ?
-                    true : false);
+    config.setValue("opengl", mOpenGLEnabled);
+    config.setValue("showpickupchat", mPickupChatEnabled);
+    config.setValue("showpickupparticle", mPickupParticleEnabled);
 }
 
 void Setup_Video::action(const gcn::ActionEvent &event)
@@ -455,31 +455,30 @@ void Setup_Video::action(const gcn::ActionEvent &event)
     }
     else if (event.getId() == "customcursor")
     {
-        config.setValue("customcursor",
-                mCustomCursorCheckBox->isSelected() ? true : false);
+        config.setValue("customcursor", mCustomCursorCheckBox->isSelected());
     }
     else if (event.getId() == "visiblenames")
     {
-        config.setValue("visiblenames",
-                mVisibleNamesCheckBox->isSelected() ? 1 : 0);
+        config.setValue("visiblenames", mVisibleNamesCheckBox->isSelected());
     }
     else if (event.getId() == "particleeffects")
     {
         config.setValue("particleeffects",
-                mParticleEffectsCheckBox->isSelected() ? true : false);
-        new OkDialog(_("Particle effect settings changed."),
-                     _("Restart your client or change maps "
-                       "for the change to take effect."));
+                        mParticleEffectsCheckBox->isSelected());
+        if (engine)
+        {
+            new OkDialog(_("Particle effect settings changed."),
+                         _("Changes will take effect on map change."));
+        }
     }
     else if (event.getId() == "pickupchat")
     {
-        config.setValue("showpickupchat", mPickupChatCheckBox->isSelected()
-                        ? true : false);
+        config.setValue("showpickupchat", mPickupChatCheckBox->isSelected());
     }
     else if (event.getId() == "pickupparticle")
     {
         config.setValue("showpickupparticle",
-                        mPickupParticleCheckBox->isSelected() ? true : false);
+                        mPickupParticleCheckBox->isSelected());
     }
     else if (event.getId() == "speech")
     {
@@ -508,8 +507,7 @@ void Setup_Video::action(const gcn::ActionEvent &event)
         // and requires an update
         if (player_node)
             player_node->mUpdateName = true;
-        config.setValue("showownname",
-                mNameCheckBox->isSelected() ? true : false);
+        config.setValue("showownname", mNameCheckBox->isSelected());
     }
     else if (event.getId() == "fpslimitslider")
     {

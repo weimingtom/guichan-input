@@ -439,6 +439,8 @@
 		<Unit filename="src\gui\widgets\checkbox.h" />
 		<Unit filename="src\gui\widgets\container.cpp" />
 		<Unit filename="src\gui\widgets\container.h" />
+		<Unit filename="src\gui\widgets\desktop.cpp" />
+		<Unit filename="src\gui\widgets\desktop.h" />
 		<Unit filename="src\gui\widgets\dropdown.cpp" />
 		<Unit filename="src\gui\widgets\dropdown.h" />
 		<Unit filename="src\gui\widgets\icon.cpp" />
@@ -1030,8 +1032,8 @@
 		<Unit filename="src\utils\base64.cpp" />
 		<Unit filename="src\utils\base64.h" />
 		<Unit filename="src\utils\dtor.h" />
-		<Unit filename="src\utils\fastsqrt.h" />
 		<Unit filename="src\utils\gettext.h" />
+		<Unit filename="src\utils\mathutils.h" />
 		<Unit filename="src\utils\mutex.h" />
 		<Unit filename="src\utils\sha256.cpp">
 			<Option target="TMWServ" />

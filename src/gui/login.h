@@ -26,18 +26,12 @@
 
 #include <guichan/actionlistener.hpp>
 #include <guichan/keylistener.hpp>
-#ifdef EATHENA_SUPPORT
 #include <guichan/listmodel.hpp>
-#endif
 
 #include <string>
 #include <vector>
 
 class LoginData;
-#ifdef EATHENA_SUPPORT
-class DropDown;
-class ScrollArea;
-#endif
 
 /**
  * The login dialog.
@@ -54,6 +48,8 @@ class LoginDialog : public Window, public gcn::ActionListener,
          * @see Window::Window
          */
         LoginDialog(LoginData *loginData);
+
+        ~LoginDialog();
 
         /**
          * Called when receiving actions from the widgets.
@@ -97,7 +93,7 @@ class LoginDialog : public Window, public gcn::ActionListener,
 #ifdef EATHENA_SUPPORT
         gcn::TextField *mServerField;
         gcn::TextField *mPortField;
-        DropDown *mServerDropDown;
+        gcn::DropDown *mServerDropDown;
 #endif
         gcn::CheckBox *mKeepCheck;
         gcn::Button *mOkButton;
@@ -106,7 +102,6 @@ class LoginDialog : public Window, public gcn::ActionListener,
 
         LoginData *mLoginData;
 
-#ifdef EATHENA_SUPPORT
         /**
          * Helper class to keep a list of all the recent entries for the
          * dropdown
@@ -132,9 +127,6 @@ class LoginDialog : public Window, public gcn::ActionListener,
                 std::string getPortAt(int i);
         };
         DropDownList *mServerList;
-        gcn::ListBox *mServerListBox;
-        gcn::ScrollArea *mServerScrollArea;
-#endif
 };
 
 #endif

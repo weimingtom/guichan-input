@@ -29,7 +29,6 @@
 #include "gui/widgets/dropdown.h"
 #include "gui/widgets/label.h"
 #include "gui/widgets/layouthelper.h"
-#include "gui/widgets/listbox.h"
 #include "gui/widgets/scrollarea.h"
 
 #include "configuration.h"
@@ -141,10 +140,7 @@ public:
             mWidgets.push_back(widget);
             gcn::ListModel *playerRelation = new PlayerRelationListModel;
 
-            gcn::DropDown *choicebox = new DropDown(playerRelation,
-                                                    new ScrollArea,
-                                                    new ListBox(playerRelation),
-                                                    false);
+            gcn::DropDown *choicebox = new DropDown(playerRelation);
             choicebox->setSelected(player_relations.getRelation(name));
             mWidgets.push_back(choicebox);
         }
@@ -157,7 +153,7 @@ public:
         gcn::DropDown *choicebox = dynamic_cast<gcn::DropDown *>(
                                    getElementAt(row, RELATION_CHOICE_COLUMN));
         player_relations.setRelation(getPlayerAt(row),
-                                   static_cast<PlayerRelation::relation>(
+                                   static_cast<PlayerRelation::Relation>(
                                    choicebox->getSelected()));
     }
 
@@ -217,6 +213,7 @@ public:
 #define ACTION_DELETE "delete"
 #define ACTION_TABLE "table"
 #define ACTION_STRATEGY "strategy"
+#define ACTION_WHISPER_TAB "whisper tab"
 
 Setup_Players::Setup_Players():
     mPlayerTableTitleModel(new StaticTableModel(1, COLUMNS_NR)),
@@ -230,7 +227,9 @@ Setup_Players::Setup_Players():
                 player_relations.getDefault() & PlayerRelation::TRADE)),
     mDefaultWhisper(new CheckBox(_("Allow whispers"),
                 player_relations.getDefault() & PlayerRelation::WHISPER)),
-    mDeleteButton(new Button(_("Delete"), ACTION_DELETE, this))
+    mDeleteButton(new Button(_("Delete"), ACTION_DELETE, this)),
+    mWhisperTab(config.getValue("whispertab", false)),
+    mWhisperTabCheckBox(new CheckBox(_("Put all whispers in tabs"), mWhisperTab))
 {
     setName(_("Players"));
 
@@ -241,9 +240,8 @@ Setup_Players::Setup_Players():
                                            RELATION_CHOICE_COLUMN_WIDTH);
     mPlayerTitleTable->setBackgroundColor(gcn::Color(0xbf, 0xbf, 0xbf));
 
-    gcn::ListModel *ignoreChoices = new IgnoreChoicesListModel;
-    mIgnoreActionChoicesBox = new DropDown(ignoreChoices, new ScrollArea,
-                                           new ListBox(ignoreChoices), false);
+    mIgnoreActionChoicesModel = new IgnoreChoicesListModel;
+    mIgnoreActionChoicesBox = new DropDown(mIgnoreActionChoicesModel);
 
     for (int i = 0; i < COLUMNS_NR; i++)
     {
@@ -275,6 +273,9 @@ Setup_Players::Setup_Players():
     mIgnoreActionChoicesBox->setSelected(ignore_strategy_index);
     mIgnoreActionChoicesBox->adjustHeight();
 
+    mWhisperTabCheckBox->setActionEventId(ACTION_WHISPER_TAB);
+    mWhisperTabCheckBox->addActionListener(this);
+
     reset();
 
     // Do the layout
@@ -284,6 +285,7 @@ Setup_Players::Setup_Players():
     place(0, 0, mPlayerTitleTable, 4);
     place(0, 1, mPlayerScrollArea, 4, 4).setPadding(2);
     place(0, 5, mDeleteButton);
+    place(0, 6, mWhisperTabCheckBox);
     place(2, 5, ignore_action_label);
     place(2, 6, mIgnoreActionChoicesBox, 2).setPadding(2);
     place(2, 7, mPersistIgnores);
@@ -298,6 +300,7 @@ Setup_Players::Setup_Players():
 Setup_Players::~Setup_Players()
 {
     player_relations.removeListener(this);
+    delete mIgnoreActionChoicesModel;
 }
 
 
@@ -334,10 +337,13 @@ void Setup_Players::apply()
                                        PlayerRelation::TRADE : 0)
                                 | (mDefaultWhisper->isSelected() ?
                                        PlayerRelation::WHISPER : 0));
+    config.setValue("whispertab", mWhisperTab);
 }
 
 void Setup_Players::cancel()
 {
+    mWhisperTab = config.getValue("whispertab", false);
+    mWhisperTabCheckBox->setSelected(mWhisperTab);
 }
 
 void Setup_Players::action(const gcn::ActionEvent &event)
@@ -376,6 +382,10 @@ void Setup_Players::action(const gcn::ActionEvent &event)
                 mIgnoreActionChoicesBox->getSelected()];
 
         player_relations.setPlayerIgnoreStrategy(s);
+    }
+    else if (event.getId() == ACTION_WHISPER_TAB)
+    {
+        mWhisperTab = mWhisperTabCheckBox->isSelected();
     }
 }
 

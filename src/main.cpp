@@ -344,23 +344,23 @@ static void initConfiguration(const Options &options)
     int defaultPort = (int)branding.getValue("defaultPort", 6901);
 #endif
     config.setValue("port", defaultPort);
-    config.setValue("hwaccel", 0);
+    config.setValue("hwaccel", false);
 #if (defined __APPLE__ || defined WIN32) && defined USE_OPENGL
-    config.setValue("opengl", 1);
+    config.setValue("opengl", true);
 #else
-    config.setValue("opengl", 0);
+    config.setValue("opengl", false);
 #endif
-    config.setValue("screen", 0);
-    config.setValue("sound", 1);
+    config.setValue("screen", false);
+    config.setValue("sound", true);
     config.setValue("guialpha", 0.8f);
-    config.setValue("remember", 1);
+    config.setValue("remember", true);
     config.setValue("sfxVolume", 100);
     config.setValue("musicVolume", 60);
-    config.setValue("fpslimit", 0);
+    config.setValue("fpslimit", 60);
     std::string defaultUpdateHost = branding.getValue("defaultUpdateHost",
         "http://updates.themanaworld.org");
     config.setValue("updatehost", defaultUpdateHost);
-    config.setValue("customcursor", 1);
+    config.setValue("customcursor", true);
     config.setValue("ChatLogLength", 128);
 
     // Checking if the configuration file exists... otherwise create it with
@@ -924,7 +924,7 @@ int main(int argc, char *argv[])
     setupButton->setPosition(top->getWidth() - setupButton->getWidth() - 3, 3);
     top->add(setupButton);
 
-    sound.playMusic(branding.getValue("loginMusic", ""));
+    sound.playMusic(branding.getValue("loginMusic", "Login.ogg"));
 
     // Initialize login data
     loginData.hostname = options.serverName;
@@ -950,8 +950,7 @@ int main(int argc, char *argv[])
     new TmwServ::GeneralHandler;  // Currently doesn't need registration
 #else
     Network *network = new Network;
-    EAthena::GeneralHandler *generalHandler = new EAthena::GeneralHandler;
-    network->registerHandler(generalHandler);
+    network->registerHandler(new EAthena::GeneralHandler);
 #endif
 
     Net::getGeneralHandler()->load();

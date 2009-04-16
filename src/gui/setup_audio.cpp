@@ -31,8 +31,6 @@
 #include "configuration.h"
 #include "log.h"
 #include "sound.h"
-#include "map.h"
-#include "engine.h"
 
 #include "utils/gettext.h"
 
@@ -41,8 +39,8 @@ Setup_Audio::Setup_Audio():
     mSfxVolume((int)config.getValue("sfxVolume", 100)),
     mSoundEnabled(config.getValue("sound", 0)),
     mSoundCheckBox(new CheckBox(_("Sound"), mSoundEnabled)),
-    mSfxSlider(new Slider(0, 128)),
-    mMusicSlider(new Slider(0, 128))
+    mSfxSlider(new Slider(0, sound.getMaxVolume())),
+    mMusicSlider(new Slider(0, sound.getMaxVolume()))
 {
     setName(_("Audio"));
     setDimension(gcn::Rectangle(0, 0, 250, 200));
@@ -79,9 +77,14 @@ Setup_Audio::Setup_Audio():
 
 void Setup_Audio::apply()
 {
-    if (mSoundCheckBox->isSelected())
+    mSoundEnabled = mSoundCheckBox->isSelected();
+    mSfxVolume = (int) config.getValue("sfxVolume", 100);
+    mMusicVolume = (int) config.getValue("musicVolume", 60);
+
+    config.setValue("sound", mSoundEnabled);
+
+    if (mSoundEnabled)
     {
-        config.setValue("sound", 1);
         try
         {
             sound.init();
@@ -91,21 +94,11 @@ void Setup_Audio::apply()
             new OkDialog("Sound Engine", err);
             logger->log("Warning: %s", err);
         }
-
-        if (engine) {
-            Map *currentMap = engine->getCurrentMap();
-            sound.playMusic(currentMap->getProperty("music"), -1);
-        }
     }
     else
     {
-        config.setValue("sound", 0);
         sound.close();
     }
-
-    mSoundEnabled = config.getValue("sound", 0);
-    mSfxVolume = (int) config.getValue("sfxVolume", 100);
-    mMusicVolume = (int) config.getValue("musicVolume", 60);
 }
 
 void Setup_Audio::cancel()
@@ -118,7 +111,7 @@ void Setup_Audio::cancel()
     sound.setMusicVolume(mMusicVolume);
     mMusicSlider->setValue(mMusicVolume);
 
-    config.setValue("sound", mSoundEnabled ? 1 : 0);
+    config.setValue("sound", mSoundEnabled);
     config.setValue("sfxVolume", mSfxVolume);
     config.setValue("musicVolume", mMusicVolume);
 }
@@ -133,6 +126,6 @@ void Setup_Audio::action(const gcn::ActionEvent &event)
     else if (event.getId() == "music")
     {
         config.setValue("musicVolume", (int) mMusicSlider->getValue());
-        sound.setMusicVolume((int)mMusicSlider->getValue());
+        sound.setMusicVolume((int) mMusicSlider->getValue());
     }
 }

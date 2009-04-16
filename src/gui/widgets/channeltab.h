@@ -33,7 +33,12 @@ class ChannelTab : public ChatTab
 {
     public:
 
-        Channel *getChannel() { return mChannel; }
+        Channel *getChannel() const { return mChannel; }
+
+        void showHelp();
+
+        bool handleCommand(const std::string &type,
+                           const std::string &args);
 
     protected:
         friend class Channel;

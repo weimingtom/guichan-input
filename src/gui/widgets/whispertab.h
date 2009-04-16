@@ -34,6 +34,11 @@ class WhisperTab : public ChatTab
     public:
         const std::string &getNick() const { return mNick; }
 
+        void showHelp();
+
+        bool handleCommand(const std::string &type,
+                           const std::string &args);
+
     protected:
         friend class ChatWindow;
 
@@ -48,7 +53,7 @@ class WhisperTab : public ChatTab
 
         void handleInput(const std::string &msg);
 
-        void handleCommand(std::string msg);
+        void handleCommand(const std::string &msg);
 
     private:
         std::string mNick;

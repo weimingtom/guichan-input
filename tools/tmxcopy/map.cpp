@@ -20,12 +20,12 @@
 
 #include <cstring>
 #include <iostream>
-#include <map>
 #include <list>
 
 #include <string.h>
 #include <zlib.h>
 #include <cassert>
+#include <ctime>
 
 #include "xmlutils.h"
 #include "zlibutils.h"
@@ -194,6 +194,37 @@ Map::Map(std::string filename):
     std::cout<<"largest GID:"<<mMaxGid<<std::endl<<std::endl;
 }
 
+/**
+ * When copying tiles from another map, add new tilesets to this map, and return the translation table.
+ */
+std::map<int, int> Map::addAndTranslateTilesets(const Map* srcMap)
+{
+    std::map<int, int> translation;
+    translation[-1] = -1;
+    std::vector<Tileset*>* srcTilesets = const_cast<Map*>(srcMap)->getTilesets();
+
+    for (std::vector<Tileset*>::size_type a = 0; a < srcTilesets->size(); a++)
+    {
+        std::vector<Tileset*>::size_type b;
+        for (b = 0; b < mTilesets.size(); b++)
+        {
+            if (*srcTilesets->at(a) == *mTilesets.at(b))
+            {
+                break;
+            }
+        }
+        if (b == mTilesets.size())
+        {
+            mMaxGid += srcTilesets->at(a)->firstgid;
+            Tileset* destTileset = new Tileset(*srcTilesets->at(a));
+            destTileset->firstgid = mMaxGid;//it is possible to get some holes in the gid index this way but who cares, we got 32bit.
+            mTilesets.push_back(destTileset);
+        }
+        translation[a] = b;
+    }
+    return translation;
+}
+
 bool Map::overwrite(  Map* srcMap,
                     int srcX, int srcY, int srcWidth, int srcHeight,
                     int destX, int destY,
@@ -229,7 +260,7 @@ bool Map::overwrite(  Map* srcMap,
         }
         else
         {
-            for (int i = 0; i < srcMap->getNumberOfLayers(); i++)
+            for (size_t i = 0; i < srcMap->getNumberOfLayers(); i++)
             {
                 Layer* srcLayer = srcMap->getLayer(i);
                 Layer* destLayer = getLayer(srcLayer->getName());
@@ -245,32 +276,11 @@ bool Map::overwrite(  Map* srcMap,
 
     if (!checkPassed) return false;
 
-    std::map<int, int> translation;
-    translation[-1] = -1;
-    std::vector<Tileset*>* srcTilesets = srcMap->getTilesets();
+    std::map<int, int> translation = addAndTranslateTilesets(srcMap);
 
-    //add new tilesets and add redundant tilesets to list of redundand tilesets
-    for (int a = 0; a < srcTilesets->size(); a++)
-    {
-        int b;
-        for (b = 0; b < mTilesets.size(); b++)
-        {
-            if (*srcTilesets->at(a) == *mTilesets.at(b))
-            {
-                break;
-            }
-        }
-        if (b == mTilesets.size())
-        {
-            mMaxGid += srcTilesets->at(a)->firstgid;
-            srcTilesets->at(a)->firstgid = mMaxGid;//it is possible to get some holes in the gid index this way but who cares, we got 32bit.
-            mTilesets.push_back(srcTilesets->at(a));
-        }
-        translation[a] = b;
-    }
 
     //combining layer information
-    for (int i = 0; i < srcMap->getNumberOfLayers(); i++)
+    for (size_t i = 0; i < srcMap->getNumberOfLayers(); i++)
     {
         Layer* srcLayer = srcMap->getLayer(i);
         Layer* destLayer = NULL;
@@ -329,6 +339,186 @@ bool Map::overwrite(  Map* srcMap,
     return true;
 }
 
+bool Map::randomFill(Map* templateMap, const std::string& destLayerName,
+            int destX, int destY, int destWidth, int destHeight,
+            const ConfigurationOptions& config)
+{
+    //plausibility check of coordinates
+    bool checkPassed = true;
+    if (destX + destWidth > mWidth)
+    {
+        std::cerr<<"Error: Area exceeds right map border of target map!"<<std::endl;
+        checkPassed = false;
+    }
+    if (destY + destHeight > mHeight)
+    {
+        std::cerr<<"Error: Area exceeds lower map border of target map!"<<std::endl;
+        checkPassed = false;
+    }
+    if (destWidth < templateMap->getWidth())
+    {
+        std::cerr<<"Error: Template is wider than target area"<<std::endl;
+        checkPassed = false;
+    }
+    if (destWidth < templateMap->getHeight())
+    {
+        std::cerr<<"Error: Template is higher than target area"<<std::endl;
+        checkPassed = false;
+    }
+    if (templateMap->getNumberOfLayers() == 0)
+    {
+        std::cerr<<"Error: Template has no layers"<<std::endl;
+        checkPassed = false;
+    }
+    if (!config.createMissingLayers && !getLayer(destLayerName))
+    {
+        std::cerr<<"Error: target map has no layer named \""<<destLayerName<<"\""<<std::endl
+             <<"(and the command-line \"create layers\" option was not used)"<<std::endl;
+        checkPassed = false;
+    }
+    if (!checkPassed) return false;
+
+    std::map<int, int> translation = addAndTranslateTilesets(templateMap);
+
+
+    Layer* destLayer = getLayer(destLayerName);
+    if (!destLayer)
+    {
+        destLayer = new Layer(destLayerName, mWidth * mHeight);
+        mLayers.push_back(destLayer);
+        std::cout<<"Created new layer "<<destLayerName<<std::endl;
+    }
+
+    /* Now generate extra tiles.
+     * TODO Need to configure this for desired density.  For 2x1 trees, dW*dH/10 is very sparse, dW*dH/2 is dense */
+    srand(time(NULL));
+    int patternsGenerated = 0;
+    int occupiedAreas = 0;
+    for (int i = destWidth*destHeight / 10; i > 0; i--)
+    {
+        /* Pick a random location, with enough tiles left and down from it to
+         * fit the template in (the +1 is because it starts on tile (x,y))
+         */
+        int x = destX + (rand() % (destWidth  - templateMap->getWidth () + 1));
+        int y = destY + (rand() % (destHeight - templateMap->getHeight() + 1));
+
+        bool areaIsClear = true;
+
+        for (int loop_y=0; loop_y<templateMap->getHeight(); loop_y++)
+        {
+            for (int loop_x=0; loop_x<templateMap->getWidth(); loop_x++)
+            {
+                if (! destLayer->getTile(x+loop_x, y+loop_y, mWidth).empty())
+                {
+                    areaIsClear = false;
+                }
+            }
+        }
+
+        if (areaIsClear)
+        {
+            int p = rand() % templateMap->getNumberOfLayers();
+            std::cout <<"Copying pattern "<<p<<" to "<<x<<", "<<y<<std::endl;
+
+            Layer* srcLayer = templateMap->getLayer(p);
+            for (int loop_y=0; loop_y<templateMap->getHeight(); loop_y++)
+            {
+                for (int loop_x=0; loop_x<templateMap->getWidth(); loop_x++)
+                {
+                    Tile& srcTile  = srcLayer->getTile(loop_x, loop_y, templateMap->getWidth());
+                    Tile& destTile = destLayer->getTile(x+loop_x, y+loop_y, mWidth);
+                    destTile.tileset = translation[srcTile.tileset];
+                    destTile.index = srcTile.index;
+                }
+            }
+            patternsGenerated++;
+        }
+        else
+        {
+            occupiedAreas++;
+            std::cout <<"Area occupied "<<x<<", "<<y<<std::endl;
+        }
+    }
+
+    std::clog<<"Generated " << patternsGenerated << " new objects" <<std::endl;
+    return true;
+}
+
+bool Map::translateAllLayers(Map* templateMap, const std::string& destLayerName,
+            const ConfigurationOptions& config)
+{
+    bool checkPassed = true;
+    if (templateMap->getNumberOfLayers() != 2)
+    {
+        std::cerr<<"Error: template should have exactly 2 layers"<<std::endl;
+        checkPassed = false;
+    }
+    if (!config.createMissingLayers && !getLayer(destLayerName))
+    {
+        std::cerr<<"Error: target map has no layer named \""<<destLayerName<<"\""<<std::endl
+             <<"(and the command-line \"create layers\" option was not used)"<<std::endl;
+        checkPassed = false;
+    }
+    if (!checkPassed) return false;
+
+    //FIXME - as is, this will add tilesets that are in the template but
+    //not used in the main map
+    std::map<int, int> tilesetTranslation = addAndTranslateTilesets(templateMap);
+
+    //Lacking a better name, we'll say this is translating visible layers to collision
+    std::map<Tile, Tile> collisionTranslation;
+
+    Layer* fromLayer = templateMap->getLayer(0);
+    Layer* toLayer = templateMap->getLayer(1);
+    for (int xy = (templateMap->getWidth() * templateMap->getHeight() -1);
+        xy >= 0; xy--)
+    {
+        Tile fromTile = fromLayer->at(xy);
+        Tile toTile = toLayer->at(xy);
+        if (!fromTile.empty())
+        {
+            fromTile.tileset = tilesetTranslation[fromTile.tileset];
+            toTile.tileset = tilesetTranslation[toTile.tileset];
+
+            collisionTranslation[fromTile] = toTile;
+        }
+    }
+
+    /* Now apply that template to the game map */
+    Layer* destLayer = getLayer(destLayerName);
+    if (!destLayer)
+    {
+        destLayer = new Layer(destLayerName, mWidth * mHeight);
+        mLayers.push_back(destLayer);
+        std::cout<<"Created new layer "<<destLayerName<<std::endl;
+    }
+
+    for (std::vector<Layer*>::iterator layer = mLayers.begin();
+         layer != mLayers.end();
+         layer++)
+    {
+        if ((*layer)->getName() == destLayerName)
+            continue;
+
+        for (int xy = mWidth * mHeight -1; xy >= 0; xy--)
+        {
+            Tile& fromTile = (*layer)->at(xy);
+            Tile& toTile = destLayer->at(xy);
+            std::map<Tile,Tile>::iterator iteratedTile = collisionTranslation.find(fromTile);
+
+            if (iteratedTile != collisionTranslation.end())
+            {
+                toTile = (*iteratedTile).second;
+            }
+        }
+
+    }
+
+    return true;
+}
+
+
+
 int Map::save(std::string filename)
 {
     //remove old tileset and layer information in XML tree
@@ -353,7 +543,7 @@ int Map::save(std::string filename)
     //TODO: reorganize GIDs
 
     //add new tileset information to XML tree
-    for (int i = 0; i< mTilesets.size(); i++)
+    for (size_t i = 0; i< mTilesets.size(); i++)
     {
         xmlNodePtr newNode;
 
@@ -373,7 +563,7 @@ int Map::save(std::string filename)
     }
 
     //add new layer information to XML tree
-    for (int i = 0; i < mLayers.size(); i++)
+    for (size_t i = 0; i < mLayers.size(); i++)
     {
         //lay out layer information in binary
         unsigned char* binData = (unsigned char*)malloc(mWidth * mHeight * 4);

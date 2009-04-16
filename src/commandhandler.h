@@ -76,6 +76,11 @@ class CommandHandler
         void handleMsg(const std::string &args, ChatTab *tab);
 
         /**
+         * Handle a msg tab request.
+         */
+        void handleQuery(const std::string &args, ChatTab *tab);
+
+        /**
          * Handle a join command.
          */
         void handleJoin(const std::string &args, ChatTab *tab);
@@ -86,21 +91,6 @@ class CommandHandler
         void handleListChannels(const std::string &args, ChatTab *tab);
 
         /**
-         * Handle a listusers command.
-         */
-        void handleListUsers(const std::string &args, ChatTab *tab);
-
-        /**
-         * Handle a topic command.
-         */
-        void handleTopic(const std::string &args, ChatTab *tab);
-
-        /**
-         * Handle a quit command.
-         */
-        void handleQuit(const std::string &args, ChatTab *tab);
-
-        /**
          * Handle a clear command.
          */
         void handleClear(const std::string &args, ChatTab *tab);
@@ -109,16 +99,6 @@ class CommandHandler
          * Handle a party command.
          */
         void handleParty(const std::string &args, ChatTab *tab);
-
-        /**
-         * Handle a op command.
-         */
-        void handleOp(const std::string &args, ChatTab *tab);
-
-        /**
-         * Handle a kick command.
-         */
-        void handleKick(const std::string &args, ChatTab *tab);
 
         /**
          * Handle a me command.

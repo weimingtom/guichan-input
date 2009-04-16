@@ -41,6 +41,7 @@
 #include "keyboardconfig.h"
 #include "localplayer.h"
 #include "log.h"
+#include "map.h"
 #include "npc.h"
 #include "particle.h"
 #include "player_relations.h"
@@ -94,8 +95,6 @@
 #include "resources/imagewriter.h"
 
 #include "utils/gettext.h"
-
-class Map;
 
 std::string map_path;
 
@@ -456,13 +455,9 @@ static bool saveScreenshot()
 
 void Game::optionChanged(const std::string &name)
 {
-    int fpsLimit = (int) config.getValue("fpslimit", 0);
+    int fpsLimit = (int) config.getValue("fpslimit", 60);
 
-    // Calculate new minimum frame time. If one isn't set, use 60 FPS.
-    // (1000 / 60 is 16.66) Since the client can go well above the refresh
-    // rates for monitors now in OpenGL mode, this cutoff is done to help
-    // conserve on CPU time.
-    mMinFrameTime = fpsLimit ? 1000 / fpsLimit : 16;
+    mMinFrameTime = fpsLimit ? 1000 / fpsLimit : 0;
 
     // Reset draw time to current time
     mDrawTime = tick_time * 10;
@@ -477,6 +472,9 @@ void Game::logic()
 
     while (!done)
     {
+        if (Map *map = engine->getCurrentMap())
+            map->update(get_elapsed_time(gameTime));
+
         // Handle all necessary game logic
         while (get_elapsed_time(gameTime) > 0)
         {

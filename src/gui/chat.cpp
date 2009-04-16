@@ -36,8 +36,12 @@
 #include "configuration.h"
 #include "localplayer.h"
 
+#include "net/chathandler.h"
+#include "net/net.h"
+
 #include "utils/dtor.h"
 #include "utils/stringutils.h"
+#include "utils/strprintf.h"
 
 #include <guichan/focushandler.hpp>
 #include <guichan/focuslistener.hpp>
@@ -67,7 +71,8 @@ class ChatInput : public TextField, public gcn::FocusListener
 
 ChatWindow::ChatWindow():
     Window(_("Chat")),
-    mTmpVisible(false)
+    mTmpVisible(false),
+    mCurrentTab(NULL)
 {
     setWindowName("Chat");
 
@@ -108,7 +113,7 @@ ChatWindow::ChatWindow():
 
 ChatWindow::~ChatWindow()
 {
-    config.setValue("ReturnToggles", mReturnToggles ? "1" : "0");
+    config.setValue("ReturnToggles", mReturnToggles);
     delete mRecorder;
     delete_all(mWhispers);
     delete mItemLinkHandler;
@@ -408,9 +413,10 @@ void ChatWindow::setRecordingFile(const std::string &msg)
     mRecorder->setRecordingFile(msg);
 }
 
-void ChatWindow::whisper(std::string nick, std::string mes, bool own)
+void ChatWindow::whisper(const std::string &nick, std::string mes, bool own)
 {
-    if (mes.length() == 0) return;
+    if (mes.length() == 0)
+        return;
 
     std::string playerName = player_node->getName();
     std::string tempNick = nick;
@@ -418,19 +424,47 @@ void ChatWindow::whisper(std::string nick, std::string mes, bool own)
     toLower(playerName);
     toLower(tempNick);
 
-    if (!own && tempNick.compare(playerName) == 0)
+    if (tempNick.compare(playerName) == 0)
         return;
 
     ChatTab *tab = mWhispers[tempNick];
 
-    if (!tab)
+    if (!tab && config.getValue("whispertab", false))
     {
-        tab = new WhisperTab(tempNick);
-        mWhispers[tempNick] = tab;
+        tab = addWhisperTab(nick);
     }
 
-    if (own)
-        tab->chatInput(mes);
+    if (tab)
+    {
+        if (own)
+            tab->chatInput(mes);
+        else
+            tab->chatLog(nick, mes);
+    }
     else
-        tab->chatLog(nick, mes);
+    {
+        if (own)
+        {
+            Net::getChatHandler()->privateMessage(nick, mes);
+
+            localChatTab->chatLog(strprintf(_("Whispering to %s: %s"),
+                            nick.c_str(), mes.c_str()), BY_PLAYER);
+        }
+        else
+            localChatTab->chatLog(nick + " : " + mes, ACT_WHISPER, false);
+    }
+}
+
+ChatTab *ChatWindow::addWhisperTab(const std::string &nick)
+{
+    std::string playerName = player_node->getName();
+    std::string tempNick = nick;
+
+    toLower(playerName);
+    toLower(tempNick);
+
+    if (mWhispers[tempNick] || tempNick.compare(playerName) == 0)
+        return NULL;
+
+    return mWhispers[tempNick] = new WhisperTab(nick);
 }

@@ -73,8 +73,6 @@ std::string Palette::getConfigName(const std::string &typeName)
 
 DEFENUMNAMES(ColorType, COLOR_TYPE);
 
-const int Palette::GRADIENT_DELAY = 40;
-
 Palette::Palette() :
     mRainbowTime(tick_time),
     mColVector(ColVector(TYPE_COUNT))
@@ -133,6 +131,11 @@ Palette::Palette() :
             indent + _("Monster hits Player"));
     addColor(HIT_CRITICAL, 0xff0000, RAINBOW, indent + _("Critical Hit"));
     addColor(MISS, 0xffff00, STATIC, indent + _("Misses"));
+
+    addColor(HPBAR_FULL, 0x0f6a20, STATIC, _("HP Bar"));
+    addColor(HPBAR_THREE_QUARTERS, 0xc38948, STATIC, indent + _("3/4 HP Bar"));
+    addColor(HPBAR_ONE_HALF, 0xe28000, STATIC, indent + _("1/2 HP Bar"));
+    addColor(HPBAR_ONE_QUARTER, 0xff0000, PULSE, indent + _("1/4 HP Bar"));
     commit(true);
 }
 
@@ -144,10 +147,12 @@ Palette::~Palette()
     {
         configName = &ColorTypeNames[col->type];
         config.setValue(*configName + "Gradient", col->committedGrad);
+
+        if (col->grad != STATIC)
+            config.setValue(*configName + "Delay", col->delay);
+
         if (col->grad == STATIC || col->grad == PULSE)
-        {
             config.setValue(*configName, toString(col->getRGB()));
-        }
     }
 }
 
@@ -222,6 +227,7 @@ void Palette::commit(bool commitNonStatic)
          i != iEnd; ++i)
     {
         i->committedGrad = i->grad;
+        i->committedDelay = i->delay;
         if (commitNonStatic || i->grad == STATIC)
         {
             i->committedColor = i->color;
@@ -236,13 +242,13 @@ void Palette::commit(bool commitNonStatic)
 void Palette::rollback()
 {
     for (ColVector::iterator i = mColVector.begin(), iEnd = mColVector.end();
-         i != iEnd;
-         ++i)
+         i != iEnd; ++i)
     {
         if (i->grad != i->committedGrad)
         {
             setGradient(i->type, i->committedGrad);
         }
+        setGradientDelay(i->type, i->committedDelay);
         setColor(i->type, i->committedColor.r, i->committedColor.g,
                  i->committedColor.b);
         if (i->grad == PULSE)
@@ -255,24 +261,24 @@ void Palette::rollback()
 }
 
 void Palette::addColor(Palette::ColorType type, int rgb,
-                       Palette::GradientType grad,
-                       const std::string &text, char c)
+                       Palette::GradientType grad, const std::string &text,
+                       char c, int delay)
 {
     const std::string *configName = &ColorTypeNames[type];
-    gcn::Color trueCol = (int)config.getValue(*configName, rgb);
-    grad = (GradientType)config.getValue(*configName + "Gradient", grad);
-    mColVector[type].set(type, trueCol, grad, text, c);
+    gcn::Color trueCol = (int) config.getValue(*configName, rgb);
+    grad = (GradientType) config.getValue(*configName + "Gradient", grad);
+    delay = (int) config.getValue(*configName + "Delay", delay);
+    mColVector[type].set(type, trueCol, grad, text, c, delay);
+
     if (grad != STATIC)
-    {
         mGradVector.push_back(&mColVector[type]);
-    }
 }
 
-void Palette::advanceGradient ()
+void Palette::advanceGradient()
 {
     if (get_elapsed_time(mRainbowTime) > 5)
     {
-        int pos, colIndex, colVal;
+        int pos, colIndex, colVal, delay, numOfColors;
         // For slower systems, advance can be greater than one (advance > 1
         // skips advance-1 steps). Should make gradient look the same
         // independent of the framerate.
@@ -281,19 +287,25 @@ void Palette::advanceGradient ()
 
         for (size_t i = 0; i < mGradVector.size(); i++)
         {
-            mGradVector[i]->gradientIndex =
-                    (mGradVector[i]->gradientIndex + advance) %
-                    (GRADIENT_DELAY * ((mGradVector[i]->grad == SPECTRUM) ?
-                    (mGradVector[i]->grad == PULSE) ? 255 : 6 :
-                     RAINBOW_COLOR_COUNT));
+            delay = mGradVector[i]->delay;
 
-            pos = mGradVector[i]->gradientIndex % GRADIENT_DELAY;
-            colIndex = mGradVector[i]->gradientIndex / GRADIENT_DELAY;
+            if (mGradVector[i]->grad == PULSE)
+                delay = delay / 20;
+
+            numOfColors = (mGradVector[i]->grad == SPECTRUM ? 6 :
+                           mGradVector[i]->grad == PULSE ? 127 :
+                           RAINBOW_COLOR_COUNT);
+
+            mGradVector[i]->gradientIndex =
+                                    (mGradVector[i]->gradientIndex + advance) %
+                                    (delay * numOfColors);
+
+            pos = mGradVector[i]->gradientIndex % delay;
+            colIndex = mGradVector[i]->gradientIndex / delay;
 
             if (mGradVector[i]->grad == PULSE)
             {
-                colVal = (int) (255.0 * (sin(M_PI * 
-                         (mGradVector[i]->gradientIndex) / 255) + 1) / 2);
+                colVal = (int) (255.0 * sin(M_PI * colIndex / numOfColors));
 
                 const gcn::Color* col = &mGradVector[i]->testColor;
 
@@ -305,13 +317,12 @@ void Palette::advanceGradient ()
             {
                 if (colIndex % 2)
                 { // falling curve
-                    colVal = (int)(255.0 * (cos(M_PI * pos / GRADIENT_DELAY) +
-                             1) / 2);
+                    colVal = (int)(255.0 * (cos(M_PI * pos / delay) + 1) / 2);
                 }
                 else
                 { // ascending curve
-                    colVal = (int)(255.0 * (cos(M_PI * (GRADIENT_DELAY-pos) /
-                             GRADIENT_DELAY) + 1) / 2);
+                    colVal = (int)(255.0 * (cos(M_PI * (delay - pos) / delay) +
+                                   1) / 2);
                 }
 
                 mGradVector[i]->color.r =
@@ -328,9 +339,9 @@ void Palette::advanceGradient ()
             {
                 const gcn::Color* startCol = &RAINBOW_COLORS[colIndex];
                 const gcn::Color* destCol =
-                        &RAINBOW_COLORS[(colIndex + 1) % RAINBOW_COLOR_COUNT];
+                        &RAINBOW_COLORS[(colIndex + 1) % numOfColors];
 
-                startColVal = (cos(M_PI * pos / GRADIENT_DELAY) + 1) / 2;
+                startColVal = (cos(M_PI * pos / delay) + 1) / 2;
                 destColVal = 1 - startColVal;
 
                 mGradVector[i]->color.r =(int)(startColVal * startCol->r +

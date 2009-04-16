@@ -53,7 +53,7 @@ struct MetaTile
     /**
      * Constructor.
      */
-    MetaTile():whichList(0), blockmask(0) {};
+    MetaTile() : whichList(0), blockmask(0) {}
 
     // Pathfinding members
     int Fcost;               /**< Estimation of total path cost */
@@ -73,7 +73,7 @@ class TileAnimation
     public:
         TileAnimation(Animation *ani);
         ~TileAnimation();
-        void update();
+        void update(int ticks = 1);
         void addAffectedTile(MapLayer *layer, int index)
         { mAffected.push_back(std::make_pair(layer, index)); }
     private:
@@ -169,9 +169,9 @@ class Map : public Properties
         void initializeOverlays();
 
         /**
-         * Updates animations. Called every game tick.
+         * Updates animations. Called as needed.
          */
-        void update();
+        void update(int ticks = 1);
 
         /**
          * Draws the map to the given graphics output. This method draws all
