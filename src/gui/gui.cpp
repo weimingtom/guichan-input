@@ -245,11 +245,6 @@ void Gui::handleMouseMoved(const gcn::MouseInput &mouseInput)
     mMouseInactivityTimer = 0;
 }
 
-const int Gui::getFontHeight() const
-{
-    return mGuiFont->getHeight();
-}
-
 void Gui::focusTop()
 {
     mFocusHandler->requestFocus(getTop());
