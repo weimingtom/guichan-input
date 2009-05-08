@@ -245,7 +245,10 @@ void Gui::handleMouseMoved(const gcn::MouseInput &mouseInput)
     mMouseInactivityTimer = 0;
 }
 
-void Gui::focusTop()
+void Gui::focusTop(bool force)
 {
+    if (!force && mFocusHandler->getFocused() != NULL)
+        return;
+
     mFocusHandler->requestFocus(getTop());
 }

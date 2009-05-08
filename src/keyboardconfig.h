@@ -43,7 +43,7 @@ enum {
 struct KeyData
 {
     int key;    /** The actual guichan keycode that is used. */
-    int mask;   /** The modifiers to be used. */
+    char mask;   /** The modifiers to be used. */
 };
 
 class Setup_Keyboard;
@@ -93,9 +93,6 @@ class KeyboardConfig : public gcn::KeyListener
          */
         void setKeyData(int index, KeyData data);
 
-        // TODO: Remove me
-        bool isKeyActive(int index) { return false; }
-
         /**
          * Get the enable flag, which will stop the user from doing actions.
          */
@@ -133,12 +130,12 @@ class KeyboardConfig : public gcn::KeyListener
          * Returns whether the given action and event match. This is a
          * convinience for the KeyData form.
          */
-        bool keyMatch(int index, gcn::KeyEvent &event);
+        bool keyMatch(int index, KeyData ret);
 
         /**
          * Returns whether the given action and key data match.
          */
-        bool keyMatch(KeyData data, gcn::KeyEvent &event);
+        bool keyMatch(KeyData data, KeyData ret);
 
         /**
          * Returns a string represnetation of the given key data.
@@ -161,6 +158,10 @@ class KeyboardConfig : public gcn::KeyListener
          */
         KeyData keyConvert(gcn::KeyEvent &event);
 
+        bool isAttacking();
+
+        bool isTargeting();
+
         void keyPressed(gcn::KeyEvent &event);
 
         void keyReleased(gcn::KeyEvent &event);
@@ -182,7 +183,7 @@ class KeyboardConfig : public gcn::KeyListener
             KEY_ATTACK,
             KEY_TALK,
             KEY_TARGET,
-            KEY_TARGET_CLOSEST,
+            KEY_TARGET_MONSTER,
             KEY_TARGET_NPC,
             KEY_TARGET_PLAYER,
             KEY_PICKUP,
@@ -249,6 +250,9 @@ class KeyboardConfig : public gcn::KeyListener
         KeyData mKey[KEY_TOTAL];       /**< Pointer to all the key data */
 
         Uint8 *mActiveKeys;            /**< Stores a list of all the keys */
+
+        inline bool parseMovement(KeyData kd, bool press);
+        inline bool parseTarget(KeyData kd, bool press);
 };
 
 extern KeyboardConfig keyboard;

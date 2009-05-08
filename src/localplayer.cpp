@@ -605,23 +605,24 @@ void LocalPlayer::setWalkingDir(int dir)
     }
 }
 
-#ifdef TMWSERV_SUPPORT
 void LocalPlayer::stopWalking(bool sendToServer)
 {
     if (mAction == WALK && mWalkingDir) {
         mWalkingDir = 0;
+#ifdef TMWSERV_SUPPORT
         mLocalWalkTime = 0;
+#endif
         Being::setDestination(getPosition().x,getPosition().y);
         if (sendToServer)
-             Net::GameServer::Player::walk(getPosition().x, getPosition().y);
+            Net::getPlayerHandler()->setDestination(getPosition().x,
+                                                    getPosition().y,
+                                                    mDirection);
         setAction(STAND);
     }
 
     clearPath();
 }
-#endif
 
-#ifdef EATHENA_SUPPORT
 void LocalPlayer::raiseSkill(Uint16 skillId)
 {
     if (mSkillPoint <= 0)
@@ -629,7 +630,6 @@ void LocalPlayer::raiseSkill(Uint16 skillId)
 
     Net::getSkillHandler()->up(skillId);
 }
-#endif
 
 void LocalPlayer::toggleSit()
 {

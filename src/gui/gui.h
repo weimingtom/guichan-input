@@ -112,7 +112,9 @@ class Gui : public gcn::Gui
          * Requests focus for the top widget. This needs to be used instead of
          * giving focus to nothing.
          */
-        void focusTop();
+        void focusTop(bool force = true);
+
+        void focusNone() { focusTop(true); }
 
     protected:
         void handleMouseMoved(const gcn::MouseInput &mouseInput);

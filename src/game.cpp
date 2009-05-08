@@ -435,6 +435,7 @@ void Game::logic()
         // Handle all necessary game logic
         while (get_elapsed_time(gameTime) > 0)
         {
+            gui->focusTop(false);
             handleInput();
             engine->logic();
             gameTime++;

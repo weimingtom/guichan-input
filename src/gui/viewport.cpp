@@ -355,17 +355,15 @@ void Viewport::mousePressed(gcn::MouseEvent &event)
                         break;
 
                     if (player_node->withinAttackRange(being) ||
-                        keyboard.isKeyActive(keyboard.KEY_ATTACK))
+                        keyboard.isAttacking())
                     {
                         player_node->setGotoTarget(being);
 //TODO: This can be changed when TMWServ moves to target based combat
 #ifdef TMWSERV_SUPPORT 
                         player_node->attack();
 #else
-                        player_node->attack(being,
-                            !keyboard.isKeyActive(keyboard.KEY_TARGET));
+                        player_node->attack(being, keyboard.isTargeting());
 #endif
-
                     }
                     else
                     {

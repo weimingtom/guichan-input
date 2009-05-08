@@ -321,15 +321,14 @@ class LocalPlayer : public Player
          */
         bool withinAttackRange(Being *target);
 
-#ifdef EATHENA_SUPPORT
         void raiseSkill(Uint16 skillId);
-#else
 
         /**
          * Stops the player dead in his tracks
          */
         void stopWalking(bool sendToServer = true);
 
+#ifdef TMWSERV_SUPPORT
         /**
          * Uses a character point to raise an attribute
          */

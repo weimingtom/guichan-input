@@ -20,13 +20,17 @@
  */
 
 #include "being.h"
+#include "beingmanager.h"
 #include "configuration.h"
 #include "guichanfwd.h"
 #include "keyboardconfig.h"
 #include "localplayer.h"
 #include "log.h"
+#include "main.h"
+#include "npc.h"
 
 #include "gui/chat.h"
+#include "gui/npcdialog.h"
 #include "gui/sdlinput.h"
 #include "gui/setup_keyboard.h"
 
@@ -41,15 +45,27 @@ struct KeyDefault
     std::string caption;
 };
 
+enum
+{
+    KEY_META_RIGHT = -991,
+    KEY_META_LEFT = -992,
+    KEY_CTRL_RIGHT = -995,
+    KEY_CTRL_LEFT = -996,
+    KEY_SHIFT_RIGHT = -996,
+    KEY_SHIFT_LEFT = -998,
+    KEY_ALT_RIGHT = -999,
+    KEY_ALT_LEFT = -1000
+};
+
 static KeyDefault const keyData[KeyboardConfig::KEY_TOTAL] = {
     {"keyMoveUp", Key::UP, 0 , _("Move Up")},
     {"keyMoveDown", Key::DOWN, 0, _("Move Down")},
     {"keyMoveLeft", Key::LEFT, 0, _("Move Left")},
     {"keyMoveRight", Key::RIGHT, 0, _("Move Right")},
-    {"keyAttack", 0, KEY_MASK_CTRL, _("Attack")},
+    {"keyAttack", KEY_CTRL_LEFT, 0, _("Attack")},
     {"keyTalk", 't', 0, _("Talk")},
-    {"keyTarget", 0, KEY_MASK_SHIFT, _("Stop Attack")},
-    {"keyTargetClosest", 'a', 0, _("Target Closest")},
+    {"keyTarget", KEY_SHIFT_LEFT, 0, _("Stop Attack")},
+    {"keyTargetMonster", 'a', 0, _("Target MONSTER")},
     {"keyTargetNPC", 'n', 0, _("Target NPC")},
     {"keyTargetPlayer", 'q', 0, _("Target Player")},
     {"keyPickup", 'z', 0, _("Pickup")},
@@ -197,6 +213,7 @@ bool KeyboardConfig::hasConflicts()
         for (j = i, j++; j < KEY_TOTAL; j++)
         {
             // Allow for item shortcut and emote keys to overlap, but no other keys
+            // TODO: remove that
             if (!((((i >= KEY_SHORTCUT_1) && (i <= KEY_SHORTCUT_12)) &&
                    ((j >= KEY_EMOTE_1) && (j <= KEY_EMOTE_12))) ||
                    ((i == KEY_TOGGLE_CHAT) && (j == KEY_OK))) &&
@@ -255,16 +272,15 @@ const std::string &KeyboardConfig::getKeyCaption(int index) const
     return keyData[index].caption;
 }
 
-bool KeyboardConfig::keyMatch(int index, gcn::KeyEvent &event)
+bool KeyboardConfig::keyMatch(int index, KeyData ev)
 {
-    return keyMatch(getKeyData(index), event);
+    return keyMatch(getKeyData(index), ev);
 }
 
-bool KeyboardConfig::keyMatch(KeyData data, gcn::KeyEvent &event)
+bool KeyboardConfig::keyMatch(KeyData data, KeyData ev)
 {
-    KeyData ev = keyConvert(event);
-
-    return (ev.key == data.key) && (ev.mask == data.mask);
+    printf("(%d, %d) == (%d, %d)\n", data.key, data.mask, ev.key, ev.mask);
+    return (ev.key == data.key || data.key == 0) && (ev.mask == data.mask);
 }
 
 std::string KeyboardConfig::keyString(KeyData data)
@@ -325,35 +341,229 @@ KeyData KeyboardConfig::keyConvert(gcn::KeyEvent &event)
     if (event.isMetaPressed())
         ret.mask |= KEY_MASK_META;
 
-    if (ret.key < 0)
-        ret.key = 0;
-
     return ret;
+}
+
+static short key_state = 0;
+
+enum {
+    KS_UP = 0x1,
+    KS_DOWN = 0x2,
+    KS_LEFT = 0x4,
+    KS_RIGHT = 0x8,
+    KS_TARGET = 0x10,
+    KS_TARGET_MONSTER = 0x20,
+    KS_TARGET_PLAYER = 0x40,
+    KS_TARGET_NPC = 0x80,
+    KS_ATTACK = 0x100,
+};
+
+static Being::Type lastTarget = Being::UNKNOWN;
+
+bool KeyboardConfig::isAttacking()
+{
+    return key_state & KS_ATTACK;
+}
+
+bool KeyboardConfig::isTargeting()
+{
+    return key_state & KS_TARGET;
 }
 
 void KeyboardConfig::keyPressed(gcn::KeyEvent &event)
 {
     // Ignore consumed events
-    if (event.isConsumed())
+    if (event.isConsumed() || state != STATE_GAME)
         return;
 
-    gcn::Key key = event.getKey();
+    KeyData kd = keyConvert(event);
 
-    // This will open the chat input box on enter
-    if (keyMatch(KEY_TOGGLE_CHAT, event))
+    if (parseMovement(kd, true))
+        return;
+    else if (keyMatch(KEY_TARGET, kd))
+    {
+        key_state |= KS_TARGET;
+        player_node->stopAttack();
+    }
+    else if (parseTarget(kd, true))
+        return;
+    else if (keyMatch(KEY_ATTACK, kd))
+    {
+        key_state |= KS_ATTACK;
+    }
+    else if (keyMatch(KEY_TOGGLE_CHAT, kd))
     {
         chatWindow->requestChatFocus();
     }
+    else if (keyMatch(KEY_SIT, kd))
+    {
+        player_node->toggleSit();
+    }
+    else if (keyMatch(KEY_TALK, kd))
+    {
+        if (!NPC::isTalking)
+        {
+            Being *target = player_node->getTarget();
+
+            if (target && target->getType() == Being::NPC)
+                dynamic_cast<NPC*>(target)->talk();
+        }
+    }
     // Otherwise, just print the key for now
     else
+    {
+        gcn::Key key = event.getKey();
         printf("%d %1$c\n", key.getValue());
+    }
 }
 
 void KeyboardConfig::keyReleased(gcn::KeyEvent &event)
 {
     // Ignore consumed events
-    if (event.isConsumed())
+    if (event.isConsumed() || state != STATE_GAME)
         return;
 
-    // TODO
+    KeyData kd = keyConvert(event);
+
+    if (parseMovement(kd, false))
+        return;
+    else if (keyMatch(KEY_TARGET, kd))
+    {
+        key_state &= ~KS_TARGET;
+    }
+    else if (parseTarget(kd, false))
+        return;
+    else if (keyMatch(KEY_ATTACK, kd))
+    {
+        key_state &= ~KS_ATTACK;
+    }
+}
+
+inline bool KeyboardConfig::parseMovement(KeyData kd, bool press)
+{
+    // Adjust the stored direction
+    if (keyMatch(KEY_MOVE_UP, kd))
+        if (press)
+            key_state |= KS_UP;
+        else
+            key_state &= ~KS_UP;
+    else if (keyMatch(KEY_MOVE_DOWN, kd))
+        if (press)
+            key_state |= KS_DOWN;
+        else
+            key_state &= ~KS_DOWN;
+    else if (keyMatch(KEY_MOVE_LEFT, kd))
+        if (press)
+            key_state |= KS_LEFT;
+        else
+            key_state &= ~KS_LEFT;
+    else if (keyMatch(KEY_MOVE_RIGHT, kd))
+        if (press)
+            key_state |= KS_RIGHT;
+        else
+            key_state &= ~KS_RIGHT;
+    else return false; // If it's not a direction, we ignore it for now
+
+    if (player_node->mAction == Being::DEAD && current_npc != 0)
+        return true;
+
+    // Now get the adjusted direction (remove conflicting directions)
+    int direction = 0;
+
+    if (key_state & KS_UP)
+        direction |= Being::UP;
+    else if (key_state & KS_DOWN)
+        direction |= Being::DOWN;
+
+    if (key_state & KS_LEFT)
+        direction |= Being::LEFT;
+    else if (key_state & KS_RIGHT)
+        direction |= Being::RIGHT;
+
+    // If the direction is different, then stop first (this makes things weird
+    // for the eAthena build)
+#ifdef TMWSERV_SUPPORT
+    if (!real_direction || real_direction != player_node->getWalkingDir())
+        player_node->stopWalking(false);
+#endif
+
+    // Set the player's direction
+    player_node->setWalkingDir(direction);
+
+#ifdef EATHENA_SUPPORT
+    if (key_state & KS_ATTACK && lastTarget != Being::UNKNOWN)
+    {
+        Being *target = NULL;
+
+        bool newTarget = !(key_state & KS_TARGET);
+        // A set target has highest priority
+        if (newTarget || !player_node->getTarget())
+        {
+            Uint16 targetX = player_node->mX, targetY = player_node->mY;
+
+            switch (player_node->getSpriteDirection())
+            {
+                case DIRECTION_UP   : --targetY; break;
+                case DIRECTION_DOWN : ++targetY; break;
+                case DIRECTION_LEFT : --targetX; break;
+                case DIRECTION_RIGHT: ++targetX; break;
+                default: break;
+            }
+
+            // Only auto target Monsters
+            target = beingManager->findNearestLivingBeing(targetX, targetY,
+                     20, lastTarget);
+        }
+
+        player_node->attack(target, newTarget);
+    }
+#endif
+
+    return true;
+}
+
+inline bool KeyboardConfig::parseTarget(KeyData kd, bool press)
+{
+    Being::Type currentTarget = Being::UNKNOWN;
+
+    if (keyMatch(KEY_TARGET_MONSTER, kd))
+        if (press)
+            key_state |= KS_TARGET_MONSTER;
+        else
+            key_state &= ~KS_TARGET_MONSTER;
+    else if (keyMatch(KEY_TARGET_NPC, kd))
+        if (press)
+            key_state |= KS_TARGET_NPC;
+        else
+            key_state &= ~KS_TARGET_NPC;
+    else if (keyMatch(KEY_TARGET_PLAYER, kd))
+        if (press)
+            key_state |= KS_TARGET_PLAYER;
+        else
+            key_state &= ~KS_TARGET_PLAYER;
+    else return false;
+
+    if (key_state & KS_TARGET_MONSTER)
+        currentTarget = Being::MONSTER;
+    else if (key_state = KS_TARGET_NPC)
+        currentTarget = Being::NPC;
+    else if (key_state & KS_TARGET_PLAYER)
+        currentTarget = Being::PLAYER;
+    else lastTarget = Being::UNKNOWN; // Reset last target
+
+    if (currentTarget == Being::UNKNOWN)
+        return true;
+
+    if (key_state & KS_TARGET) // We still want to consume the events,
+        return true;             // but not process them
+
+    Being *target = beingManager->findNearestLivingBeing(player_node, 20,
+                                                         currentTarget);
+
+    if (target && (target != player_node->getTarget() ||
+            currentTarget != lastTarget))
+    {
+        player_node->setTarget(target);
+        lastTarget = currentTarget;
+    }
 }

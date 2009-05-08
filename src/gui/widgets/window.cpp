@@ -307,6 +307,8 @@ void Window::setVisible(bool visible)
 void Window::setVisible(bool visible, bool forceSticky)
 {
     gcn::Window::setVisible((!forceSticky && isSticky()) || visible);
+
+    gui->focusTop(false);
 }
 
 void Window::scheduleDelete()
