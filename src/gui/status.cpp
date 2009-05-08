@@ -36,7 +36,6 @@
 
 #include "utils/gettext.h"
 #include "utils/mathutils.h"
-#include "utils/strprintf.h"
 #include "utils/stringutils.h"
 
 StatusWindow::StatusWindow(LocalPlayer *player):
@@ -46,6 +45,7 @@ StatusWindow::StatusWindow(LocalPlayer *player):
 {
     setWindowName("Status");
     setCloseButton(true);
+    setSaveVisible(true);
     setDefaultSize(400, 345, ImageRect::CENTER);
 
     // ----------------------
@@ -58,16 +58,16 @@ StatusWindow::StatusWindow(LocalPlayer *player):
                 Units::formatCurrency(mCurrency).c_str()));
 
     mHpLabel = new Label(_("HP:"));
-    mHpBar = new ProgressBar(1.0f, 80, 15, 0, 171, 34);
+    mHpBar = new ProgressBar(1.0f, 80, 15, gcn::Color(0, 171, 34));
 
     mXpLabel = new Label(_("Exp:"));
-    mXpBar = new ProgressBar(1.0f, 80, 15, 143, 192, 211);
+    mXpBar = new ProgressBar(1.0f, 80, 15, gcn::Color(143, 192, 211));
 
     mMpLabel = new Label(_("MP:"));
-    mMpBar = new ProgressBar(1.0f, 80, 15, 26, 102, 230);
+    mMpBar = new ProgressBar(1.0f, 80, 15, gcn::Color(26, 102, 230));
 
     mJobLabel = new Label(_("Job:"));
-    mJobBar = new ProgressBar(1.0f, 80, 15, 220, 135, 203);
+    mJobBar = new ProgressBar(1.0f, 80, 15, gcn::Color(220, 135, 203));
 
     // ----------------------
     // Stats Part
@@ -341,16 +341,16 @@ void StatusWindow::updateHPBar(ProgressBar *bar, bool showMax)
         b1 = color1.b; b2 = color2.b;
     }
 
-    //safety checks
-    if (weight>1.0f) weight=1.0f;
-    if (weight<0.0f) weight=0.0f;
+    // Safety checks
+    if (weight > 1.0f) weight = 1.0f;
+    if (weight < 0.0f) weight = 0.0f;
 
-    //Do the color blend
+    // Do the color blend
     r1 = (int) weightedAverage(r1, r2,weight);
     g1 = (int) weightedAverage(g1, g2, weight);
     b1 = (int) weightedAverage(b1, b2, weight);
 
-    //more safety checks
+    // More safety checks
     if (r1 > 255) r1 = 255;
     if (g1 > 255) g1 = 255;
     if (b1 > 255) b1 = 255;
@@ -376,46 +376,39 @@ void StatusWindow::updateMPBar(ProgressBar *bar, bool showMax)
     bar->setProgress((float) player_node->mMp / (float) player_node->mMaxMp);
 }
 
-void StatusWindow::updateXPBar(ProgressBar *bar, bool percent)
+static void updateProgressBar(ProgressBar *bar, int value, int max,
+                              bool percent)
 {
-    if (player_node->mXpForNextLevel == 0) {
+    if (max == 0)
+    {
         bar->setText(_("Max level"));
         bar->setProgress(1.0);
-    } else {
-        if (percent)
-        {
-            float xp = (float) player_node->getXp() /
-                                player_node->mXpForNextLevel;
-            bar->setText(toString((float) ((int) (xp * 10000.0f)) / 100.0f) +
-                        "%");
-        }
-        else
-            bar->setText(toString(player_node->getXp()) +
-                        "/" + toString(player_node->mXpForNextLevel));
-
-        bar->setProgress((float) player_node->getXp() /
-                         (float) player_node->mXpForNextLevel);
     }
+    else
+    {
+        float progress = (float) value / max;
+
+        if (percent)
+            bar->setText(strprintf("%2.2f", 100 * progress) + "%");
+        else
+            bar->setText(toString(value) + "/" + toString(max));
+
+        bar->setProgress(progress);
+    }
+}
+
+void StatusWindow::updateXPBar(ProgressBar *bar, bool percent)
+{
+    updateProgressBar(bar,
+                      player_node->getXp(),
+                      player_node->mXpForNextLevel,
+                      percent);
 }
 
 void StatusWindow::updateJobBar(ProgressBar *bar, bool percent)
 {
-    if (player_node->mJobXpForNextLevel == 0) {
-        bar->setText(_("Max level"));
-        bar->setProgress(1.0);
-    } else {
-        if (percent)
-        {
-            float xp = (float) player_node->mJobXp /
-                                player_node->mJobXpForNextLevel;
-            bar->setText(toString((float) ((int) (xp * 10000.0f)) / 100.0f) +
-                        "%");
-        }
-        else
-            bar->setText(toString(player_node->mJobXp) +
-                                "/" + toString(player_node->mJobXpForNextLevel));
-
-        bar->setProgress((float) player_node->mJobXp /
-                            (float) player_node->mJobXpForNextLevel);
-    }
+    updateProgressBar(bar,
+                      player_node->mJobXp,
+                      player_node->mJobXpForNextLevel,
+                      percent);
 }

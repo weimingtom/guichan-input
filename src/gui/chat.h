@@ -129,7 +129,7 @@ class ChatWindow : public Window,
         /**
          * Checks whether ChatWindow is Focused or not.
          */
-        bool isInputFocused();
+        bool isInputFocused() const;
 
         /**
          * Passes the text to the current tab as input
@@ -174,7 +174,7 @@ class ChatWindow : public Window,
         void whisper(const std::string &nick, std::string mes,
                      bool own = false);
 
-        ChatTab *addWhisperTab(const std::string &nick);
+        ChatTab *addWhisperTab(const std::string &nick, bool switchTo = false);
 
     protected:
         friend class ChatTab;
@@ -186,7 +186,7 @@ class ChatWindow : public Window,
         /** Add the tab to the window */
         void addTab(ChatTab *tab);
 
-        void removeWhisper(std::string nick);
+        void removeWhisper(const std::string &nick);
 
         void adjustTabSize();
 

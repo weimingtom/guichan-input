@@ -101,24 +101,24 @@ Palette::Palette() :
     addColor(HYPERLINK, 0xe50d0d, STATIC, indent + _("Hyperlink"), '<');
 
     addColor(BEING, 0xffffff, STATIC, _("Being"));
-    addColor(PC, 0xffffff, STATIC, indent + _("Other Player's Names"));
+    addColor(PC, 0xffffff, STATIC, indent + _("Other Players' Names"));
     addColor(SELF, 0xff8040, STATIC, indent + _("Own Name"));
     addColor(GM_NAME, 0x00ff00, STATIC, indent + _("GM Names"));
     addColor(NPC, 0xc8c8ff, STATIC, indent + _("NPCs"));
     addColor(MONSTER, 0xff4040, STATIC, indent + _("Monsters"));
 
     addColor(UNKNOWN_ITEM, 0x000000, STATIC, _("Unknown Item Type"));
-    addColor(GENERIC, 0x21a5b1, STATIC, indent + _("Generic"));
-    addColor(HEAD, 0x527fa4, STATIC, indent + _("Hat"));
-    addColor(USABLE, 0x268d24, STATIC, indent + _("Usable"));
-    addColor(TORSO, 0xd12aa4, STATIC, indent + _("Shirt"));
+    addColor(GENERIC, 0x21a5b1, STATIC, indent + _("Generics"));
+    addColor(HEAD, 0x527fa4, STATIC, indent + _("Hats"));
+    addColor(USABLE, 0x268d24, STATIC, indent + _("Usables"));
+    addColor(TORSO, 0xd12aa4, STATIC, indent + _("Shirts"));
     addColor(ONEHAND, 0xf42a2a, STATIC, indent + _("1 Handed Weapons"));
     addColor(LEGS, 0x699900, STATIC, indent + _("Pants"));
     addColor(FEET, 0xaa1d48, STATIC, indent + _("Shoes"));
     addColor(TWOHAND, 0xf46d0e, STATIC, indent + _("2 Handed Weapons"));
-    addColor(SHIELD, 0x9c2424, STATIC, indent + _("Shield"));
-    addColor(RING, 0x0000ff, STATIC, indent + _("Ring"));
-    addColor(NECKLACE, 0xff00ff, STATIC, indent + _("Necklace"));
+    addColor(SHIELD, 0x9c2424, STATIC, indent + _("Shields"));
+    addColor(RING, 0x0000ff, STATIC, indent + _("Rings"));
+    addColor(NECKLACE, 0xff00ff, STATIC, indent + _("Necklaces"));
     addColor(ARMS, 0x9c24e8, STATIC, indent + _("Arms"));
     addColor(AMMO, 0x8b6311, STATIC, indent + _("Ammo"));
 
@@ -152,7 +152,11 @@ Palette::~Palette()
             config.setValue(*configName + "Delay", col->delay);
 
         if (col->grad == STATIC || col->grad == PULSE)
-            config.setValue(*configName, toString(col->getRGB()));
+        {
+            char buffer[20];
+            sprintf(buffer, "0x%06x", col->getRGB());
+            config.setValue(*configName, std::string(buffer));
+        }
     }
 }
 
@@ -265,7 +269,16 @@ void Palette::addColor(Palette::ColorType type, int rgb,
                        char c, int delay)
 {
     const std::string *configName = &ColorTypeNames[type];
-    gcn::Color trueCol = (int) config.getValue(*configName, rgb);
+    char buffer[20];
+    sprintf(buffer, "0x%06x", rgb);
+    const std::string rgbString = config.getValue(*configName,
+                                                  std::string(buffer));
+    unsigned int rgbValue = 0;
+    if (rgbString.length() == 8 && rgbString[0] == '0' && rgbString[1] == 'x')
+        rgbValue = atox(rgbString);
+    else
+        rgbValue = atoi(rgbString.c_str());
+    gcn::Color trueCol = rgbValue;
     grad = (GradientType) config.getValue(*configName + "Gradient", grad);
     delay = (int) config.getValue(*configName + "Delay", delay);
     mColVector[type].set(type, trueCol, grad, text, c, delay);

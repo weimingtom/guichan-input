@@ -28,7 +28,6 @@
 
 #include "utils/dtor.h"
 #include "utils/gettext.h"
-#include "utils/strprintf.h"
 #include "utils/stringutils.h"
 #include "utils/xml.h"
 
@@ -200,7 +199,7 @@ void ItemDB::load()
             std::string temp = name;
             toLower(trim(temp));
 
-            NamedItemInfoIterator itr = mNamedItemInfos.find(temp);
+            NamedItemInfos::const_iterator itr = mNamedItemInfos.find(temp);
             if (itr == mNamedItemInfos.end())
             {
                 mNamedItemInfos[temp] = itemInfo;
@@ -219,8 +218,8 @@ void ItemDB::load()
         {
             CHECK_PARAM(name, "");
             CHECK_PARAM(description, "");
+            CHECK_PARAM(image, "");
         }
-        CHECK_PARAM(image, "");
         // CHECK_PARAM(effect, "");
         // CHECK_PARAM(type, 0);
         // CHECK_PARAM(weight, 0);
@@ -248,7 +247,7 @@ const ItemInfo& ItemDB::get(int id)
 {
     assert(mLoaded);
 
-    ItemInfoIterator i = mItemInfos.find(id);
+    ItemInfos::const_iterator i = mItemInfos.find(id);
 
     if (i == mItemInfos.end())
     {
@@ -265,7 +264,7 @@ const ItemInfo& ItemDB::get(const std::string &name)
 {
     assert(mLoaded && !name.empty());
 
-    NamedItemInfoIterator i = mNamedItemInfos.find(name);
+    NamedItemInfos::const_iterator i = mNamedItemInfos.find(name);
 
     if (i == mNamedItemInfos.end())
     {

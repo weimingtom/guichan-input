@@ -1,6 +1,6 @@
 /*
  *  The Mana World
- *  Copyright (C) 2007  The Mana World Development Team
+ *  Copyright (C) 2004  The Mana World Development Team
  *
  *  This file is part of The Mana World.
  *
@@ -19,17 +19,36 @@
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#ifndef UTILS_STRPRINTF_H
-#define UTILS_STRPRINTF_H
+#ifndef WINDOWMENU_H
+#define WINDOWMENU_H
 
-#include <string>
+#include "gui/widgets/container.h"
 
-std::string strprintf(char const *, ...)
-#ifdef __GNUC__
-    /* This attribute is nice: it even works through gettext invokation. For
-       example, gcc will complain that strprintf(_("%s"), 42) is ill-formed. */
-    __attribute__((format(printf, 1, 2)))
-#endif
-;
+#include <guichan/actionlistener.hpp>
+#include <guichan/selectionlistener.hpp>
+
+class EmotePopup;
+
+/**
+ * The window menu. Allows showing and hiding many of the different windows
+ * used in the game.
+ *
+ * \ingroup Interface
+ */
+class WindowMenu : public Container,
+                   public gcn::ActionListener,
+                   public gcn::SelectionListener
+{
+    public:
+        WindowMenu();
+        ~WindowMenu();
+
+        void action(const gcn::ActionEvent &event);
+
+        void valueChanged(const gcn::SelectionEvent &event);
+
+    private:
+        EmotePopup *mEmotePopup;
+};
 
 #endif

@@ -42,6 +42,14 @@ std::string &trim(std::string &str);
 std::string &toLower(std::string &str);
 
 /**
+ * Converts an ascii hexidecimal string to an integer
+ *
+ * @param str the hex string to convert to an int
+ * @return the integer representation of the hex string
+ */
+unsigned int atox(const std::string &str);
+
+/**
  * Converts the given value to a string using std::stringstream.
  *
  * @param arg the value to convert to a string
@@ -64,6 +72,17 @@ template<typename T> std::string toString(const T &arg)
  * @return the string representation of the address
  */
 const char *ipToString(int address);
+
+/**
+ * A safe version of sprintf that returns a std::string of the result.
+ */
+std::string strprintf(char const *, ...)
+#ifdef __GNUC__
+    /* This attribute is nice: it even works through gettext invokation. For
+       example, gcc will complain that strprintf(_("%s"), 42) is ill-formed. */
+    __attribute__((format(printf, 1, 2)))
+#endif
+;
 
 /**
  * Removes bad characters from a string

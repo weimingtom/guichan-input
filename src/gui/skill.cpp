@@ -35,7 +35,7 @@
 
 #include "utils/dtor.h"
 #include "utils/gettext.h"
-#include "utils/strprintf.h"
+#include "utils/stringutils.h"
 #include "utils/xml.h"
 
 static const char *SKILLS_FILE = _("skills.xml");
@@ -66,12 +66,12 @@ public:
         update();
     }
 
-    virtual int getRows(void)
+    virtual int getRows() const
     {
         return mEntriesNr;
     }
 
-    virtual int getColumnWidth(int index)
+    virtual int getColumnWidth(int index) const
     {
         if (index == 0)
             return 160;
@@ -79,7 +79,7 @@ public:
         return 35;
     }
 
-    virtual int getRowHeight()
+    virtual int getRowHeight() const
     {
         return 12;
     }
@@ -143,8 +143,8 @@ SkillDialog::SkillDialog():
 
     ScrollArea *skillScrollArea = new ScrollArea(mTable);
     mPointsLabel = new Label(strprintf(_("Skill points: %d"), 0));
-    mIncButton = new Button(_("Up"), _("inc"), this);
-    mUseButton = new Button(_("Use"), _("use"), this);
+    mIncButton = new Button(_("Up"), "inc", this);
+    mUseButton = new Button(_("Use"), "use", this);
     mUseButton->setEnabled(false);
 
     skillScrollArea->setHorizontalScrollPolicy(gcn::ScrollArea::SHOW_NEVER);

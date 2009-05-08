@@ -22,7 +22,7 @@
 #ifndef PARTYWINDOW_H
 #define PARTYWINDOW_H
 
-#include "gui/confirm_dialog.h"
+#include "gui/confirmdialog.h"
 
 #include "gui/widgets/avatar.h"
 #include "gui/widgets/window.h"
@@ -39,7 +39,6 @@
  */
 struct PartyMember
 {
-    int id;
     std::string name;
     int health;
     int healthMax;
@@ -110,6 +109,8 @@ class PartyWindow : public Window, gcn::ActionListener
          * Handle events.
          */
         void action(const gcn::ActionEvent &event);
+
+        void clear();
 
     private:
         /**

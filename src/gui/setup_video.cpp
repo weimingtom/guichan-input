@@ -21,7 +21,7 @@
 
 #include "gui/setup_video.h"
 
-#include "gui/ok_dialog.h"
+#include "gui/okdialog.h"
 
 #include "gui/widgets/checkbox.h"
 #include "gui/widgets/label.h"
@@ -30,6 +30,7 @@
 #include "gui/widgets/scrollarea.h"
 #include "gui/widgets/slider.h"
 #include "gui/widgets/textfield.h"
+#include "gui/widgets/dropdown.h"
 
 #include "configuration.h"
 #include "engine.h"
@@ -93,7 +94,7 @@ ModeListModel::ModeListModel()
         logger->log("No modes available");
     else if (modes == (SDL_Rect **)-1)
         logger->log("All resolutions available");
-    else 
+    else
     {
         //logger->log("Available Modes");
         for (int i = 0; modes[i]; ++i)
@@ -105,6 +106,33 @@ ModeListModel::ModeListModel()
         }
     }
 }
+
+const char *SIZE_NAME[4] =
+{
+        N_("Tiny"),
+        N_("Small"),
+        N_("Medium"),
+        N_("Large"),
+};
+
+class FontSizeChoiceListModel : public gcn::ListModel
+{
+public:
+    virtual ~FontSizeChoiceListModel() { }
+
+    virtual int getNumberOfElements()
+    {
+        return 4;
+    }
+
+    virtual std::string getElementAt(int i)
+    {
+        if (i >= getNumberOfElements())
+            return _("???");
+
+        return SIZE_NAME[i];
+    }
+};
 
 Setup_Video::Setup_Video():
     mFullScreenEnabled(config.getValue("screen", false)),
@@ -122,14 +150,17 @@ Setup_Video::Setup_Video():
     mModeList(new ListBox(mModeListModel)),
     mFsCheckBox(new CheckBox(_("Full screen"), mFullScreenEnabled)),
     mOpenGLCheckBox(new CheckBox(_("OpenGL"), mOpenGLEnabled)),
-    mCustomCursorCheckBox(new CheckBox(_("Custom cursor"), mCustomCursorEnabled)),
-    mVisibleNamesCheckBox(new CheckBox(_("Visible names"), mVisibleNamesEnabled)),
-    mParticleEffectsCheckBox(new CheckBox(_("Particle effects"), mParticleEffectsEnabled)),
+    mCustomCursorCheckBox(new CheckBox(_("Custom cursor"),
+                                       mCustomCursorEnabled)),
+    mVisibleNamesCheckBox(new CheckBox(_("Visible names"),
+                                       mVisibleNamesEnabled)),
+    mParticleEffectsCheckBox(new CheckBox(_("Particle effects"),
+                                          mParticleEffectsEnabled)),
     mNameCheckBox(new CheckBox(_("Show name"), mNameEnabled)),
     mPickupNotifyLabel(new Label(_("Show pickup notification"))),
     mPickupChatCheckBox(new CheckBox(_("in chat"), mPickupChatEnabled)),
     mPickupParticleCheckBox(new CheckBox(_("as particle"),
-                           mPickupParticleEnabled)),
+                                         mPickupParticleEnabled)),
     mSpeechSlider(new Slider(0, 3)),
     mSpeechLabel(new Label("")),
     mAlphaSlider(new Slider(0.2, 1.0)),
@@ -147,7 +178,8 @@ Setup_Video::Setup_Video():
     mOverlayDetailField(new Label("")),
     mParticleDetail(3 - (int) config.getValue("particleEmitterSkip", 1)),
     mParticleDetailSlider(new Slider(0, 3)),
-    mParticleDetailField(new Label(""))
+    mParticleDetailField(new Label("")),
+    mFontSize((int) config.getValue("fontSize", 11))
 {
     setName(_("Video"));
 
@@ -160,13 +192,16 @@ Setup_Video::Setup_Video():
     scrollLazinessLabel = new Label(_("Scroll laziness"));
     overlayDetailLabel = new Label(_("Ambient FX"));
     particleDetailLabel = new Label(_("Particle Detail"));
+    fontSizeLabel = new Label(_("Font size"));
+
+    mFontSizeDropDown = new DropDown(new FontSizeChoiceListModel);
 
     mModeList->setEnabled(true);
+
 #ifndef USE_OPENGL
     mOpenGLCheckBox->setEnabled(false);
 #endif
 
-    mModeList->setSelected(-1);
     mAlphaSlider->setValue(mOpacity);
     mAlphaSlider->setWidth(90);
 
@@ -272,6 +307,29 @@ Setup_Video::Setup_Video():
     }
     mParticleDetailSlider->setValue(mParticleDetail);
 
+    int fontSizeSelected;
+    switch (mFontSize)
+    {
+        case 10:
+            fontSizeSelected = 0;
+            break;
+        case 11:
+            fontSizeSelected = 1;
+            break;
+        case 12:
+            fontSizeSelected = 2;
+            break;
+        case 13:
+            fontSizeSelected = 3;
+            break;
+        default:
+            fontSizeSelected = 1;
+            break;
+    }
+
+    mFontSizeDropDown->setSelected(fontSizeSelected);
+    mFontSizeDropDown->adjustHeight();
+
     // Do the layout
     LayoutHelper h(this);
     ContainerPlacer place = h.getPlacer(0, 0);
@@ -279,38 +337,50 @@ Setup_Video::Setup_Video():
     place(0, 0, scrollArea, 1, 6).setPadding(2);
     place(1, 0, mFsCheckBox, 2);
     place(3, 0, mOpenGLCheckBox, 1);
+
     place(1, 1, mCustomCursorCheckBox, 3);
+
     place(1, 2, mVisibleNamesCheckBox, 3);
     place(3, 2, mNameCheckBox, 1);
+
     place(1, 3, mParticleEffectsCheckBox, 3);
+
     place(1, 4, mPickupNotifyLabel, 3);
+
     place(1, 5, mPickupChatCheckBox, 1);
     place(2, 5, mPickupParticleCheckBox, 2);
 
-    place(0, 6, mAlphaSlider);
-    place(0, 7, mFpsSlider);
-    place(0, 8, mScrollRadiusSlider);
-    place(0, 9, mScrollLazinessSlider);
-    place(0, 10, mSpeechSlider);
-    place(0, 11, mOverlayDetailSlider);
-    place(0, 12, mParticleDetailSlider);
+    place(0, 6, fontSizeLabel, 3);
+    place(1, 6, mFontSizeDropDown, 3);
 
-    place(1, 6, alphaLabel, 3);
-    place(1, 7, mFpsCheckBox).setPadding(3);
-    place(1, 8, scrollRadiusLabel);
-    place(1, 9, scrollLazinessLabel);
-    place(1, 10, speechLabel);
-    place(1, 11, overlayDetailLabel);
-    place(1, 12, particleDetailLabel);
+    place(0, 7, mAlphaSlider);
+    place(1, 7, alphaLabel, 3);
 
-    place(2, 7, mFpsField).setPadding(1);
-    place(2, 8, mScrollRadiusField).setPadding(1);
-    place(2, 9, mScrollLazinessField).setPadding(1);
-    place(2, 10, mSpeechLabel, 3).setPadding(2);
-    place(2, 11, mOverlayDetailField, 3).setPadding(2);
-    place(2, 12, mParticleDetailField, 3).setPadding(2);
+    place(0, 8, mFpsSlider);
+    place(1, 8, mFpsCheckBox).setPadding(3);
+    place(2, 8, mFpsField).setPadding(1);
 
-    setDimension(gcn::Rectangle(0, 0, 325, 280));
+    place(0, 9, mScrollRadiusSlider);
+    place(1, 9, scrollRadiusLabel);
+    place(2, 9, mScrollRadiusField).setPadding(1);
+
+    place(0, 10, mScrollLazinessSlider);
+    place(1, 10, scrollLazinessLabel);
+    place(2, 10, mScrollLazinessField).setPadding(1);
+
+    place(0, 11, mSpeechSlider);
+    place(1, 11, speechLabel);
+    place(2, 11, mSpeechLabel, 3).setPadding(2);
+
+    place(0, 12, mOverlayDetailSlider);
+    place(1, 12, overlayDetailLabel);
+    place(2, 12, mOverlayDetailField, 3).setPadding(2);
+
+    place(0, 13, mParticleDetailSlider);
+    place(1, 13, particleDetailLabel);
+    place(2, 13, mParticleDetailField, 3).setPadding(2);
+
+    setDimension(gcn::Rectangle(0, 0, 325, 300));
 }
 
 void Setup_Video::apply()
@@ -367,6 +437,8 @@ void Setup_Video::apply()
 
     // FPS change
     config.setValue("fpslimit", mFps);
+
+    config.setValue("fontSize", mFontSizeDropDown->getSelected() + 10);
 
     // We sync old and new values at apply time
     mFullScreenEnabled = config.getValue("screen", false);
@@ -442,9 +514,12 @@ void Setup_Video::action(const gcn::ActionEvent &event)
         const int width = atoi(mode.substr(0, mode.find("x")).c_str());
         const int height = atoi(mode.substr(mode.find("x") + 1).c_str());
 
-        // TODO: Find out why the drawing area doesn't resize without a restart.
-        new OkDialog(_("Screen resolution changed"),
-                     _("Restart your client for the change to take effect."));
+        if (width != graphics->getWidth() || height != graphics->getHeight())
+        {
+            // TODO: Find out why the drawing area doesn't resize without a restart.
+            new OkDialog(_("Screen resolution changed"),
+                         _("Restart your client for the change to take effect."));
+        }
 
         config.setValue("screenwidth", width);
         config.setValue("screenheight", height);

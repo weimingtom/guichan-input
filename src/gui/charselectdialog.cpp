@@ -19,11 +19,11 @@
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#include "gui/char_select.h"
+#include "gui/charselectdialog.h"
 
 #include "gui/charcreatedialog.h"
-#include "gui/confirm_dialog.h"
-#include "gui/ok_dialog.h"
+#include "gui/confirmdialog.h"
+#include "gui/okdialog.h"
 #include "gui/playerbox.h"
 
 #ifdef TMWSERV_SUPPORT
@@ -34,7 +34,7 @@
 #include "gui/changepassworddialog.h"
 #include "gui/changeemaildialog.h"
 
-#include "logindata.h"
+#include "net/logindata.h"
 
 #include "net/tmwserv/accountserver/account.h"
 #endif
@@ -56,7 +56,6 @@
 #include "resources/colordb.h"
 
 #include "utils/gettext.h"
-#include "utils/strprintf.h"
 #include "utils/stringutils.h"
 
 #include <guichan/font.hpp>

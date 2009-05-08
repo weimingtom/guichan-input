@@ -23,7 +23,7 @@
 
 #include "configuration.h"
 #include "equipment.h"
-#include "floor_item.h"
+#include "flooritem.h"
 #include "game.h"
 #include "graphics.h"
 #include "inventory.h"
@@ -115,7 +115,7 @@ LocalPlayer::LocalPlayer(int id, int job, Map *map):
     mTotalWeight(1), mMaxWeight(1),
     mHp(1), mMaxHp(1),
     mTarget(NULL), mPickUpTarget(NULL),
-    mTrading(false), mGoingToTarget(false),
+    mTrading(false), mGoingToTarget(false), mKeepAttacking(false),
     mLastAction(-1),
     mWalkingDir(0),
     mDestX(0), mDestY(0),
@@ -223,6 +223,17 @@ void LocalPlayer::logic()
 #endif
 
     Player::logic();
+}
+
+void LocalPlayer::setAction(Action action, int attackType)
+{
+    if (action == DEAD)
+    {
+        mLastTarget = -1;
+        setTarget(NULL);
+    }
+
+    Player::setAction(action, attackType);
 }
 
 void LocalPlayer::setGM()
@@ -337,15 +348,7 @@ void LocalPlayer::inviteToParty(Player *player)
 
 void LocalPlayer::moveInvItem(Item *item, int newIndex)
 {
-    // special case, the old and new cannot copy over each other.
-    if (item->getInvIndex() == newIndex)
-        return;
-
-#ifdef TMWSERV_SUPPORT
-    Net::GameServer::Player::moveItem(
-        item->getInvIndex(), newIndex, item->getQuantity());
-#endif
-    // TODO: eAthena support
+    Net::getInventoryHandler()->moveItem(item->getInvIndex(), newIndex);
 }
 
 void LocalPlayer::equipItem(Item *item)
@@ -375,17 +378,10 @@ void LocalPlayer::dropItem(Item *item, int quantity)
     Net::getInventoryHandler()->dropItem(item, quantity);
 }
 
-#ifdef TMWSERV_SUPPORT
 void LocalPlayer::splitItem(Item *item, int quantity)
 {
-    int newIndex = mInventory->getFreeSlot();
-    if (newIndex > Inventory::NO_SLOT_INDEX)
-    {
-        Net::GameServer::Player::moveItem(
-            item->getInvIndex(), newIndex, quantity);
-    }
+    Net::getInventoryHandler()->splitItem(item, quantity);
 }
-#endif
 
 void LocalPlayer::pickUp(FloorItem *item)
 {

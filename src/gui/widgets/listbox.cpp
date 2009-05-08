@@ -22,6 +22,7 @@
 #include "gui/widgets/listbox.h"
 
 #include "gui/palette.h"
+#include "gui/sdlinput.h"
 
 #include "configuration.h"
 
@@ -65,94 +66,60 @@ void ListBox::draw(gcn::Graphics *graphics)
     }
 }
 
-void ListBox::setSelected(int selected)
-{
-    if (!mListModel)
-    {
-        mSelected = -1;
-    }
-    else
-    {
-        if (selected < 0 && !mWrappingEnabled)
-        {
-            mSelected = -1;
-        }
-        else if (selected >= mListModel->getNumberOfElements() &&
-                 mWrappingEnabled)
-        {
-            mSelected = 0;
-        }
-        else if ((selected >= mListModel->getNumberOfElements() &&
-                 !mWrappingEnabled) || (selected < 0 && mWrappingEnabled))
-        {
-            mSelected = mListModel->getNumberOfElements() - 1;
-        }
-        else
-        {
-            mSelected = selected;
-        }
-    }
-    gcn::ListBox::setSelected(mSelected);
-}
-
-// -- KeyListener notifications
 void ListBox::keyPressed(gcn::KeyEvent& keyEvent)
 {
     gcn::Key key = keyEvent.getKey();
 
-    if (key.getValue() == gcn::Key::ENTER || key.getValue() == gcn::Key::SPACE)
+    if (key.getValue() == Key::ENTER || key.getValue() == Key::SPACE)
     {
         distributeActionEvent();
         keyEvent.consume();
     }
-    else if (key.getValue() == gcn::Key::UP)
+    else if (key.getValue() == Key::UP)
     {
-        setSelected(mSelected - 1);
+        if (getSelected() > 0)
+            setSelected(mSelected - 1);
+        else if (getSelected() == 0 && mWrappingEnabled)
+            setSelected(getListModel()->getNumberOfElements() - 1);
         keyEvent.consume();
     }
-    else if (key.getValue() == gcn::Key::DOWN)
+    else if (key.getValue() == Key::DOWN)
     {
-        setSelected(mSelected + 1);
+        if (getSelected() < (getListModel()->getNumberOfElements() - 1))
+            setSelected(mSelected + 1);
+        else if (getSelected() == (getListModel()->getNumberOfElements() - 1) &&
+                 mWrappingEnabled)
+            setSelected(0);
         keyEvent.consume();
     }
-    else if (key.getValue() == gcn::Key::HOME)
+    else if (key.getValue() == Key::HOME)
     {
         setSelected(0);
         keyEvent.consume();
     }
-    else if (key.getValue() == gcn::Key::END)
+    else if (key.getValue() == Key::END)
     {
         setSelected(getListModel()->getNumberOfElements() - 1);
         keyEvent.consume();
     }
 }
 
+// Don't do anything on scrollwheel. ScrollArea will deal with that.
+
 void ListBox::mouseWheelMovedUp(gcn::MouseEvent& mouseEvent)
 {
-    if (isFocused())
-    {
-        if (getSelected() > 0 || (getSelected() == 0 && mWrappingEnabled))
-        {
-            setSelected(getSelected() - 1);
-        }
-
-        mouseEvent.consume();
-    }
 }
 
 void ListBox::mouseWheelMovedDown(gcn::MouseEvent& mouseEvent)
 {
-    if (isFocused())
-    {
-        setSelected(getSelected() + 1);
-
-        mouseEvent.consume();
-    }
 }
 
 void ListBox::mouseDragged(gcn::MouseEvent &event)
 {
-    // Pretend mouse is pressed continuously while dragged. Causes list
-    // selection to be updated as is default in many GUIs.
-    mousePressed(event);
+    if (event.getButton() != gcn::MouseEvent::LEFT)
+        return;
+
+    // Make list selection update on drag, but guard against negative y
+    int y = std::max(0, event.getY());
+    setSelected(y / getRowHeight());
 }

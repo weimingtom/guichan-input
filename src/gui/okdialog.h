@@ -1,6 +1,6 @@
 /*
  *  The Mana World
- *  Copyright (C) 2007  The Mana World Development Team
+ *  Copyright (C) 2004  The Mana World Development Team
  *
  *  This file is part of The Mana World.
  *
@@ -19,43 +19,38 @@
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#ifndef ITEMSHORTCUTWINDOW_H
-#define ITEMSHORTCUTWINDOW_H
+#ifndef OK_DIALOG_H
+#define OK_DIALOG_H
 
 #include "gui/widgets/window.h"
 
-class ItemShortcutContainer;
-class ScrollArea;
+#include <guichan/actionlistener.hpp>
+
+class TextBox;
 
 /**
- * A window around the ItemShortcutContainer.
+ * An 'Ok' button dialog.
  *
- * \ingroup Interface
+ * \ingroup GUI
  */
-class ItemShortcutWindow : public Window
+class OkDialog : public Window, public gcn::ActionListener
 {
     public:
         /**
          * Constructor.
+         *
+         * @see Window::Window
          */
-        ItemShortcutWindow();
+        OkDialog(const std::string &title, const std::string &msg,
+                 Window *parent = NULL);
 
         /**
-         * Destructor.
+         * Called when receiving actions from the widgets.
          */
-        ~ItemShortcutWindow();
-
-        /**
-         * Called whenever the widget changes size.
-         */
-        void widgetResized(const gcn::Event &event);
+        void action(const gcn::ActionEvent &event);
 
     private:
-        ItemShortcutContainer *mItems;
-
-        ScrollArea *mScrollArea;
+        TextBox *mTextBox;
 };
-
-extern ItemShortcutWindow *itemShortcutWindow;
 
 #endif

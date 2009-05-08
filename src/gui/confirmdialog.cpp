@@ -19,63 +19,65 @@
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#include "gui/ok_dialog.h"
-
-#include "gui/gui.h"
+#include "gui/confirmdialog.h"
 
 #include "gui/widgets/button.h"
-#include "gui/widgets/scrollarea.h"
 #include "gui/widgets/textbox.h"
+
+#include "gui/gui.h"
 
 #include "utils/gettext.h"
 
 #include <guichan/font.hpp>
 
-OkDialog::OkDialog(const std::string &title, const std::string &msg,
-                   Window *parent):
+ConfirmDialog::ConfirmDialog(const std::string &title, const std::string &msg,
+        Window *parent):
     Window(title, true, parent)
 {
     mTextBox = new TextBox;
     mTextBox->setEditable(false);
     mTextBox->setOpaque(false);
-
-    mTextArea = new ScrollArea(mTextBox);
-    gcn::Button *okButton = new Button(_("Ok"), "ok", this);
-
-    mTextArea->setHorizontalScrollPolicy(gcn::ScrollArea::SHOW_NEVER);
-    mTextArea->setVerticalScrollPolicy(gcn::ScrollArea::SHOW_NEVER);
-    mTextArea->setOpaque(false);
-
     mTextBox->setTextWrapped(msg, 260);
 
+    gcn::Button *yesButton = new Button(_("Yes"), "yes", this);
+    gcn::Button *noButton = new Button(_("No"), "no", this);
+
     const int numRows = mTextBox->getNumberOfRows();
+    const int inWidth = yesButton->getWidth() + noButton->getWidth() + 
+                        (2 * getPadding());
     const int fontHeight = getFont()->getHeight();
     const int height = numRows * fontHeight;
     int width = getFont()->getWidth(title);
 
     if (width < mTextBox->getMinWidth())
         width = mTextBox->getMinWidth();
-    if (width < okButton->getWidth())
-        width = okButton->getWidth();
+    if (width < inWidth)
+        width = inWidth;
 
-    setContentSize(mTextBox->getMinWidth() + fontHeight, height +
-                   fontHeight + okButton->getHeight());
-    mTextArea->setDimension(gcn::Rectangle(4, 5, width + 2 * getPadding(),
-                                           height + getPadding()));
+    setContentSize(mTextBox->getMinWidth() + fontHeight, height + fontHeight +
+                   noButton->getHeight());
+    mTextBox->setPosition(getPadding(), getPadding());
 
     // 8 is the padding that GUIChan adds to button widgets
     // (top and bottom combined)
-    okButton->setPosition((width - okButton->getWidth()) / 2, height + 8);
+    yesButton->setPosition((width - inWidth) / 2, height + 8);
+    noButton->setPosition(yesButton->getX() + inWidth - noButton->getWidth(),
+                          height + 8);
 
-    add(mTextArea);
-    add(okButton);
+    add(mTextBox);
+    add(yesButton);
+    add(noButton);
 
-    center();
+    if (getParent())
+    {
+        center();
+        getParent()->moveToTop(this);
+    }
     setVisible(true);
-    okButton->requestFocus();
+    yesButton->requestFocus();
 }
 
-void OkDialog::action(const gcn::ActionEvent &event)
+void ConfirmDialog::action(const gcn::ActionEvent &event)
 {
     // Proxy button events to our listeners
     ActionListenerIterator i;
@@ -85,6 +87,6 @@ void OkDialog::action(const gcn::ActionEvent &event)
     }
 
     // Can we receive anything else anyway?
-    if (event.getId() == "ok")
+    if (event.getId() == "yes" || event.getId() == "no")
         scheduleDelete();
 }

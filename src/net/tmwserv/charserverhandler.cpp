@@ -27,16 +27,16 @@
 #include "net/tmwserv/accountserver/accountserver.h"
 #include "net/tmwserv/accountserver/account.h"
 
+#include "net/logindata.h"
 #include "net/messagein.h"
 
 #include "game.h"
 #include "localplayer.h"
 #include "log.h"
-#include "logindata.h"
 #include "main.h"
 
 #include "gui/charcreatedialog.h"
-#include "gui/ok_dialog.h"
+#include "gui/okdialog.h"
 
 #include "utils/gettext.h"
 
@@ -213,6 +213,12 @@ void CharServerHandler::handleCharSelectResponse(MessageIn &msg)
         mCharInfo->clear(); //player_node will be deleted by ~Game
 
         state = STATE_CONNECT_GAME;
+    }
+    else if(errMsg == ERRMSG_FAILURE)
+    {
+        errorMessage = _("No gameservers are available.");
+        mCharInfo->clear();
+        state = STATE_ERROR;
     }
 }
 

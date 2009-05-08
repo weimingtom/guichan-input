@@ -1,6 +1,7 @@
 /*
  *  Extended support for activating emotes
  *  Copyright (C) 2009  Aethyra Development Team
+ *  Copyright (C) 2009  The Mana World Development Team
  *
  *  This file is part of The Mana World.
  *
@@ -19,15 +20,15 @@
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#ifndef EMOTECONTAINER_H
-#define EMOTECONTAINER_H
+#ifndef EMOTEPOPUP_H
+#define EMOTEPOPUP_H
+
+#include "gui/widgets/popup.h"
+
+#include <guichan/mouselistener.hpp>
 
 #include <list>
 #include <vector>
-
-#include <guichan/mouselistener.hpp>
-#include <guichan/widget.hpp>
-#include <guichan/widgetlistener.hpp>
 
 class AnimatedSprite;
 class Image;
@@ -37,49 +38,33 @@ namespace gcn {
 }
 
 /**
- * An emote container. Used to show emotes in inventory and trade dialog.
+ * An emote popup. Used to activate emotes and assign them to shortcuts.
  *
  * \ingroup GUI
  */
-class EmoteContainer : public gcn::Widget,
-                       public gcn::MouseListener,
-                       public gcn::WidgetListener
+class EmotePopup : public Popup,
+                   public gcn::MouseListener
 {
     public:
         /**
          * Constructor. Initializes the graphic.
          */
-        EmoteContainer();
+        EmotePopup();
 
-        /**
-         * Destructor.
-         */
-        virtual ~EmoteContainer();
+        virtual ~EmotePopup();
 
         /**
          * Draws the emotes.
          */
         void draw(gcn::Graphics *graphics);
 
-        /**
-         * Called whenever the widget changes size.
-         */
-        void widgetResized(const gcn::Event &event);
-
-        /**
-         * Handles mouse click.
-         */
         void mousePressed(gcn::MouseEvent &event);
+        void mouseMoved(gcn::MouseEvent &event);
 
         /**
          * Returns the selected emote.
          */
-        int getSelectedEmote();
-
-        /**
-         * Sets selected emote to NULL.
-         */
-        void selectNone();
+        int getSelectedEmote() const;
 
         /**
          * Adds a listener to the list that's notified each time a change to
@@ -101,33 +86,37 @@ class EmoteContainer : public gcn::Widget,
 
     private:
         /**
-         * Sets the currently selected emote.  Invalid (e.g., negative) indices
-         * set `no emotr'.
+         * Sets the index of the currently selected emote.
          */
         void setSelectedEmoteIndex(int index);
 
         /**
-         * Find the current emote index by the most recently used emote ID
+         * Returns the index at the specified coordinates. Returns -1 when
+         * there is no valid index.
          */
-        void refindSelectedEmote(void);
+        int getIndexAt(int x, int y) const;
 
         /**
-         * Determine and set the height of the container.
+         * Determine and set the size of the container.
          */
-        void recalculateHeight(void);
+        void recalculateSize();
 
         /**
          * Sends out selection events to the list of selection listeners.
          */
-        void distributeValueChangedEvent(void);
+        void distributeValueChangedEvent();
 
-        std::vector<const AnimatedSprite*> mEmoteImg;
-        Image *mSelImg;
+        std::vector<const AnimatedSprite*> mEmotes;
+        Image *mSelectionImage;
         int mSelectedEmoteIndex;
+        int mHoveredEmoteIndex;
 
-        int mMaxEmote;
+        int mRowCount;
+        int mColumnCount;
 
-        std::list<gcn::SelectionListener*> mListeners;
+        typedef std::list<gcn::SelectionListener*> Listeners;
+
+        Listeners mListeners;
 
         static const int gridWidth;
         static const int gridHeight;

@@ -23,27 +23,29 @@
 
 #include "gui/chat.h"
 #include "gui/inventorywindow.h"
-#include "gui/item_amount.h"
+#include "gui/storagewindow.h"
+#include "gui/itemamount.h"
 
 #include "gui/widgets/browserbox.h"
 
 #include "being.h"
 #include "beingmanager.h"
-#include "floor_item.h"
+#include "flooritem.h"
 #include "graphics.h"
 #include "item.h"
 #include "localplayer.h"
 #include "npc.h"
-#include "player_relations.h"
+#include "playerrelations.h"
 
 #include "net/adminhandler.h"
+#include "net/inventoryhandler.h"
 #include "net/net.h"
 
 #include "resources/itemdb.h"
 #include "resources/iteminfo.h"
 
 #include "utils/gettext.h"
-#include "utils/strprintf.h"
+#include "utils/stringutils.h"
 
 #include <cassert>
 
@@ -152,8 +154,8 @@ void PopupMenu::showPopup(int x, int y, FloorItem *floorItem)
 
     // Floor item can be picked up (single option, candidate for removal)
     std::string name = ItemDB::get(mFloorItem->getItemId()).getName();
-    mBrowserBox->addRow(strprintf(_("@@pickup|Pick Up %s@@"), name.c_str()));
-    mBrowserBox->addRow(_("@@chat|Add to Chat@@"));
+    mBrowserBox->addRow(strprintf(_("@@pickup|Pick up %s@@"), name.c_str()));
+    mBrowserBox->addRow(_("@@chat|Add to chat@@"));
 
     //browserBox->addRow("@@look|Look To@@");
     mBrowserBox->addRow("##3---");
@@ -258,18 +260,10 @@ void PopupMenu::handleLink(const std::string &link)
         assert(mItem);
         if (mItem->isEquipment())
         {
-#ifdef TMWSERV_SUPPORT
-            player_node->equipItem(mItem);
-#else
             if (mItem->isEquipped())
-            {
                 player_node->unequipItem(mItem);
-            }
             else
-            {
                 player_node->equipItem(mItem);
-            }
-#endif
         }
         else
         {
@@ -284,14 +278,26 @@ void PopupMenu::handleLink(const std::string &link)
 
     else if (link == "split")
     {
-        new ItemAmountWindow(ItemAmountWindow::ItemSplit,
+        ItemAmountWindow::showWindow(ItemAmountWindow::ItemSplit,
                              inventoryWindow, mItem);
     }
 
     else if (link == "drop")
     {
-        new ItemAmountWindow(ItemAmountWindow::ItemDrop,
+        ItemAmountWindow::showWindow(ItemAmountWindow::ItemDrop,
                              inventoryWindow, mItem);
+    }
+
+    else if (link == "store")
+    {
+        ItemAmountWindow::showWindow(ItemAmountWindow::StoreAdd,
+                             inventoryWindow, mItem);
+    }
+
+    else if (link == "retrieve")
+    {
+        ItemAmountWindow::showWindow(ItemAmountWindow::StoreRemove,
+                             storageWindow, mItem);
     }
 
     else if (link == "party" && being && being->getType() == Being::PLAYER)
@@ -328,32 +334,43 @@ void PopupMenu::handleLink(const std::string &link)
     mItem = NULL;
 }
 
-void PopupMenu::showPopup(int x, int y, Item *item)
+void PopupMenu::showPopup(int x, int y, Item *item, bool isInventory)
 {
     assert(item);
     mItem = item;
     mBrowserBox->clearRows();
 
-    if (item->isEquipment())
+    if (isInventory)
     {
-#ifdef TMWSERV_SUPPORT
-        mBrowserBox->addRow(_("@@use|Equip@@"));
-#else
-        if (item->isEquipped())
-            mBrowserBox->addRow(_("@@use|Unequip@@"));
+        if (item->isEquipment())
+        {
+            if (item->isEquipped())
+                mBrowserBox->addRow(_("@@use|Unequip@@"));
+            else
+                mBrowserBox->addRow(_("@@use|Equip@@"));
+        }
         else
-            mBrowserBox->addRow(_("@@use|Equip@@"));
-#endif
-    }
-    else
-        mBrowserBox->addRow(_("@@use|Use@@"));
+            mBrowserBox->addRow(_("@@use|Use@@"));
 
-    mBrowserBox->addRow(_("@@drop|Drop@@"));
-#ifdef TMWSERV_SUPPORT
-    if (!item->isEquipment())
-        mBrowserBox->addRow(_("@@split|Split@@"));
-#endif
-    mBrowserBox->addRow(_("@@chat|Add to Chat@@"));
+        mBrowserBox->addRow(_("@@drop|Drop@@"));
+
+        if (Net::getInventoryHandler()->canSplit(item))
+        {
+            mBrowserBox->addRow(_("@@split|Split@@"));
+        }
+
+        if (player_node->getInStorage())
+        {
+            mBrowserBox->addRow(_("@@store|Store@@"));
+        }
+    }
+    // Assume in storage for now
+    // TODO: make this whole system more flexible, if needed
+    else
+    {
+        mBrowserBox->addRow(_("@@retrieve|Retrieve@@"));
+    }
+    mBrowserBox->addRow(_("@@chat|Add to chat@@"));
     mBrowserBox->addRow("##3---");
     mBrowserBox->addRow(_("@@cancel|Cancel@@"));
 

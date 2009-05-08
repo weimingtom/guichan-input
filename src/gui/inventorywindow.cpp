@@ -21,7 +21,7 @@
 
 #include "gui/inventorywindow.h"
 
-#include "gui/item_amount.h"
+#include "gui/itemamount.h"
 #include "gui/itemcontainer.h"
 #include "gui/sdlinput.h"
 #include "gui/viewport.h"
@@ -37,10 +37,13 @@
 #include "localplayer.h"
 #include "units.h"
 
+#include "net/inventoryhandler.h"
+#include "net/net.h"
+
 #include "resources/iteminfo.h"
 
 #include "utils/gettext.h"
-#include "utils/strprintf.h"
+#include "utils/stringutils.h"
 
 #include <guichan/font.hpp>
 #include <guichan/mouseinput.hpp>
@@ -54,10 +57,13 @@ InventoryWindow::InventoryWindow(int invSize):
     mItemDesc(false)
 {
     setWindowName("Inventory");
-    setResizable(false);
+    setResizable(true);
     setCloseButton(true);
+    setSaveVisible(true);
 
     setDefaultSize(387, 307, ImageRect::CENTER);
+    setMinWidth(316);
+    setMinHeight(179);
     addKeyListener(this);
 
     std::string longestUseString = getFont()->getWidth(_("Equip")) >
@@ -72,16 +78,12 @@ InventoryWindow::InventoryWindow(int invSize):
 
     mUseButton = new Button(longestUseString, "use", this);
     mDropButton = new Button(_("Drop"), "drop", this);
-#ifdef TMWSERV_SUPPORT
     mSplitButton = new Button(_("Split"), "split", this);
-    mItems = new ItemContainer(player_node->getInventory(), 10, 5);
-#else
-    mItems = new ItemContainer(player_node->getInventory(), 10, 10);
-#endif
+    mItems = new ItemContainer(player_node->getInventory());
     mItems->addSelectionListener(this);
 
-    mInvenScroll = new ScrollArea(mItems);
-    mInvenScroll->setHorizontalScrollPolicy(gcn::ScrollArea::SHOW_NEVER);
+    gcn::ScrollArea *invenScroll = new ScrollArea(mItems);
+    invenScroll->setHorizontalScrollPolicy(gcn::ScrollArea::SHOW_NEVER);
 
     mTotalWeight = -1;
     mMaxWeight = -1;
@@ -90,19 +92,17 @@ InventoryWindow::InventoryWindow(int invSize):
     mSlotsLabel = new Label(_("Slots:"));
     mWeightLabel = new Label(_("Weight:"));
 
-    mSlotsBar = new ProgressBar(1.0f, 100, 20, 225, 200, 25);
-    mWeightBar = new ProgressBar(1.0f, 100, 20, 0, 0, 255);
+    mSlotsBar = new ProgressBar(1.0f, 100, 20, gcn::Color(225, 200, 25));
+    mWeightBar = new ProgressBar(1.0f, 100, 20, gcn::Color(0, 0, 255));
 
     place(0, 0, mWeightLabel).setPadding(3);
     place(1, 0, mWeightBar, 3);
     place(4, 0, mSlotsLabel).setPadding(3);
     place(5, 0, mSlotsBar, 2);
-    place(0, 1, mInvenScroll, 7).setPadding(3);
+    place(0, 1, invenScroll, 7).setPadding(3);
     place(0, 2, mUseButton);
     place(1, 2, mDropButton);
-#ifdef TMWSERV_SUPPORT
     place(2, 2, mSplitButton);
-#endif
 
     Layout &layout = getLayout();
     layout.setRowHeight(1, Layout::AUTO_SET);
@@ -163,36 +163,24 @@ void InventoryWindow::action(const gcn::ActionEvent &event)
 
     if (event.getId() == "use")
     {
-        if (item->isEquipment()) {
-#ifdef TMWSERV_SUPPORT
-            player_node->equipItem(item);
-#else
+        if (item->isEquipment()) 
+        {
             if (item->isEquipped())
                 player_node->unequipItem(item);
             else
                 player_node->equipItem(item);
-#endif
         }
         else
             player_node->useItem(item);
     }
     else if (event.getId() == "drop")
     {
-        if (item->getQuantity() > 1) {
-            // Choose amount of items to drop
-            new ItemAmountWindow(ItemAmountWindow::ItemDrop, this, item);
-        }
-        else {
-            player_node->dropItem(item, 1);
-        }
-        mItems->selectNone();
+        ItemAmountWindow::showWindow(ItemAmountWindow::ItemDrop, this, item);
     }
     else if (event.getId() == "split")
     {
-        if (item && !item->isEquipment() && item->getQuantity() > 1) {
-            new ItemAmountWindow(ItemAmountWindow::ItemSplit, this, item,
+        ItemAmountWindow::showWindow(ItemAmountWindow::ItemSplit, this, item,
                                  (item->getQuantity() - 1));
-        }
     }
 }
 
@@ -221,7 +209,6 @@ void InventoryWindow::mouseClicked(gcn::MouseEvent &event)
     }
 }
 
-#ifdef TMWSERV_SUPPORT
 void InventoryWindow::keyPressed(gcn::KeyEvent &event)
 {
     switch (event.getKey().getValue())
@@ -243,7 +230,6 @@ void InventoryWindow::keyReleased(gcn::KeyEvent &event)
             break;
     }
 }
-#endif
 
 void InventoryWindow::valueChanged(const gcn::SelectionEvent &event)
 {
@@ -251,42 +237,48 @@ void InventoryWindow::valueChanged(const gcn::SelectionEvent &event)
     {
         Item *item = mItems->getSelectedItem();
 
-        if (item && !item->isEquipment() && item->getQuantity() > 1)
-        {
-            mSplit = false;
-            new ItemAmountWindow(ItemAmountWindow::ItemSplit, this, item,
+        ItemAmountWindow::showWindow(ItemAmountWindow::ItemSplit, this, item,
                                  (item->getQuantity() - 1));
-        }
     }
+}
+
+
+void InventoryWindow::setSplitAllowed(bool allowed)
+{
+    mSplitButton->setVisible(allowed);
 }
 
 void InventoryWindow::updateButtons()
 {
     const Item *selectedItem = mItems->getSelectedItem();
 
-    if (selectedItem && selectedItem->isEquipment())
+    if (!selectedItem || selectedItem->getQuantity() == 0)
     {
-#ifdef EATHENA_SUPPORT
+        mUseButton->setEnabled(false);
+        mDropButton->setEnabled(false);
+        return;
+    }
+    
+    mUseButton->setEnabled(true);
+    mDropButton->setEnabled(true);
+        
+    if (selectedItem->isEquipment())
+    {
         if (selectedItem->isEquipped())
             mUseButton->setCaption(_("Unequip"));
         else
-#endif
             mUseButton->setCaption(_("Equip"));
     }
     else
+    {
         mUseButton->setCaption(_("Use"));
+    }
 
-    mUseButton->setEnabled(selectedItem != 0);
-    mDropButton->setEnabled(selectedItem != 0);
-
-#ifdef TMWSERV_SUPPORT
-    if (selectedItem && !selectedItem->isEquipment() &&
-        selectedItem->getQuantity() > 1)
+    if (Net::getInventoryHandler()->canSplit(selectedItem))
     {
         mSplitButton->setEnabled(true);
     }
     else {
         mSplitButton->setEnabled(false);
     }
-#endif
 }

@@ -40,7 +40,7 @@
 #include "resources/iteminfo.h"
 
 #include "utils/gettext.h"
-#include "utils/strprintf.h"
+#include "utils/stringutils.h"
 
 BuyDialog::BuyDialog():
     Window(_("Buy")),
@@ -270,7 +270,7 @@ void BuyDialog::setVisible(bool visible)
     Window::setVisible(visible);
 
     if (visible)
-        requestFocus();
+        mShopItemList->requestFocus();
 }
 
 void BuyDialog::close()

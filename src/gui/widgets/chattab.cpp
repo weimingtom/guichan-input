@@ -38,7 +38,6 @@
 #include "resources/itemdb.h"
 
 #include "utils/gettext.h"
-#include "utils/strprintf.h"
 #include "utils/stringutils.h"
 
 #include <guichan/widgets/tabbedarea.hpp>
@@ -97,7 +96,7 @@ void ChatTab::chatLog(std::string line, int own, bool ignoreRecord)
     }
 
     // *implements actions in a backwards compatible way*
-    if (own == BY_PLAYER &&
+    if ((own == BY_PLAYER || own == BY_OTHER) &&
         tmp.text.at(0) == '*' &&
         tmp.text.at(tmp.text.length()-1) == '*')
     {
@@ -125,11 +124,11 @@ void ChatTab::chatLog(std::string line, int own, bool ignoreRecord)
             }
             break;
         case BY_PLAYER:
-            tmp.nick += CAT_NORMAL;
+            tmp.nick += ": ";
             lineColor = "##Y";
             break;
         case BY_OTHER:
-            tmp.nick += CAT_NORMAL;
+            tmp.nick += ": ";
             lineColor = "##C";
             break;
         case BY_SERVER:
@@ -148,7 +147,6 @@ void ChatTab::chatLog(std::string line, int own, bool ignoreRecord)
             lineColor = "##W";
             break;
         case ACT_IS:
-            tmp.nick += CAT_IS;
             lineColor = "##I";
             break;
         case BY_LOGGER:
@@ -207,8 +205,9 @@ void ChatTab::chatLog(std::string line, int own, bool ignoreRecord)
 
 void ChatTab::chatLog(const std::string &nick, const std::string &msg)
 {
-    chatLog(nick + CAT_NORMAL + msg, nick == player_node->getName() ?
-                BY_PLAYER : BY_OTHER, false);
+    chatLog(nick + " : " + msg,
+            nick == player_node->getName() ? BY_PLAYER : BY_OTHER,
+            false);
 }
 
 void ChatTab::chatInput(std::string &msg)
@@ -270,7 +269,8 @@ void ChatTab::clearText()
     mTextOutput->clearRows();
 }
 
-void ChatTab::handleInput(const std::string &msg) {
+void ChatTab::handleInput(const std::string &msg)
+{
     Net::getChatHandler()->talk(msg);
 }
 

@@ -26,8 +26,14 @@
 #include "configuration.h"
 #include "graphics.h"
 #include "localplayer.h"
+#include "log.h"
+#include "map.h"
+#include "player.h"
+
+#include "gui/palette.h"
 
 #include "resources/image.h"
+#include "resources/resourcemanager.h"
 
 #include "utils/gettext.h"
 
@@ -36,14 +42,20 @@
 bool Minimap::mShow = true;
 
 Minimap::Minimap():
-    Window(_("MiniMap")),
-    mMapImage(NULL),
-    mProportion(0.5)
+    Window(_("Map")),
+    mMapImage(0),
+    mWidthProportion(0.5),
+    mHeightProportion(0.5)
 {
     setWindowName("MiniMap");
     mShow = config.getValue(getWindowName() + "Show", true);
     setDefaultSize(5, 25, 100, 100);
-    setResizable(true);
+    // set this to false as the minimap window size is changed
+    //depending on the map size
+    setResizable(false);
+
+    setDefaultVisible(true);
+    setSaveVisible(true);
 
     setStickyButton(true);
     setSticky(false);
@@ -59,12 +71,26 @@ Minimap::~Minimap()
     config.setValue(getWindowName() + "Show", mShow);
 }
 
-void Minimap::setMapImage(Image *img)
+void Minimap::setMap(Map *map)
 {
+    // Set the title for the Minimap
+    std::string caption;
+
+    if (map->hasProperty("name"))
+        caption = map->getProperty("name");
+    else if (map->hasProperty("mapname"))
+        caption = map->getProperty("mapname");
+    else
+        caption = _("Map");
+
+    minimap->setCaption(caption);
+
+    // Adapt the image
     if (mMapImage)
         mMapImage->decRef();
 
-    mMapImage = img;
+    ResourceManager *resman = ResourceManager::getInstance();
+    mMapImage = resman->getImage(map->getProperty("minimap"));
 
     if (mMapImage)
     {
@@ -78,6 +104,10 @@ void Minimap::setMapImage(Image *img)
 
         setMinWidth(mapWidth > titleWidth ? mapWidth : titleWidth);
         setMinHeight(mapHeight);
+
+        mWidthProportion = (float) mMapImage->getWidth() / map->getWidth();
+        mHeightProportion = (float) mMapImage->getHeight() / map->getHeight();
+
         setMaxWidth(mMapImage->getWidth() > titleWidth ?
                     mMapImage->getWidth() + offsetX : titleWidth);
         setMaxHeight(mMapImage->getHeight() + offsetY);
@@ -115,8 +145,8 @@ void Minimap::draw(gcn::Graphics *graphics)
             mMapImage->getHeight() > a.height)
         {
             const Vector &p = player_node->getPosition();
-            mapOriginX = (int) (((a.width) / 2) - (int) (p.x * mProportion) / 32);
-            mapOriginY = (int) (((a.height) / 2) - (int) (p.y * mProportion) / 32);
+            mapOriginX = (int) (((a.width) / 2) - (int) (p.x * mWidthProportion) / 32);
+            mapOriginY = (int) (((a.height) / 2) - (int) (p.y * mHeightProportion) / 32);
 
             const int minOriginX = a.width - mMapImage->getWidth();
             const int minOriginY = a.height - mMapImage->getHeight();
@@ -143,35 +173,45 @@ void Minimap::draw(gcn::Graphics *graphics)
         const Being *being = (*bi);
         int dotSize = 2;
 
-        switch (being->getType()) {
+        switch (being->getType())
+        {
             case Being::PLAYER:
-                if (being == player_node)
                 {
-                    dotSize = 3;
-                    graphics->setColor(gcn::Color(61, 209, 52));
+                    Palette::ColorType type = Palette::PC;
+
+                    if (being == player_node)
+                    {
+                        type = Palette::SELF;
+                        dotSize = 3;
+                    }
+
+                    if (static_cast<const Player*>(being)->isGM())
+                        type = Palette::GM_NAME;
+
+                    graphics->setColor(guiPalette->getColor(type));
                     break;
-                }
-                graphics->setColor(gcn::Color(61, 52, 209));
-                break;
+                 }
 
             case Being::MONSTER:
-                graphics->setColor(gcn::Color(209, 52, 61));
+                graphics->setColor(guiPalette->getColor(Palette::MONSTER));
                 break;
 
             case Being::NPC:
-                graphics->setColor(gcn::Color(255, 255, 0));
+                graphics->setColor(guiPalette->getColor(Palette::NPC));
                 break;
 
             default:
                 continue;
         }
 
-        const int offset = (int) ((dotSize - 1) * mProportion);
+
+        const int offsetHeight = (int) ((dotSize - 1) * mHeightProportion);
+        const int offsetWidth = (int) ((dotSize - 1) * mWidthProportion);
         const Vector &pos = being->getPosition();
 
         graphics->fillRectangle(gcn::Rectangle(
-                    (int) (pos.x * mProportion) / 32 + mapOriginX - offset,
-                    (int) (pos.y * mProportion) / 32 + mapOriginY - offset,
+                    (int) (pos.x * mWidthProportion) / 32 + mapOriginX - offsetWidth,
+                    (int) (pos.y * mHeightProportion) / 32 + mapOriginY - offsetHeight,
                     dotSize, dotSize));
     }
 

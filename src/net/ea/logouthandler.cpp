@@ -23,16 +23,15 @@
 
 #include "net/ea/protocol.h"
 
+#include "net/logindata.h"
 #include "net/messagein.h"
 #include "net/messageout.h"
+#include "net/serverinfo.h"
 
 #include "log.h"
-#include "logindata.h"
 #include "main.h"
-#include "serverinfo.h"
 
 #include "utils/gettext.h"
-#include "utils/strprintf.h"
 #include "utils/stringutils.h"
 
 Net::LogoutHandler *logoutHandler;

@@ -23,9 +23,8 @@
 
 #include "main.h"
 #include "log.h"
-#include "logindata.h"
 
-#include "gui/ok_dialog.h"
+#include "gui/okdialog.h"
 #include "gui/register.h"
 
 #include "gui/widgets/button.h"
@@ -34,8 +33,10 @@
 #include "gui/widgets/passwordfield.h"
 #include "gui/widgets/textfield.h"
 
+#include "net/logindata.h"
+
 #include "utils/gettext.h"
-#include "utils/strprintf.h"
+#include "utils/stringutils.h"
 
 #include <string>
 #include <sstream>

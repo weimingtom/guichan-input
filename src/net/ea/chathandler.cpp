@@ -30,17 +30,14 @@
 #include "beingmanager.h"
 #include "game.h"
 #include "localplayer.h"
-#include "player_relations.h"
+#include "playerrelations.h"
 
 #include "gui/widgets/chattab.h"
 
 #include "utils/gettext.h"
 #include "utils/stringutils.h"
-#include "utils/strprintf.h"
 
 #include <string>
-
-#define SERVER_NAME "Server"
 
 Net::ChatHandler *chatHandler;
 
@@ -54,7 +51,7 @@ ChatHandler::ChatHandler()
         SMSG_WHISPER,
         SMSG_WHISPER_RESPONSE,
         SMSG_GM_CHAT,
-        0x10c, // MVP
+        SMSG_MVP, // MVP
         0
     };
     handledMessages = _messages;
@@ -96,7 +93,7 @@ void ChatHandler::handleMessage(MessageIn &msg)
 
             chatMsg = msg.readString(chatMsgLength);
 
-            if (nick != SERVER_NAME)
+            if (nick != "Server")
             {
                 if (player_relations.hasPermission(nick, PlayerRelation::WHISPER))
                     chatWindow->whisper(nick, chatMsg);
@@ -164,7 +161,7 @@ void ChatHandler::handleMessage(MessageIn &msg)
             break;
         }
 
-        case 0x010c:
+        case SMSG_MVP:
             // Display MVP player
             msg.readInt32(); // id
             localChatTab->chatLog("MVP player", BY_SERVER);
@@ -186,7 +183,7 @@ void ChatHandler::me(const std::string &text)
 {
     std::string action = strprintf("*%s*", text.c_str());
 
-    talk(text);
+    talk(action);
 }
 
 void ChatHandler::privateMessage(const std::string &recipient,
@@ -237,6 +234,11 @@ void ChatHandler::setUserMode(int channelId, const std::string &name, int mode)
 void ChatHandler::kickUser(int channelId, const std::string &name)
 {
     localChatTab->chatLog(_("Channels are not supported!"), BY_SERVER);
+}
+
+void ChatHandler::who()
+{
+    MessageOut outMsg(CMSG_WHO_REQUEST);
 }
 
 } // namespace EAthena

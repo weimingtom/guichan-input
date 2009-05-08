@@ -19,16 +19,17 @@
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#include "gui/palette.h"
+#include "gui/table.h"
+#include "gui/sdlinput.h"
+
+#include "configuration.h"
+
+#include "utils/dtor.h"
+
 #include <guichan/actionlistener.hpp>
 #include <guichan/graphics.hpp>
 #include <guichan/key.hpp>
-
-#include "palette.h"
-#include "table.h"
-
-#include "../configuration.h"
-
-#include "../utils/dtor.h"
 
 float GuiTable::mAlpha = 1.0;
 
@@ -153,12 +154,12 @@ void GuiTable::setSelected(int row, int column)
     mSelectedRow = row;
 }
 
-int GuiTable::getSelectedRow()
+int GuiTable::getSelectedRow() const
 {
     return mSelectedRow;
 }
 
-int GuiTable::getSelectedColumn()
+int GuiTable::getSelectedColumn() const
 {
     return mSelectedColumn;
 }
@@ -168,7 +169,7 @@ void GuiTable::setLinewiseSelection(bool linewise)
     mLinewiseMode = linewise;
 }
 
-int GuiTable::getRowHeight()
+int GuiTable::getRowHeight() const
 {
     if (mModel)
         return mModel->getRowHeight() + 1; // border
@@ -176,7 +177,7 @@ int GuiTable::getRowHeight()
         return 0;
 }
 
-int GuiTable::getColumnWidth(int i)
+int GuiTable::getColumnWidth(int i) const
 {
     if (mModel)
         return mModel->getColumnWidth(i) + 1; // border
@@ -237,7 +238,7 @@ void GuiTable::setSelectedColumn(int selected)
     }
 }
 
-void GuiTable::uninstallActionListeners(void)
+void GuiTable::uninstallActionListeners()
 {
     delete_all(mActionListeners);
     mActionListeners.clear();
@@ -367,7 +368,7 @@ void GuiTable::moveToBottom(gcn::Widget *widget)
         mTopWidget = NULL;
 }
 
-gcn::Rectangle GuiTable::getChildrenArea()
+gcn::Rectangle GuiTable::getChildrenArea() const
 {
     return gcn::Rectangle(0, 0, getWidth(), getHeight());
 }
@@ -377,38 +378,38 @@ void GuiTable::keyPressed(gcn::KeyEvent& keyEvent)
 {
     gcn::Key key = keyEvent.getKey();
 
-    if (key.getValue() == gcn::Key::ENTER || key.getValue() == gcn::Key::SPACE)
+    if (key.getValue() == Key::ENTER || key.getValue() == Key::SPACE)
     {
         distributeActionEvent();
         keyEvent.consume();
     }
-    else if (key.getValue() == gcn::Key::UP)
+    else if (key.getValue() == Key::UP)
     {
         setSelectedRow(mSelectedRow - 1);
         keyEvent.consume();
     }
-    else if (key.getValue() == gcn::Key::DOWN)
+    else if (key.getValue() == Key::DOWN)
     {
         setSelectedRow(mSelectedRow + 1);
         keyEvent.consume();
     }
-    else if (key.getValue() == gcn::Key::LEFT)
+    else if (key.getValue() == Key::LEFT)
     {
         setSelectedColumn(mSelectedColumn - 1);
         keyEvent.consume();
     }
-    else if (key.getValue() == gcn::Key::RIGHT)
+    else if (key.getValue() == Key::RIGHT)
     {
         setSelectedColumn(mSelectedColumn + 1);
         keyEvent.consume();
     }
-    else if (key.getValue() == gcn::Key::HOME)
+    else if (key.getValue() == Key::HOME)
     {
         setSelectedRow(0);
         setSelectedColumn(0);
         keyEvent.consume();
     }
-    else if (key.getValue() == gcn::Key::END)
+    else if (key.getValue() == Key::END)
     {
         setSelectedRow(mModel->getRows() - 1);
         setSelectedColumn(mModel->getColumns() - 1);
@@ -477,7 +478,7 @@ void GuiTable::modelUpdated(bool completed)
     }
 }
 
-gcn::Widget *GuiTable::getWidgetAt(int x, int y)
+gcn::Widget *GuiTable::getWidgetAt(int x, int y) const
 {
     int row = getRowForY(y);
     int column = getColumnForX(x);
@@ -497,9 +498,12 @@ gcn::Widget *GuiTable::getWidgetAt(int x, int y)
         return NULL;
 }
 
-int GuiTable::getRowForY(int y)
+int GuiTable::getRowForY(int y) const
 {
-   int row = y / getRowHeight();
+   int row = -1;
+
+   if (getRowHeight() > 0)
+       row = y / getRowHeight();
 
    if (row < 0 || row >= mModel->getRows())
        return -1;
@@ -507,7 +511,7 @@ int GuiTable::getRowForY(int y)
        return row;
 }
 
-int GuiTable::getColumnForX(int x)
+int GuiTable::getColumnForX(int x) const
 {
     int column;
     int delta = 0;

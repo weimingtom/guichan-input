@@ -23,6 +23,7 @@
 
 #include "beingmanager.h"
 #include "localplayer.h"
+#include "log.h"
 
 #include "gui/chat.h"
 #include "gui/partywindow.h"
@@ -34,7 +35,7 @@
 #include "net/ea/gui/partytab.h"
 
 #include "utils/gettext.h"
-#include "utils/strprintf.h"
+#include "utils/stringutils.h"
 
 PartyTab *partyTab = 0;
 Net::PartyHandler *partyHandler = 0;
@@ -73,15 +74,20 @@ void PartyHandler::handleMessage(MessageIn &msg)
     {
         case SMSG_PARTY_CREATE:
             if (msg.readInt8())
+                partyTab->chatLog(_("Could not create party."), BY_SERVER);
+            else
             {
                 partyTab->chatLog(_("Party successfully created."), BY_SERVER);
                 player_node->setInParty(true);
             }
-            else
-                partyTab->chatLog(_("Could not create party."), BY_SERVER);
             break;
         case SMSG_PARTY_INFO:
             {
+                if (!partyWindow)
+                    break;
+
+                partyWindow->clear();
+
                 int length = msg.readInt16();
                 std::string party = msg.readString(24);
                 int count = (length - 28) / 46;
@@ -96,6 +102,8 @@ void PartyHandler::handleMessage(MessageIn &msg)
 
                     partyWindow->updateMember(id, nick, leader, online);
                 }
+
+                partyWindow->setVisible(true);
             }
             break;
         case SMSG_PARTY_INVITE_RESPONSE:
@@ -147,9 +155,58 @@ void PartyHandler::handleMessage(MessageIn &msg)
                 break;
             }
         case SMSG_PARTY_SETTINGS:
-            // I don't see this in eAthena's source
-            printf("Party settings!\n");
-            break;
+            {
+                // These seem to indicate the sharing mode for exp and items
+                short exp = msg.readInt16();
+                short item = msg.readInt16();
+
+                switch (exp) {
+                    case PARTY_SHARE:
+                        if (mShareExp == PARTY_SHARE)
+                            break;
+                        mShareExp = PARTY_SHARE;
+                        partyTab->chatLog(_("Experience sharing enabled."), BY_SERVER);
+                        break;
+                    case PARTY_SHARE_NO:
+                        if (mShareExp == PARTY_SHARE_NO)
+                            break;
+                        mShareExp =PARTY_SHARE_NO;
+                        partyTab->chatLog(_("Experience sharing disabled."), BY_SERVER);
+                        break;
+                    case PARTY_SHARE_NOT_POSSIBLE:
+                        if (mShareExp == PARTY_SHARE_NOT_POSSIBLE)
+                            break;
+                        mShareExp = PARTY_SHARE_NOT_POSSIBLE;
+                        partyTab->chatLog(_("Experience sharing not possible."), BY_SERVER);
+                        break;
+                    default:
+                        logger->log("Unknown party exp option: %d\n", exp);
+                }
+
+                switch (item) {
+                    case PARTY_SHARE:
+                        if (mShareItems == PARTY_SHARE)
+                            break;
+                        mShareItems = PARTY_SHARE;
+                        partyTab->chatLog(_("Item sharing enabled."), BY_SERVER);
+                        break;
+                    case PARTY_SHARE_NO:
+                        if (mShareItems == PARTY_SHARE_NO)
+                            break;
+                        mShareItems =PARTY_SHARE_NO;
+                        partyTab->chatLog(_("Item sharing disabled."), BY_SERVER);
+                        break;
+                    case PARTY_SHARE_NOT_POSSIBLE:
+                        if (mShareItems == PARTY_SHARE_NOT_POSSIBLE)
+                            break;
+                        mShareItems = PARTY_SHARE_NOT_POSSIBLE;
+                        partyTab->chatLog(_("Item sharing not possible."), BY_SERVER);
+                        break;
+                    default:
+                        logger->log("Unknown party item option: %d\n", exp);
+                }
+                break;
+            }
         case SMSG_PARTY_MOVE:
             {
                 msg.readInt32();    // id
@@ -167,7 +224,15 @@ void PartyHandler::handleMessage(MessageIn &msg)
                 int id = msg.readInt32();
                 std::string nick = msg.readString(24);
                 msg.readInt8();     // fail
-                partyTab->chatLog(strprintf(_("%s has left your party."),
+                if (id == player_node->getId())
+                {
+                    player_node->setInParty(false);
+                    partyWindow->clear();
+                    partyWindow->setVisible(false);
+                    partyTab->chatLog(_("You have left the party."), BY_SERVER);
+                }
+                else
+                    partyTab->chatLog(strprintf(_("%s has left your party."),
                                     nick.c_str()), BY_SERVER);
                 partyWindow->removeMember(id);
                 break;
@@ -201,7 +266,7 @@ void PartyHandler::handleMessage(MessageIn &msg)
                     being->setSpeech(chatMsg, SPEECH_TIME);
 
                 PartyMember *member = partyWindow->findMember(id);
-                if (member)                
+                if (member)
                     partyTab->chatLog(member->name, chatMsg);
                 else
                     partyTab->chatLog(strprintf(_("An unknown member tried to "
@@ -219,6 +284,7 @@ void PartyHandler::create(const std::string &name)
 
 void PartyHandler::join(int partyId)
 {
+    // TODO?
 }
 
 void PartyHandler::invite(Player *player)
@@ -229,7 +295,8 @@ void PartyHandler::invite(Player *player)
 
 void PartyHandler::invite(const std::string &name)
 {
-    // TODO
+    partyTab->chatLog(_("Inviting like this isn't supported at the moment."), BY_SERVER);
+    // TODO?
 }
 
 void PartyHandler::inviteResponse(const std::string &inviter, bool accept)
@@ -243,13 +310,28 @@ void PartyHandler::inviteResponse(const std::string &inviter, bool accept)
 void PartyHandler::leave()
 {
     MessageOut outMsg(CMSG_PARTY_LEAVE);
-    partyTab->chatLog(_("Left party."), BY_SERVER);
-    player_node->setInParty(false);
 }
 
-void PartyHandler::kick(int playerId)
+void PartyHandler::kick(Player *player)
 {
-    // TODO
+    MessageOut outMsg(CMSG_PARTY_KICK);
+    outMsg.writeInt32(player->getId());
+    outMsg.writeString("", 24); //Unused
+}
+
+void PartyHandler::kick(const std::string &name)
+{
+    int id = partyWindow->findMember(name);
+    if (id == -1)
+    {
+        partyTab->chatLog(strprintf(_("%s is not in your party!"), name.c_str()),
+                          BY_SERVER);
+        return;
+    }
+
+    MessageOut outMsg(CMSG_PARTY_KICK);
+    outMsg.writeInt32(id);
+    outMsg.writeString(name, 24); //Unused
 }
 
 void PartyHandler::chat(const std::string &text)
@@ -262,6 +344,27 @@ void PartyHandler::chat(const std::string &text)
 void PartyHandler::requestPartyMembers()
 {
     // Our eAthena doesn't have this message
+    // Not needed anyways
+}
+
+void PartyHandler::setShareExperience(PartyShare share)
+{
+    if (share == PARTY_SHARE_NOT_POSSIBLE)
+        return;
+
+    MessageOut outMsg(CMSG_PARTY_SETTINGS);
+    outMsg.writeInt16(share);
+    outMsg.writeInt16(mShareItems);
+}
+
+void PartyHandler::setShareItems(PartyShare share)
+{
+    if (share == PARTY_SHARE_NOT_POSSIBLE)
+        return;
+
+    MessageOut outMsg(CMSG_PARTY_SETTINGS);
+    outMsg.writeInt16(mShareExp);
+    outMsg.writeInt16(share);
 }
 
 } // namespace EAthena

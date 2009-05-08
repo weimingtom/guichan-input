@@ -29,7 +29,7 @@
 #include "net/net.h"
 
 #include "utils/gettext.h"
-#include "utils/strprintf.h"
+#include "utils/stringutils.h"
 
 WhisperTab::WhisperTab(const std::string &nick) :
     ChatTab(nick),
@@ -45,15 +45,14 @@ WhisperTab::~WhisperTab()
 
 void WhisperTab::handleInput(const std::string &msg)
 {
-    if (msg.length() == 0) {
+    if (msg.empty()) {
         chatLog(_("Cannot send empty chat!"), BY_SERVER, false);
         return;
     }
 
     Net::getChatHandler()->privateMessage(mNick, msg);
 
-    chatLog(strprintf(_("%s: %s"), player_node->getName().c_str(),
-                        msg.c_str()), BY_PLAYER, false);
+    chatLog(player_node->getName(), msg);
 }
 
 void WhisperTab::handleCommand(const std::string &msg)

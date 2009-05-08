@@ -32,7 +32,6 @@
 
 #include "utils/gettext.h"
 #include "utils/stringutils.h"
-#include "utils/strprintf.h"
 
 struct KeyDefault
 {
@@ -81,7 +80,7 @@ static KeyDefault const keyData[KeyboardConfig::KEY_TOTAL] = {
     {"keyWindowShortcut", Key::F8, 0, _("Item Shortcut Window")},
     {"keyWindowSetup", Key::F9, 0, _("Setup Window")},
     {"keyWindowDebug", Key::F10, 0, _("Debug Window")},
-    {"keyWindowEmote", Key::F11, 0, _("Emote Window")},
+    {"keyWindowParty", Key::F11, 0, _("Party Window")},
     {"keyWindowEmoteBar", Key::F12, 0, _("Emote Shortcut Window")},
     {"keyEmoteShortcut1", '1', KEY_MASK_ALT, strprintf(_("Emote Shortcut %d"), 1)},
     {"keyEmoteShortcut2", '2', KEY_MASK_ALT, strprintf(_("Emote Shortcut %d"), 2)},

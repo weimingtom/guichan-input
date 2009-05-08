@@ -35,11 +35,7 @@
 #include "gui/buy.h"
 #include "gui/buysell.h"
 #include "gui/gui.h"
-#include "gui/npc_text.h"
-#include "gui/npcintegerdialog.h"
-#include "gui/npclistdialog.h"
-#include "gui/npcstringdialog.h"
-#include "gui/ok_dialog.h"
+#include "gui/okdialog.h"
 #include "gui/sell.h"
 #include "gui/skill.h"
 #include "gui/storagewindow.h"
@@ -81,14 +77,6 @@ namespace {
         {
             player_node->revive();
             deathNotice = NULL;
-            npcIntegerDialog->reset();
-            npcIntegerDialog->setVisible(false);
-            npcListDialog->reset();
-            npcListDialog->setVisible(false);
-            npcStringDialog->setValue("");
-            npcStringDialog->setVisible(false);
-            npcTextDialog->clearText();
-            npcTextDialog->setVisible(false);
             buyDialog->setVisible(false);
             sellDialog->setVisible(false);
             buySellDialog->setVisible(false);
@@ -111,7 +99,7 @@ static const char *randomDeathMessage()
         N_("You are not that alive anymore."),
         N_("The cold hands of the grim reaper are grabbing for your soul."),
         N_("Game Over!"),
-        N_("Insert coin to continue"),
+        N_("Insert coin to continue."),
         N_("No, kids. Your character did not really die. It... "
            "err... went to a better place."),
         N_("Your plan of breaking your enemies weapon by "
@@ -435,14 +423,14 @@ void PlayerHandler::handleMessage(MessageIn &msg)
 
 void PlayerHandler::attack(Being *being)
 {
-    MessageOut outMsg(0x0089);
+    MessageOut outMsg(CMSG_PLAYER_ATTACK);
     outMsg.writeInt32(being->getId());
     outMsg.writeInt8(0);
 }
 
 void PlayerHandler::emote(int emoteId)
 {
-    MessageOut outMsg(0x00bf);
+    MessageOut outMsg(CMSG_PLAYER_EMOTE);
     outMsg.writeInt8(emoteId);
 }
 
@@ -499,22 +487,28 @@ void PlayerHandler::setDirection(char direction)
 
 void PlayerHandler::setDestination(int x, int y, int direction)
 {
-    char temp[4] = "";
-    set_coordinates(temp, x, y, direction);
-    MessageOut outMsg(0x0085);
-    outMsg.writeString(temp, 3);
+    MessageOut outMsg(CMSG_PLAYER_CHANGE_DEST);
+    outMsg.writeCoordinates(x, y, direction);
 }
 
 void PlayerHandler::changeAction(Being::Action action)
 {
-    MessageOut outMsg(0x0089);
+    char type;
+    switch (action)
+    {
+        case Being::SIT: type = 2; break;
+        case Being::STAND: type = 3; break;
+        default: return;
+    }
+
+    MessageOut outMsg(CMSG_PLAYER_CHANGE_ACT);
     outMsg.writeInt32(0);
-    outMsg.writeInt8((action == Being::SIT) ? 2 : 3);
+    outMsg.writeInt8(type);
 }
 
 void PlayerHandler::respawn()
 {
-    MessageOut outMsg(0x00b2);
+    MessageOut outMsg(CMSG_PLAYER_RESPAWN);
     outMsg.writeInt8(0);
 }
 

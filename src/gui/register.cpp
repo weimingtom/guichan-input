@@ -23,11 +23,10 @@
 
 #include "configuration.h"
 #include "log.h"
-#include "logindata.h"
 #include "main.h"
 
 #include "gui/login.h"
-#include "gui/ok_dialog.h"
+#include "gui/okdialog.h"
 
 #include "gui/widgets/button.h"
 #include "gui/widgets/checkbox.h"
@@ -37,8 +36,9 @@
 #include "gui/widgets/radiobutton.h"
 #include "gui/widgets/textfield.h"
 
+#include "net/logindata.h"
+
 #include "utils/gettext.h"
-#include "utils/strprintf.h"
 #include "utils/stringutils.h"
 
 void WrongDataNoticeListener::setTarget(gcn::TextField *textField)

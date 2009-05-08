@@ -120,21 +120,29 @@ enum {
     GPMSG_NPC_SELL                 = 0x02B6, // W being id, { W item id, W amount, W cost }*
     PGMSG_NPC_BUYSELL              = 0x02B7, // W item id, W amount
     GPMSG_NPC_ERROR                = 0x02B8, // B error
+    GPMSG_NPC_CLOSE                = 0x02B9, // W being id
     GPMSG_NPC_POST                 = 0x02D0, // W being id
     PGMSG_NPC_POST_SEND            = 0x02D1, // S name, S text, W item id
     GPMSG_NPC_POST_GET             = 0x02D2, // W being id, { S name, S text, W item id }
+    PGMSG_NPC_NUMBER               = 0x02D3, // W being id, L number
+    PGMSG_NPC_STRING               = 0x02D4, // W being id, S string
+    GPMSG_NPC_NUMBER               = 0x02D5, // W being id, L max, L min, L default
+    GPMSG_NPC_STRING               = 0x02D6, // W being id
     PGMSG_TRADE_REQUEST            = 0x02C0, // W being id
     GPMSG_TRADE_REQUEST            = 0x02C1, // W being id
     GPMSG_TRADE_START              = 0x02C2, // -
     GPMSG_TRADE_COMPLETE           = 0x02C3, // -
     PGMSG_TRADE_CANCEL             = 0x02C4, // -
     GPMSG_TRADE_CANCEL             = 0x02C5, // -
-    PGMSG_TRADE_ACCEPT             = 0x02C6, // -
-    GPMSG_TRADE_ACCEPT             = 0x02C7, // -
-    PGMSG_TRADE_ADD_ITEM           = 0x02C8, // B slot, B amount
-    GPMSG_TRADE_ADD_ITEM           = 0x02C9, // W item id, B amount
-    PGMSG_TRADE_SET_MONEY          = 0x02CA, // L amount
-    GPMSG_TRADE_SET_MONEY          = 0x02CB, // L amount
+    PGMSG_TRADE_AGREED             = 0x02C6, // -
+    GPMSG_TRADE_AGREED             = 0x02C7, // -
+    PGMSG_TRADE_CONFIRM            = 0x02C8, // -
+    GPMSG_TRADE_CONFIRM            = 0x02C9, // -
+    PGMSG_TRADE_ADD_ITEM           = 0x02CA, // B slot, B amount
+    GPMSG_TRADE_ADD_ITEM           = 0x02CB, // W item id, B amount
+    PGMSG_TRADE_SET_MONEY          = 0x02CC, // L amount
+    GPMSG_TRADE_SET_MONEY          = 0x02CD, // L amount
+    GPMSG_TRADE_BOTH_CONFIRM       = 0x02CE, // -
     PGMSG_USE_ITEM                 = 0x0300, // B slot
     GPMSG_USE_RESPONSE             = 0x0301, // B error
     GPMSG_BEINGS_DAMAGE            = 0x0310, // { W being id, W amount }*
@@ -164,6 +172,8 @@ enum {
     CPMSG_PARTY_INVITED                 = 0x03A2, // S name
     PCMSG_PARTY_ACCEPT_INVITE           = 0x03A5, // S name
     CPMSG_PARTY_ACCEPT_INVITE_RESPONSE  = 0x03A6, // B error, { S name }
+    PCMSG_PARTY_REJECT_INVITE           = 0x03A7, // S name
+    CPMSG_PARTY_REJECTED                = 0x03A8, // S name
     PCMSG_PARTY_QUIT                    = 0x03AA, // -
     CPMSG_PARTY_QUIT_RESPONSE           = 0x03AB, // B error
     CPMSG_PARTY_NEW_MEMBER              = 0x03B0, // W being id, S name
@@ -177,6 +187,9 @@ enum {
     PCMSG_CHAT                     = 0x0410, // S text, W channel
     PCMSG_ANNOUNCE                 = 0x0411, // S text
     PCMSG_PRIVMSG                  = 0x0412, // S user, S text
+    PCMSG_WHO                      = 0x0415, // -
+    CPMSG_WHO_RESPONSE             = 0x0416, // { S user }
+
     // -- Channeling
     CPMSG_CHANNEL_EVENT               = 0x0430, // W channel, B event, S info
     PCMSG_ENTER_CHANNEL               = 0x0440, // S channel, S password

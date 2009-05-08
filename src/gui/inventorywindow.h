@@ -49,11 +49,7 @@ class InventoryWindow : public Window,
         /**
          * Constructor.
          */
-#ifdef TMWSERV_SUPPORT
         InventoryWindow(int invSize = (INVENTORY_SIZE));
-#else
-        InventoryWindow(int invSize = (INVENTORY_SIZE - 2));
-#endif
 
         /**
          * Destructor.
@@ -80,7 +76,6 @@ class InventoryWindow : public Window,
          */
         void mouseClicked(gcn::MouseEvent &event);
 
-#ifdef TMWSERV_SUPPORT
         /**
          * Handles the key presses.
          */
@@ -90,12 +85,16 @@ class InventoryWindow : public Window,
          * Handles the key releases.
          */
         void keyReleased(gcn::KeyEvent &event);
-#endif
 
         /**
          * Updates labels to currently selected item.
          */
         void valueChanged(const gcn::SelectionEvent &event);
+
+        /**
+         * Sets whether the split button should be shown.
+         */
+        void setSplitAllowed(bool allowed);
 
     private:
         void updateButtons();    /**< Updates button states. */
@@ -109,10 +108,7 @@ class InventoryWindow : public Window,
         int mMaxWeight;
         gcn::Button *mUseButton;
         gcn::Button *mDropButton;
-#ifdef TMWSERV_SUPPORT
         gcn::Button *mSplitButton;
-#endif
-        gcn::ScrollArea *mInvenScroll;         /**< Inventory Scroll Area. */
         gcn::Label *mWeightLabel;
         gcn::Label *mSlotsLabel;
 

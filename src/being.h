@@ -30,6 +30,7 @@
 #include <string>
 #include <vector>
 
+#include "configlistener.h"
 #include "map.h"
 #include "particlecontainer.h"
 #include "position.h"
@@ -68,7 +69,7 @@ enum Gender
     GENDER_UNSPECIFIED = 2
 };
 
-class Being : public Sprite
+class Being : public Sprite, public ConfigListener
 {
     public:
         enum Type
@@ -285,11 +286,6 @@ class Being : public Sprite
          */
         virtual void nextStep();
 #endif
-
-        /**
-         * Triggers whether or not to show the name as a GM name.
-         */
-        virtual void setGM() { mIsGM = true; }
 
         /**
          * Performs being logic.
@@ -514,6 +510,8 @@ class Being : public Sprite
 
         static void load();
 
+        void optionChanged(const std::string &value) {}
+
     protected:
         /**
          * Sets the new path for this being.
@@ -568,7 +566,6 @@ class Being : public Sprite
         Map *mMap;                      /**< Map on which this being resides */
         std::string mName;              /**< Name of character */
         SpriteIterator mSpriteIterator;
-        bool mIsGM;
         bool mParticleEffects;          /**< Whether to display particles or not */
 
         /** Engine-related infos about weapon. */

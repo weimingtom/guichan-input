@@ -24,16 +24,22 @@
 
 #include "gui/widgets/window.h"
 
+#include <guichan/keylistener.hpp>
 #include <guichan/actionlistener.hpp>
 
+class IntTextField;
 class Item;
+class ItemPopup;
+class Icon;
 
 /**
  * Window used for selecting the amount of items to drop, trade or split.
  *
  * \ingroup Interface
  */
-class ItemAmountWindow : public Window, public gcn::ActionListener
+class ItemAmountWindow : public Window,
+                         public gcn::ActionListener,
+                         public gcn::KeyListener
 {
     public:
         enum Usage {
@@ -45,12 +51,6 @@ class ItemAmountWindow : public Window, public gcn::ActionListener
         };
 
         /**
-         * Constructor.
-         */
-        ItemAmountWindow(Usage usage, Window *parent, Item *item,
-                         int maxRange = 0);
-
-        /**
          * Called when receiving actions from widget.
          */
         void action(const gcn::ActionEvent &event);
@@ -60,17 +60,36 @@ class ItemAmountWindow : public Window, public gcn::ActionListener
          */
         void resetAmount();
 
+        // MouseListener
+        void mouseMoved(gcn::MouseEvent &event);
+        void mouseExited(gcn::MouseEvent &event);
+
         /**
          * Schedules the Item Amount window for deletion.
          */
         void close();
 
+        void keyReleased(gcn::KeyEvent &keyEvent);
+
+        /**
+         * Creates the dialog, or bypass it if there aren't enough items.
+         */
+        static void showWindow(Usage usage, Window *parent, Item *item,
+                         int maxRange = 0);
+
     private:
-        gcn::Label *mItemAmountLabel;   /**< Item amount caption. */
+        static void finish(Item *item, int amount, Usage usage);
+
+        ItemAmountWindow(Usage usage, Window *parent, Item *item,
+                         int maxRange = 0);
+
+        IntTextField *mItemAmountTextField;   /**< Item amount caption. */
         Item *mItem;
+        Icon *mItemIcon;
 
         int mMax;
         Usage mUsage;
+        ItemPopup *mItemPopup;
 
         /**
          * Item Amount buttons.

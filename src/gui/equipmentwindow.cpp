@@ -80,6 +80,7 @@ EquipmentWindow::EquipmentWindow():
 
     setWindowName("Equipment");
     setCloseButton(true);
+    setSaveVisible(true);
     setDefaultSize(180, 300, ImageRect::CENTER);
     loadWindowState();
 
@@ -123,15 +124,15 @@ void EquipmentWindow::draw(gcn::Graphics *graphics)
         {
             const gcn::Color color = guiPalette->getColor(Palette::HIGHLIGHT);
 
-            // Set color to the highligh color
+            // Set color to the highlight color
             g->setColor(gcn::Color(color.r, color.g, color.b, getGuiAlpha()));
             g->fillRectangle(gcn::Rectangle(mEquipBox[i].posX, mEquipBox[i].posY,
                                             BOX_WIDTH, BOX_HEIGHT));
         }
 
-        // Set color black.
+        // Set color black
         g->setColor(gcn::Color(0, 0, 0));
-        // Draw box border.
+        // Draw box border
         g->drawRectangle(gcn::Rectangle(mEquipBox[i].posX, mEquipBox[i].posY,
                                         BOX_WIDTH, BOX_HEIGHT));
 
@@ -146,7 +147,9 @@ void EquipmentWindow::draw(gcn::Graphics *graphics)
         {
             // Draw Item.
             Image *image = item->getImage();
-            g->drawImage(image, mEquipBox[i].posX, mEquipBox[i].posY);
+            g->drawImage(image,
+                         mEquipBox[i].posX + 2,
+                         mEquipBox[i].posY + 2);
 #ifdef EATHENA_SUPPORT
             if (i == EQUIP_AMMO_SLOT)
             {

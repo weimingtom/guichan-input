@@ -27,13 +27,15 @@
 
 #include "resources/iteminfo.h"
 
-class ScrollArea;
+#include <guichan/mouselistener.hpp>
+
 class TextBox;
 
 /**
  * A popup that displays information about an item.
  */
-class ItemPopup : public Popup
+class ItemPopup : public Popup,
+                  public gcn::MouseListener
 {
     public:
         /**
@@ -56,15 +58,14 @@ class ItemPopup : public Popup
          */
         void view(int x, int y);
 
+        void mouseMoved(gcn::MouseEvent &mouseEvent);
+
     private:
         gcn::Label *mItemName;
         TextBox *mItemDesc;
         TextBox *mItemEffect;
         TextBox *mItemWeight;
         ItemType mItemType;
-        ScrollArea *mItemDescScroll;
-        ScrollArea *mItemEffectScroll;
-        ScrollArea *mItemWeightScroll;
 
         static gcn::Color getColor(ItemType type);
 };

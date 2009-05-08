@@ -21,7 +21,7 @@
 
 #include "gui/serverdialog.h"
 
-#include "gui/ok_dialog.h"
+#include "gui/okdialog.h"
 
 #include "gui/widgets/button.h"
 #include "gui/widgets/dropdown.h"
@@ -29,9 +29,10 @@
 #include "gui/widgets/layout.h"
 #include "gui/widgets/textfield.h"
 
+#include "net/logindata.h"
+
 #include "configuration.h"
 #include "log.h"
-#include "logindata.h"
 #include "main.h"
 
 #include "utils/gettext.h"

@@ -267,7 +267,6 @@ class Particle : public Sprite
         int mFadeIn;                /**< Age in game ticks where fading in is finished*/
         float mAlpha;               /**< Opacity of the graphical representation of the particle */
 
-    private:
         // generic properties
         bool mAutoDelete;           /**< May the particle request its deletion by the parent particle? */
         Map *mMap;                  /**< Map the particle is on. */
@@ -284,7 +283,7 @@ class Particle : public Sprite
 
         // follow-point particles
         Particle *mTarget;          /**< The particle that attracts this particle*/
-        float mAcceleration;        /**< Acceleration towards the target particle in pixels per game-tick²*/
+        float mAcceleration;        /**< Acceleration towards the target particle in pixels per game-tick*/
         float mInvDieDistance;      /**< Distance in pixels from the target particle that causes the destruction of the particle*/
         float mMomentum;            /**< How much speed the particle retains after each game tick*/
 };

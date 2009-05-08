@@ -33,13 +33,9 @@
 #include "localplayer.h"
 #include "log.h"
 #include "npc.h"
-#include "player_relations.h"
-
-#include "gui/npc_text.h"
+#include "playerrelations.h"
 
 #include <iostream>
-
-extern NpcTextDialog *npcTextDialog;
 
 namespace EAthena {
 
@@ -65,8 +61,8 @@ BeingHandler::BeingHandler(bool enableSync):
         SMSG_PLAYER_MOVE,
         SMSG_PLAYER_STOP,
         SMSG_PLAYER_MOVE_TO_ATTACK,
-        0x0119,
-        0x0196,
+        SMSG_PLAYER_STATUS_CHANGE,
+        SMSG_BEING_STATUS_CHANGE,
         0
     };
     handledMessages = _messages;
@@ -246,9 +242,6 @@ void BeingHandler::handleMessage(MessageIn &msg)
             // A being should be removed or has died
             id = msg.readInt32();
 
-            if (id == current_npc)
-                npcTextDialog->showCloseButton();
-
             dstBeing = beingManager->findBeing(id);
 
             if (!dstBeing)
@@ -329,7 +322,11 @@ void BeingHandler::handleMessage(MessageIn &msg)
             }
 
             if (player_relations.hasPermission(dstBeing, PlayerRelation::EMOTE))
-                dstBeing->setEmote(msg.readInt8(), EMOTION_TIME);
+            {
+                // only set emote if one doesnt already exist
+                if (!dstBeing->mEmotion)
+                    dstBeing->setEmote(msg.readInt8(), EMOTION_TIME);
+            }
 
             break;
 
@@ -506,8 +503,8 @@ void BeingHandler::handleMessage(MessageIn &msg)
             }
 
             gmstatus = msg.readInt16();
-            if (gmstatus & 0x80)
-                dstBeing->setGM();
+            if ((gmstatus & 0x80) && dstBeing->getType() == Being::PLAYER)
+                static_cast<Player*>(dstBeing)->setGM();
 
             if (msg.getId() == SMSG_PLAYER_UPDATE_1)
             {
@@ -574,7 +571,7 @@ void BeingHandler::handleMessage(MessageIn &msg)
              */
             break;
 
-        case 0x0119:
+        case SMSG_PLAYER_STATUS_CHANGE:
             // Change in players' flags
             id = msg.readInt32();
             dstBeing = beingManager->findBeing(id);
@@ -590,7 +587,7 @@ void BeingHandler::handleMessage(MessageIn &msg)
             }
             break;
 
-        case 0x0196:
+        case SMSG_BEING_STATUS_CHANGE:
             // Status change
             status = msg.readInt16();
             id = msg.readInt32();

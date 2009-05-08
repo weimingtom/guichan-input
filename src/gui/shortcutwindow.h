@@ -28,7 +28,7 @@ class ScrollArea;
 class ShortcutContainer;
 
 /**
- * A window around the ItemShortcutContainer.
+ * A window around a ShortcutContainer.
  *
  * \ingroup Interface
  */
@@ -38,7 +38,7 @@ class ShortcutWindow : public Window
         /**
          * Constructor.
          */
-        ShortcutWindow(const char *title, ShortcutContainer *content);
+        ShortcutWindow(const std::string &title, ShortcutContainer *content);
 
         /**
          * Destructor.

@@ -100,6 +100,7 @@ SkillDialog::SkillDialog():
 {
     setWindowName("Skills");
     setCloseButton(true);
+    setSaveVisible(true);
     setDefaultSize(windowContainer->getWidth() - 280, 30, 275, 425);
 
     TabbedArea *panel = new TabbedArea;
@@ -183,7 +184,7 @@ SkillTab::SkillTab(const std::string &type): type(type)
         mSkillNameLabels.at(a)->setPosition(35, a*32 );
         add(mSkillNameLabels.at(a));
 
-        mSkillProgress.at(a) = new ProgressBar(0.0f, 200, 20, 150, 150, 150);
+        mSkillProgress.at(a) = new ProgressBar(0.0f, 200, 20, gcn::Color(150, 150, 150));
         mSkillProgress.at(a)->setPosition(35, a*32 + 13);
         add(mSkillProgress.at(a));
 

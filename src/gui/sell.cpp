@@ -40,7 +40,7 @@
 #include "resources/iteminfo.h"
 
 #include "utils/gettext.h"
-#include "utils/strprintf.h"
+#include "utils/stringutils.h"
 
 SellDialog::SellDialog():
     Window(_("Sell")),
@@ -182,16 +182,17 @@ void SellDialog::action(const gcn::ActionEvent &event)
     {
         // Attempt sell
         ShopItem *item = mShopItems->at(selectedItem);
-        int sellCount;
+        int sellCount, itemIndex;
         mPlayerMoney +=
             mAmountItems * mShopItems->at(selectedItem)->getPrice();
         mMaxItems -= mAmountItems;
         while (mAmountItems > 0) {
             // This order is important, item->getCurrentInvIndex() would return
             // the inventory index of the next Duplicate otherwise.
+            itemIndex = item->getCurrentInvIndex();
             sellCount = item->sellCurrentDuplicate(mAmountItems);
+            Net::getNpcHandler()->sellItem(current_npc, itemIndex, sellCount);
             mAmountItems -= sellCount;
-            Net::getNpcHandler()->sellItem(current_npc, item->getCurrentInvIndex(), sellCount);
         }
 
         mPlayerMoney +=
@@ -292,7 +293,7 @@ void SellDialog::setVisible(bool visible)
     Window::setVisible(visible);
 
     if (visible)
-        requestFocus();
+        mShopItemList->requestFocus();
 }
 
 void SellDialog::close()

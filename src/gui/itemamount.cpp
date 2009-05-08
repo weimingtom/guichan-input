@@ -19,23 +19,47 @@
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#include "gui/item_amount.h"
+#include "gui/itemamount.h"
 
-#ifdef EATHENA_SUPPORT
 #include "gui/storagewindow.h"
-#endif
 #include "gui/trade.h"
+#include "gui/itempopup.h"
+#include "gui/viewport.h"
 
 #include "gui/widgets/button.h"
-#include "gui/widgets/label.h"
+#include "gui/widgets/inttextfield.h"
 #include "gui/widgets/layout.h"
 #include "gui/widgets/slider.h"
+#include "gui/widgets/icon.h"
 
 #include "item.h"
 #include "localplayer.h"
 
 #include "utils/gettext.h"
-#include "utils/strprintf.h"
+
+void ItemAmountWindow::finish(Item *item, int amount, Usage usage)
+{
+    switch (usage)
+    {
+        case TradeAdd:
+            tradeWindow->tradeItem(item, amount);
+            break;
+        case ItemDrop:
+            player_node->dropItem(item, amount);
+            break;
+        case ItemSplit:
+            player_node->splitItem(item, amount);
+            break;
+        case StoreAdd:
+            storageWindow->addStore(item, amount);
+            break;
+        case StoreRemove:
+            storageWindow->removeStore(item, amount);
+            break;
+        default:
+            break;
+    }
+}
 
 ItemAmountWindow::ItemAmountWindow(Usage usage, Window *parent, Item *item,
                                    int maxRange):
@@ -47,18 +71,21 @@ ItemAmountWindow::ItemAmountWindow(Usage usage, Window *parent, Item *item,
     if (!mMax)
         mMax = mItem->getQuantity();
 
-    setCloseButton(true);
-
     // Integer field
-
-    mItemAmountLabel = new Label(strprintf("%d / %d", 1, mMax));
-    mItemAmountLabel->setAlignment(gcn::Graphics::CENTER);
+    mItemAmountTextField = new IntTextField(1);
+    mItemAmountTextField->setRange(1, mMax);
+    mItemAmountTextField->setWidth(35);
+    mItemAmountTextField->addKeyListener(this);
 
     // Slider
     mItemAmountSlide = new Slider(1.0, mMax);
     mItemAmountSlide->setHeight(10);
     mItemAmountSlide->setActionEventId("Slide");
     mItemAmountSlide->addActionListener(this);
+
+    //Item icon
+    Image *image = item->getImage();
+    mItemIcon = new Icon(image);
 
     // Buttons
     Button *minusButton = new Button("-", "Minus", this);
@@ -73,15 +100,17 @@ ItemAmountWindow::ItemAmountWindow(Usage usage, Window *parent, Item *item,
     // Set positions
     ContainerPlacer place;
     place = getPlacer(0, 0);
+    place(1, 0, minusButton);
+    place(2, 0, mItemAmountTextField);
+    place(3, 0, plusButton);
+    place(4, 0, addAllButton);
 
-    place(0, 0, minusButton);
-    place(1, 0, mItemAmountSlide, 3);
-    place(4, 0, plusButton);
-    place(5, 0, mItemAmountLabel, 2);
-    place(7, 0, addAllButton);
-    place = getPlacer(0, 1);
-    place(4, 0, cancelButton);
-    place(5, 0, okButton);
+    place(0, 0, mItemIcon, 1, 3);
+    place(1, 1, mItemAmountSlide, 5);
+
+    place(4, 2, cancelButton);
+    place(5, 2, okButton);
+
     reflowLayout(225, 0);
 
     resetAmount();
@@ -107,16 +136,35 @@ ItemAmountWindow::ItemAmountWindow(Usage usage, Window *parent, Item *item,
 
     setLocationRelativeTo(getParentWindow());
     setVisible(true);
+
+    mItemPopup = new ItemPopup;
+    mItemIcon->addMouseListener(this);
+}
+
+// Show ItemTooltip
+void ItemAmountWindow::mouseMoved(gcn::MouseEvent &event)
+{
+    if(event.getSource() == mItemIcon)
+    {
+        mItemPopup->setItem(mItem->getInfo());
+        mItemPopup->view(viewport->getMouseX(), viewport->getMouseY());
+    }
+}
+
+// Hide ItemTooltip
+void ItemAmountWindow::mouseExited(gcn::MouseEvent &event)
+{
+    mItemPopup->setVisible(false);
 }
 
 void ItemAmountWindow::resetAmount()
 {
-    mItemAmountLabel->setCaption(strprintf("%d / %d", 1, mMax));
+    mItemAmountTextField->setValue(1);
 }
 
 void ItemAmountWindow::action(const gcn::ActionEvent &event)
 {
-    int amount = mItemAmountSlide->getValue();
+    int amount = mItemAmountTextField->getValue();
 
     if (event.getId() == "Cancel")
     {
@@ -130,49 +178,47 @@ void ItemAmountWindow::action(const gcn::ActionEvent &event)
     {
         amount--;
     }
+    else if (event.getId() == "All")
+    {
+        amount = mMax;
+    }
     else if (event.getId() == "Slide")
     {
         amount = static_cast<int>(mItemAmountSlide->getValue());
     }
-    else if (event.getId() == "Ok" || event.getId() == "All")
+    else if (event.getId() == "Ok")
     {
-        if (event.getId() == "All") 
-            amount = mMax;
-
-        switch (mUsage)
-        {
-            case TradeAdd:
-                tradeWindow->tradeItem(mItem, amount);
-                break;
-            case ItemDrop:
-                player_node->dropItem(mItem, amount);
-                break;
-#ifdef TMWSERV_SUPPORT
-            case ItemSplit:
-                player_node->splitItem(mItem, amount);
-                break;
-#else
-            case StoreAdd:
-                storageWindow->addStore(mItem, amount);
-                break;
-            case StoreRemove:
-                storageWindow->removeStore(mItem, amount);
-                break;
-#endif
-            default:
-                return;
-                break;
-        }
-
+        finish(mItem, amount, mUsage);
         scheduleDelete();
         return;
     }
-
-    mItemAmountLabel->setCaption(strprintf("%d / %d", amount, mMax));
+    mItemAmountTextField->setValue(amount);
     mItemAmountSlide->setValue(amount);
 }
 
 void ItemAmountWindow::close()
 {
+    delete mItemPopup;
     scheduleDelete();
+}
+
+void ItemAmountWindow::keyReleased(gcn::KeyEvent &keyEvent)
+{
+    mItemAmountSlide->setValue(mItemAmountTextField->getValue());
+}
+
+void ItemAmountWindow::showWindow(Usage usage, Window *parent, Item *item,
+                                  int maxRange)
+{
+    if (!maxRange)
+        maxRange = item->getQuantity();
+
+    if (maxRange <= 1)
+    {
+        finish(item, maxRange, usage);
+    }
+    else
+    {
+        new ItemAmountWindow(usage, parent, item, maxRange);
+    }
 }

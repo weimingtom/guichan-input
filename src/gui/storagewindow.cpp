@@ -20,8 +20,9 @@
  */
 
 #include "gui/storagewindow.h"
+
 #include "gui/inventorywindow.h"
-#include "gui/item_amount.h"
+#include "gui/itemamount.h"
 #include "gui/itemcontainer.h"
 #include "gui/viewport.h"
 
@@ -42,7 +43,7 @@
 #include "resources/iteminfo.h"
 
 #include "utils/gettext.h"
-#include "utils/strprintf.h"
+#include "utils/stringutils.h"
 
 #include <guichan/font.hpp>
 #include <guichan/mouseinput.hpp>
@@ -64,26 +65,26 @@ StorageWindow::StorageWindow(int invSize):
     mStoreButton = new Button(_("Store"), "store", this);
     mRetrieveButton = new Button(_("Retrieve"), "retrieve", this);
 
-    mItems = new ItemContainer(player_node->getStorage(), 10, 30, true);
+    mItems = new ItemContainer(player_node->getStorage(), true);
     mItems->addSelectionListener(this);
 
-    mInvenScroll = new ScrollArea(mItems);
-    mInvenScroll->setHorizontalScrollPolicy(gcn::ScrollArea::SHOW_NEVER);
+    gcn::ScrollArea *invenScroll = new ScrollArea(mItems);
+    invenScroll->setHorizontalScrollPolicy(gcn::ScrollArea::SHOW_NEVER);
 
     mUsedSlots = player_node->getStorage()->getNumberOfSlotsUsed();
 
     mSlotsLabel = new Label(_("Slots: "));
 
-    mSlotsBar = new ProgressBar(1.0f, 100, 20, 225, 200, 25);
+    mSlotsBar = new ProgressBar(1.0f, 100, 20, gcn::Color(225, 200, 25));
     mSlotsBar->setText(strprintf("%d/%d", mUsedSlots, mMaxSlots));
     mSlotsBar->setProgress((float) mUsedSlots / mMaxSlots);
 
     setMinHeight(130);
-    setMinWidth(mSlotsLabel->getWidth());
+    setMinWidth(200);
 
     place(0, 0, mSlotsLabel).setPadding(3);
     place(1, 0, mSlotsBar, 3);
-    place(0, 1, mInvenScroll, 4, 4);
+    place(0, 1, invenScroll, 4, 4);
     place(2, 5, mStoreButton);
     place(3, 5, mRetrieveButton);
 
@@ -95,7 +96,6 @@ StorageWindow::StorageWindow(int invSize):
 
 StorageWindow::~StorageWindow()
 {
-    delete mItems;
 }
 
 void StorageWindow::logic()
@@ -128,15 +128,7 @@ void StorageWindow::action(const gcn::ActionEvent &event)
         if (!item)
             return;
 
-        if (item->getQuantity() == 1)
-        {
-            addStore(item, 1);
-        }
-        else
-        {
-            // Choose amount of items to trade
-            new ItemAmountWindow(ItemAmountWindow::StoreAdd, this, item);
-        }
+        ItemAmountWindow::showWindow(ItemAmountWindow::StoreAdd, this, item);
     }
     else if (event.getId() == "retrieve")
     {
@@ -145,15 +137,8 @@ void StorageWindow::action(const gcn::ActionEvent &event)
         if (!item)
             return;
 
-        if (item->getQuantity() == 1)
-        {
-            removeStore(item, 1);
-        }
-        else
-        {
-            // Choose amount of items to trade
-            new ItemAmountWindow(ItemAmountWindow::StoreRemove, this, item);
-        }
+        ItemAmountWindow::showWindow(ItemAmountWindow::StoreRemove, this,
+                                     item);
     }
 }
 
@@ -178,7 +163,7 @@ void StorageWindow::mouseClicked(gcn::MouseEvent &event)
          */
         const int mx = event.getX() + getX();
         const int my = event.getY() + getY();
-        viewport->showPopup(mx, my, item);
+        viewport->showPopup(mx, my, item, false);
     }
 }
 

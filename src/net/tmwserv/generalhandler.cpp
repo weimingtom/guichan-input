@@ -19,6 +19,8 @@
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#include "gui/inventorywindow.h"
+
 #include "net/tmwserv/generalhandler.h"
 
 #include "net/tmwserv/network.h"
@@ -39,6 +41,8 @@
 #include "net/tmwserv/partyhandler.h"
 #include "net/tmwserv/playerhandler.h"
 #include "net/tmwserv/tradehandler.h"
+
+#include "utils/gettext.h"
 
 #include <list>
 
@@ -75,17 +79,17 @@ GeneralHandler::GeneralHandler():
 
     std::list<ItemDB::Stat*> stats;
     ItemDB::Stat stat;
-    stat.tag = "str"; stat.tag = N_("Strength: %d");
+    stat.tag = "str"; stat.format = N_("Strength: %d");
     stats.push_back(&stat);
-    stat.tag = "agi"; stat.tag = N_("Agility: %d");
+    stat.tag = "agi"; stat.format = N_("Agility: %d");
     stats.push_back(&stat);
-    stat.tag = "dex"; stat.tag = N_("Dexterity: %d");
+    stat.tag = "dex"; stat.format = N_("Dexterity: %d");
     stats.push_back(&stat);
-    stat.tag = "vit"; stat.tag = N_("Vitality: %d");
+    stat.tag = "vit"; stat.format = N_("Vitality: %d");
     stats.push_back(&stat);
-    stat.tag = "int"; stat.tag = N_("Intelligence: %d");
+    stat.tag = "int"; stat.format = N_("Intelligence: %d");
     stats.push_back(&stat);
-    stat.tag = "will"; stat.tag = N_("Willpower: %d");
+    stat.tag = "will"; stat.format = N_("Willpower: %d");
     stats.push_back(&stat);
 
     ItemDB::setStatsList(stats);
@@ -146,7 +150,7 @@ void GeneralHandler::tick()
 
 void GeneralHandler::guiWindowsLoaded()
 {
-    // TODO
+    inventoryWindow->setSplitAllowed(true);
 }
 
 void GeneralHandler::guiWindowsUnloaded()

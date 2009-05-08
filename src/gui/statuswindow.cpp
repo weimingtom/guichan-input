@@ -28,7 +28,6 @@
 
 #include "localplayer.h"
 
-#include "utils/strprintf.h"
 #include "utils/stringutils.h"
 
 StatusWindow::StatusWindow(LocalPlayer *player):
@@ -38,6 +37,7 @@ StatusWindow::StatusWindow(LocalPlayer *player):
     setWindowName("Status");
     setResizable(true);
     setCloseButton(true);
+    setSaveVisible(true);
     setDefaultSize((windowContainer->getWidth() - 365) / 2,
                    (windowContainer->getHeight() - 255) / 2, 365, 275);
     loadWindowState();
@@ -50,7 +50,7 @@ StatusWindow::StatusWindow(LocalPlayer *player):
     mMoneyLabel = new Label("Money:");
 
     mHpLabel = new Label("HP:");
-    mHpBar = new ProgressBar(1.0f, 80, 15, 0, 171, 34);
+    mHpBar = new ProgressBar(1.0f, 80, 15, gcn::Color(0, 171, 34));
     mHpValueLabel = new Label;
 
     int y = 3;

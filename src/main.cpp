@@ -30,12 +30,10 @@
 #include "localplayer.h"
 #include "lockedarray.h"
 #include "log.h"
-#include "logindata.h"
 #ifdef USE_OPENGL
 #include "openglgraphics.h"
 #endif
-#include "player_relations.h"
-#include "serverinfo.h"
+#include "playerrelations.h"
 #include "sound.h"
 #include "statuseffect.h"
 #include "units.h"
@@ -45,10 +43,10 @@
 #include "gui/widgets/label.h"
 #include "gui/widgets/progressbar.h"
 
-#include "gui/char_select.h"
+#include "gui/charselectdialog.h"
 #include "gui/gui.h"
 #include "gui/login.h"
-#include "gui/ok_dialog.h"
+#include "gui/okdialog.h"
 #include "gui/palette.h"
 #include "gui/register.h"
 #include "gui/sdlinput.h"
@@ -63,9 +61,11 @@
 
 #include "net/charhandler.h"
 #include "net/generalhandler.h"
+#include "net/logindata.h"
 #include "net/loginhandler.h"
 #include "net/maphandler.h"
 #include "net/net.h"
+#include "net/serverinfo.h"
 #ifdef TMWSERV_SUPPORT
 #include "net/tmwserv/charserverhandler.h"
 #include "net/tmwserv/connection.h"
@@ -97,7 +97,6 @@
 
 #include "utils/gettext.h"
 #include "utils/stringutils.h"
-#include "utils/strprintf.h"
 
 #include <SDL_image.h>
 
@@ -200,6 +199,7 @@ struct Options
         printVersion(false),
         skipUpdate(false),
         chooseDefault(false),
+        noOpenGL(false),
         serverPort(0)
     {}
 
@@ -207,6 +207,7 @@ struct Options
     bool printVersion;
     bool skipUpdate;
     bool chooseDefault;
+    bool noOpenGL;
     std::string username;
     std::string password;
     std::string character;
@@ -216,6 +217,7 @@ struct Options
 
     std::string serverName;
     short serverPort;
+
 };
 
 /**
@@ -457,7 +459,7 @@ static void initEngine(const Options &options)
 #endif
 
 #ifdef USE_OPENGL
-    bool useOpenGL = (config.getValue("opengl", 0) == 1);
+    bool useOpenGL = !options.noOpenGL && (config.getValue("opengl", 0) == 1);
 
     // Setup image loading for the right image format
     Image::setLoadAsOpenGL(useOpenGL);
@@ -559,23 +561,28 @@ static void exitEngine()
 
 static void printHelp()
 {
+    using std::endl;
+
     std::cout
-        << _("tmw") << std::endl << std::endl
-        << _("Options: ") << std::endl
-        << _("  -C --configfile : Configuration file to use") << std::endl
-        << _("  -d --data       : Directory to load game data from") << std::endl
-        << _("  -D --default    : Bypass the login process with default settings")
-        << std::endl
-        << _("  -h --help       : Display this help") << std::endl
-        << _("  -S --homedir    : Directory to use as home directory") << std::endl
-        << _("  -H --updatehost : Use this update host") << std::endl
-        << _("  -P --password   : Login with this password") << std::endl
-        << _("  -c --character  : Login with this character") << std::endl
-        << _("  -o --port       : Login Server Port") << std::endl
-        << _("  -s --server     : Login Server name or IP") << std::endl
-        << _("  -u --skipupdate : Skip the update downloads") << std::endl
-        << _("  -U --username   : Login with this username") << std::endl
-        << _("  -v --version    : Display the version") << std::endl;
+        << _("tmw") << endl << endl
+        << _("Options:") << endl
+        << _("  -C --config-file : Configuration file to use") << endl
+        << _("  -d --data        : Directory to load game data from") << endl
+        << _("  -D --default     : Choose default character server and "
+                                  "character") << endl
+        << _("  -h --help        : Display this help") << endl
+        << _("  -S --home-dir    : Directory to use as home directory") << endl
+        << _("  -H --update-host : Use this update host") << endl
+        << _("  -P --password    : Login with this password") << endl
+        << _("  -c --character   : Login with this character") << endl
+        << _("  -p --port        : Login Server Port") << endl
+        << _("  -s --server      : Login Server name or IP") << endl
+        << _("  -u --skip-update : Skip the update downloads") << endl
+        << _("  -U --username    : Login with this username") << endl
+#ifdef USE_OPENGL
+        << _("  -O --no-opengl   : Disable OpenGL for this session") << endl
+#endif
+        << _("  -v --version     : Display the version") << endl;
 }
 
 static void printVersion()
@@ -585,22 +592,23 @@ static void printVersion()
 
 static void parseOptions(int argc, char *argv[], Options &options)
 {
-    const char *optstring = "hvud:U:P:Dc:s:o:C:H:S:";
+    const char *optstring = "hvud:U:P:Dc:s:p:C:H:S:O";
 
     const struct option long_options[] = {
-        { "configfile", required_argument, 0, 'C' },
-        { "data",       required_argument, 0, 'd' },
-        { "default",    no_argument,       0, 'D' },
-        { "password",   required_argument, 0, 'P' },
-        { "character",  required_argument, 0, 'c' },
-        { "help",       no_argument,       0, 'h' },
-        { "homedir",    required_argument, 0, 'S' },
-        { "updatehost", required_argument, 0, 'H' },
-        { "port",       required_argument, 0, 'o' },
-        { "server",     required_argument, 0, 's' },
-        { "skipupdate", no_argument,       0, 'u' },
-        { "username",   required_argument, 0, 'U' },
-        { "version",    no_argument,       0, 'v' },
+        { "config-file", required_argument, 0, 'C' },
+        { "data",        required_argument, 0, 'd' },
+        { "default",     no_argument,       0, 'D' },
+        { "password",    required_argument, 0, 'P' },
+        { "character",   required_argument, 0, 'c' },
+        { "help",        no_argument,       0, 'h' },
+        { "home-dir",    required_argument, 0, 'S' },
+        { "update-host", required_argument, 0, 'H' },
+        { "port",        required_argument, 0, 'p' },
+        { "server",      required_argument, 0, 's' },
+        { "skip-update", no_argument,       0, 'u' },
+        { "username",    required_argument, 0, 'U' },
+        { "no-opengl",   no_argument,       0, 'O' },
+        { "version",     no_argument,       0, 'v' },
         { 0 }
     };
 
@@ -639,8 +647,8 @@ static void parseOptions(int argc, char *argv[], Options &options)
             case 's':
                 options.serverName = optarg;
                 break;
-            case 'o':
-                options.serverPort = (short)atoi(optarg);
+            case 'p':
+                options.serverPort = (short) atoi(optarg);
                 break;
             case 'u':
                 options.skipUpdate = true;
@@ -653,6 +661,9 @@ static void parseOptions(int argc, char *argv[], Options &options)
                 break;
             case 'S':
                 homeDir = optarg;
+                break;
+            case 'O':
+                options.noOpenGL = true;
                 break;
         }
     }
@@ -914,7 +925,9 @@ int main(int argc, char *argv[])
 
     Desktop *desktop = new Desktop;
     top->add(desktop);
-    ProgressBar *progressBar = new ProgressBar(0.0f, 100, 20, 168, 116, 31);
+    ProgressBar *progressBar = new ProgressBar(0.0f, 100, 20,
+                                               gcn::Color(168, 116, 31));
+    progressBar->setSmoothProgress(false);
     gcn::Label *progressLabel = new Label;
     top->add(progressBar, 5, top->getHeight() - 5 - progressBar->getHeight());
     top->add(progressLabel, 15 + progressBar->getWidth(),
@@ -964,23 +977,20 @@ int main(int argc, char *argv[])
     unsigned int oldstate = !state; // We start with a status change.
 
     SDL_Event event;
-#ifdef TMWSERV_SUPPORT
-    while (state != STATE_FORCE_QUIT)
-#else
+
     while (state != STATE_EXIT)
-#endif
     {
+        bool handledEvents = false;
+
         // Handle SDL events
         while (SDL_PollEvent(&event))
         {
+            handledEvents = true;
+
             switch (event.type)
             {
                 case SDL_QUIT:
-#ifdef TMWSERV_SUPPORT
-                    state = STATE_FORCE_QUIT;
-#else
                     state = STATE_EXIT;
-#endif
                     break;
 
                 case SDL_KEYDOWN:
@@ -1006,7 +1016,7 @@ int main(int argc, char *argv[])
 
         Net::getGeneralHandler()->tick();
 
-        if (progressBar->isVisible())
+        if (progressBar && progressBar->isVisible())
         {
             progressBar->setProgress(progressBar->getProgress() + 0.005f);
             if (progressBar->getProgress() == 1.0f)
@@ -1032,7 +1042,7 @@ int main(int argc, char *argv[])
                 chatServerConnection->isConnected())
         {
             accountServerConnection->disconnect();
-            Net::clearHandlers();
+//            Net::clearHandlers();
 
             state = STATE_GAME;
         }
@@ -1274,6 +1284,11 @@ int main(int argc, char *argv[])
                     Net::ChatServer::connect(chatServerConnection, token);
                     sound.fadeOutMusic(1000);
 
+                    delete setupButton;
+                    delete desktop;
+                    setupButton = NULL;
+                    desktop = NULL;
+
                     currentDialog = NULL;
 
                     logger->log("State: GAME");
@@ -1282,11 +1297,11 @@ int main(int argc, char *argv[])
                     game->logic();
                     delete game;
 
-                    // If the quitdialog didn't set the next state
-                    if (state == STATE_GAME)
-                    {
-                        state = STATE_EXIT;
-                    }
+                    state = STATE_EXIT;
+
+                    logoutThenExit();
+                    Net::getGeneralHandler()->unload();
+
                     break;
 
                 case STATE_SWITCH_CHARACTER:
@@ -1307,11 +1322,6 @@ int main(int argc, char *argv[])
                     break;
 
                 case STATE_WAIT:
-                    break;
-
-                case STATE_EXIT:
-                    logger->log("State: EXIT");
-                    logoutThenExit();
                     break;
 
                 default:
@@ -1423,8 +1433,7 @@ int main(int argc, char *argv[])
                                                                 nextState);
                         positionDialog(currentDialog, screenWidth,
                                                       screenHeight);
-                        if (options.chooseDefault
-                                || !options.character.empty())
+                        if (options.chooseDefault)
                         {
                             ((ServerSelectDialog*) currentDialog)->action(
                                 gcn::ActionEvent(NULL, "ok"));
@@ -1540,7 +1549,8 @@ int main(int argc, char *argv[])
          * just constantly redrawing the wallpaper.  Added the following
          * usleep to limit it to 40 FPS during the login sequence
          */
-        usleep(25000);
+        if (!handledEvents)
+            usleep(25000);
     }
 
     delete guiPalette;

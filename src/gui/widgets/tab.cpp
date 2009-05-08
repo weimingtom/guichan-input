@@ -141,13 +141,17 @@ void Tab::draw(gcn::Graphics *graphics)
         }
     }
 
+    // TODO We don't need to do this for every tab on every draw
+    // Maybe use a config listener to do it as the value changes.
     if (config.getValue("guialpha", 0.8) != mAlpha)
     {
         mAlpha = config.getValue("guialpha", 0.8);
         for (int a = 0; a < 9; a++)
         {
-            tabImg[TAB_SELECTED].grid[a]->setAlpha(mAlpha);
-            tabImg[TAB_STANDARD].grid[a]->setAlpha(mAlpha);
+            for (int t = 0; t < TAB_COUNT; t++)
+            {
+                tabImg[t].grid[a]->setAlpha(mAlpha);
+            }
         }
     }
 
@@ -159,10 +163,8 @@ void Tab::draw(gcn::Graphics *graphics)
     drawChildren(graphics);
 }
 
-void Tab::setTabColor(gcn::Color color)
+void Tab::setTabColor(const gcn::Color &color)
 {
-    if (color == NULL)
-        color = guiPalette->getColor(Palette::TEXT);
     mTabColor = color;
 }
 

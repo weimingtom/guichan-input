@@ -60,6 +60,16 @@ class Player : public Being
         virtual void setGender(Gender gender);
 
         /**
+         * Whether or not this player is a GM.
+         */
+        bool isGM() const { return mIsGM; }
+
+        /**
+         * Triggers whether or not to show the name as a GM name.
+         */
+        virtual void setGM() { mIsGM = true; }
+
+        /**
          * Sets the hair style and color for this player.
          *
          * Only for convenience in 0.0 client. When porting
@@ -85,7 +95,7 @@ class Player : public Being
         /**
          * Adds a guild to the player.
          */
-        Guild* addGuild(short guildId, short rights);
+        Guild *addGuild(short guildId, short rights);
 
         /**
          * Removers a guild from the player.
@@ -95,12 +105,12 @@ class Player : public Being
         /**
          * Returns a pointer to the specified guild.
          */
-        Guild* getGuild(const std::string &guildName);
+        Guild *getGuild(const std::string &guildName);
 
         /**
          * Returns a pointer to the guild with matching id.
          */
-        Guild* getGuild(int id);
+        Guild *getGuild(int id);
 
         /**
          * Get number of guilds the player belongs to.
@@ -125,6 +135,12 @@ class Player : public Being
         virtual unsigned char getWalkMask() const
         { return 0x82; } // blocked by walls and monsters (bin 1000 0010)
 
+        /**
+         * Called when a option (set with config.addListener()) is changed
+         */
+
+        void optionChanged(const std::string &value);
+
     protected:
         /**
          * Gets the way the monster blocks pathfinding for other objects.
@@ -140,6 +156,8 @@ class Player : public Being
 #endif
 
         FlashText *mName;
+
+        bool mIsGM;
 
     private:
         bool mInParty;

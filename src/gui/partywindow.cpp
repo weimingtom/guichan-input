@@ -28,20 +28,21 @@
 
 #include "utils/dtor.h"
 #include "utils/gettext.h"
-#include "utils/strprintf.h"
+#include "utils/stringutils.h"
 
 PartyWindow::PartyWindow() : Window(_("Party"))
 {
     setWindowName("Party");
     setVisible(false);
     setResizable(false);
-    setCaption(_("Party"));
+    setSaveVisible(true);
     setCloseButton(true);
     setMinWidth(110);
     setMinHeight(200);
     setDefaultSize(620, 300, 110, 200);
 
     loadWindowState();
+    setVisible(false); // Do not start out visible
 }
 
 PartyWindow::~PartyWindow()
@@ -72,8 +73,8 @@ PartyMember *PartyWindow::findOrCreateMember(int id)
     {
         member = new PartyMember;
         member->avatar = new Avatar("");
-        add(member->avatar, 0, (mMembers.size() - 1) * 14);
         mMembers[id] = member;
+        add(member->avatar, 0, (mMembers.size() - 1) * 14);
     }
 
     return member;
@@ -99,9 +100,7 @@ int PartyWindow::findMember(const std::string &name) const
 void PartyWindow::updateMember(int id, const std::string &memberName,
                                bool leader, bool online)
 {
-    // create new party member
     PartyMember *player = findOrCreateMember(id);
-    player->id = id;
     player->name = memberName;
     player->leader = leader;
     player->online = online;
@@ -188,4 +187,11 @@ void PartyWindow::action(const gcn::ActionEvent &event)
         Net::getPartyHandler()->inviteResponse(mPartyInviter, false);
         mPartyInviter = "";
     }
+}
+
+void PartyWindow::clear()
+{
+    Window::clear();
+
+    mMembers.clear();
 }

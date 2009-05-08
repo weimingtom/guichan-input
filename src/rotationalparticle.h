@@ -1,6 +1,6 @@
 /*
  *  The Mana World
- *  Copyright (C) 2004  The Mana World Development Team
+ *  Copyright (C) 2006  The Mana World Development Team
  *
  *  This file is part of The Mana World.
  *
@@ -19,40 +19,30 @@
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#ifndef OK_DIALOG_H
-#define OK_DIALOG_H
+#ifndef _ROTATIONAL_PARTICLE_H
+#define _ROTATIONAL_PARTICLE_H
 
-#include "gui/widgets/window.h"
+#include <libxml/tree.h>
 
-#include <guichan/actionlistener.hpp>
+#include "imageparticle.h"
 
-class ScrollArea;
-class TextBox;
+class Animation;
+class Map;
+class SimpleAnimation;
 
-/**
- * An 'Ok' button dialog.
- *
- * \ingroup GUI
- */
-class OkDialog : public Window, public gcn::ActionListener
+class RotationalParticle : public ImageParticle
 {
     public:
-        /**
-         * Constructor.
-         *
-         * @see Window::Window
-         */
-        OkDialog(const std::string &title, const std::string &msg,
-                Window *parent = NULL);
+        RotationalParticle(Map *map, Animation *animation);
 
-        /**
-         * Called when receiving actions from the widgets.
-         */
-        void action(const gcn::ActionEvent &event);
+        RotationalParticle(Map *map, xmlNodePtr animationNode);
+
+        ~RotationalParticle();
+
+        virtual bool update();
 
     private:
-        TextBox *mTextBox;
-        ScrollArea *mTextArea;
+        SimpleAnimation *mAnimation; /**< Used animation for this particle */
 };
 
 #endif

@@ -19,13 +19,6 @@
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#include <fstream>
-#include <physfs.h>
-#include <sstream>
-#include <string>
-
-#include <guichan/exception.hpp>
-
 #include "beingmanager.h"
 #include "channelmanager.h"
 #include "commandhandler.h"
@@ -41,33 +34,29 @@
 #include "keyboardconfig.h"
 #include "localplayer.h"
 #include "log.h"
+#include "main.h"
 #include "map.h"
 #include "npc.h"
 #include "particle.h"
-#include "player_relations.h"
+#include "playerrelations.h"
 
 #include "gui/widgets/chattab.h"
 #include "gui/buy.h"
 #include "gui/buysell.h"
 #include "gui/chat.h"
-#include "gui/confirm_dialog.h"
+#include "gui/confirmdialog.h"
 #include "gui/debugwindow.h"
 #include "gui/emoteshortcutcontainer.h"
-#include "gui/emotewindow.h"
 #include "gui/equipmentwindow.h"
 #include "gui/gui.h"
 #include "gui/help.h"
 #include "gui/inventorywindow.h"
 #include "gui/shortcutwindow.h"
 #include "gui/itemshortcutcontainer.h"
-#include "gui/menuwindow.h"
 #include "gui/minimap.h"
 #include "gui/ministatus.h"
-#include "gui/npcintegerdialog.h"
-#include "gui/npclistdialog.h"
-#include "gui/npcstringdialog.h"
-#include "gui/npc_text.h"
-#include "gui/ok_dialog.h"
+#include "gui/npcdialog.h"
+#include "gui/okdialog.h"
 #include "gui/sdlinput.h"
 #include "gui/sell.h"
 #include "gui/setup.h"
@@ -75,6 +64,7 @@
 #include "gui/status.h"
 #include "gui/trade.h"
 #include "gui/viewport.h"
+#include "gui/windowmenu.h"
 #include "gui/partywindow.h"
 #ifdef TMWSERV_SUPPORT
 #include "gui/buddywindow.h"
@@ -96,6 +86,13 @@
 
 #include "utils/gettext.h"
 
+#include <guichan/exception.hpp>
+
+#include <fstream>
+#include <physfs.h>
+#include <sstream>
+#include <string>
+
 std::string map_path;
 
 bool done = false;
@@ -115,7 +112,6 @@ ConfirmDialog *exitConfirm = NULL;
 OkDialog *disconnectedDialog = NULL;
 
 ChatWindow *chatWindow;
-MenuWindow *menuWindow;
 StatusWindow *statusWindow;
 MiniStatusWindow *miniStatusWindow;
 BuyDialog *buyDialog;
@@ -124,11 +120,6 @@ SellDialog *sellDialog;
 BuySellDialog *buySellDialog;
 #endif
 InventoryWindow *inventoryWindow;
-EmoteWindow *emoteWindow;
-NpcIntegerDialog *npcIntegerDialog;
-NpcListDialog *npcListDialog;
-NpcTextDialog *npcTextDialog;
-NpcStringDialog *npcStringDialog;
 SkillDialog *skillDialog;
 PartyWindow *partyWindow;
 #ifdef TMWSERV_SUPPORT
@@ -136,6 +127,7 @@ BuddyWindow *buddyWindow;
 GuildWindow *guildWindow;
 MagicDialog *magicDialog;
 #endif
+NpcDialog *npcDialog;
 NpcPostDialog *npcPostDialog;
 StorageWindow *storageWindow;
 Minimap *minimap;
@@ -215,10 +207,6 @@ static void createGuiWindows()
     buyDialog = new BuyDialog;
     sellDialog = new SellDialog;
     tradeWindow = new TradeWindow;
-    npcTextDialog = new NpcTextDialog;
-    npcIntegerDialog = new NpcIntegerDialog;
-    npcListDialog = new NpcListDialog;
-    npcStringDialog = new NpcStringDialog;
     partyWindow = new PartyWindow;
 #ifdef TMWSERV_SUPPORT
     magicDialog = new MagicDialog;
@@ -229,52 +217,22 @@ static void createGuiWindows()
     buySellDialog = new BuySellDialog;
     equipmentWindow = new EquipmentWindow;
 #endif
+    npcDialog = new NpcDialog;
     npcPostDialog = new NpcPostDialog;
     storageWindow = new StorageWindow;
-    menuWindow = new MenuWindow;
     statusWindow = new StatusWindow(player_node);
     miniStatusWindow = new MiniStatusWindow;
     inventoryWindow = new InventoryWindow;
-    emoteWindow = new EmoteWindow;
     skillDialog = new SkillDialog;
     minimap = new Minimap;
     helpWindow = new HelpWindow;
     debugWindow = new DebugWindow;
     itemShortcutWindow = new ShortcutWindow("ItemShortcut",
                                             new ItemShortcutContainer);
-    emoteShortcutWindow = new ShortcutWindow("emoteShortcut",
+    emoteShortcutWindow = new ShortcutWindow("EmoteShortcut",
                                              new EmoteShortcutContainer);
 
     localChatTab = new ChatTab(_("General"));
-
-    // Set initial window visibility
-    chatWindow->setVisible((bool) config.getValue(
-        chatWindow->getWindowName() + "Visible", true));
-    miniStatusWindow->setVisible((bool) config.getValue(
-        miniStatusWindow->getPopupName() + "Visible", true));
-    buyDialog->setVisible(false);
-    sellDialog->setVisible(false);
-    minimap->setVisible((bool) config.getValue(
-        minimap->getWindowName() + "Visible", true));
-    tradeWindow->setVisible(false);
-    menuWindow->setVisible((bool) config.getValue(
-        menuWindow->getPopupName() + "Visible", true));
-    itemShortcutWindow->setVisible((bool) config.getValue(
-        itemShortcutWindow->getWindowName() + "Visible", true));
-    emoteShortcutWindow->setVisible((bool) config.getValue(
-        emoteShortcutWindow->getWindowName() + "Visible", true));
-    minimap->setVisible((bool) config.getValue(
-        minimap->getWindowName() + "Visible", true));
-#ifdef EATHENA_SUPPORT
-    buySellDialog->setVisible(false);
-#endif
-    npcTextDialog->setVisible(false);
-    npcIntegerDialog->setVisible(false);
-    npcListDialog->setVisible(false);
-    npcStringDialog->setVisible(false);
-#ifdef EATHENA_SUPPORT
-    storageWindow->setVisible(false);
-#endif
 
     if (config.getValue("logToChat", 0))
     {
@@ -295,19 +253,14 @@ static void destroyGuiWindows()
     delete chatWindow;
     delete statusWindow;
     delete miniStatusWindow;
-    delete menuWindow;
     delete buyDialog;
     delete sellDialog;
 #ifdef EATHENA_SUPPORT
     delete buySellDialog;
 #endif
     delete inventoryWindow;
-    delete emoteWindow;
-    delete npcIntegerDialog;
-    delete npcListDialog;
-    delete npcTextDialog;
-    delete npcStringDialog;
     delete partyWindow;
+    delete npcDialog;
     delete npcPostDialog;
 #ifdef TMWSERV_SUPPORT
     delete magicDialog;
@@ -332,6 +285,10 @@ Game::Game():
     done = false;
 
     createGuiWindows();
+
+    mWindowMenu = new WindowMenu;
+    windowContainer->add(mWindowMenu);
+
     engine = new Engine;
 
     beingManager = new BeingManager;
@@ -382,7 +339,7 @@ Game::Game():
 
 Game::~Game()
 {
-    Net::getGeneralHandler()->unload();
+    delete mWindowMenu;
 
     destroyGuiWindows();
 
@@ -518,12 +475,15 @@ void Game::logic()
         Net::getGeneralHandler()->flushNetwork();
         if (!Net::getGeneralHandler()->isNetworkConnected())
         {
+            if (state != STATE_ERROR)
+            {
+                errorMessage = _("The connection to the server was lost, "
+                                 "the program will now quit");
+            }
+
             if (!disconnectedDialog)
             {
-                disconnectedDialog = new OkDialog(_("Network Error"),
-                                                  _("The connection to the "
-                                                    "server was lost, the "
-                                                    "program will now quit"));
+                disconnectedDialog = new OkDialog(_("Network Error"), errorMessage);
                 disconnectedDialog->addActionListener(&exitListener);
                 disconnectedDialog->requestMoveToTop();
             }

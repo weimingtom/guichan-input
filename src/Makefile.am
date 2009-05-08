@@ -69,22 +69,20 @@ tmw_SOURCES = gui/widgets/avatar.cpp \
 	      gui/buy.h \
 	      gui/buysell.cpp \
 	      gui/buysell.h \
-	      gui/char_select.cpp \
-	      gui/char_select.h \
+	      gui/charselectdialog.cpp \
+	      gui/charselectdialog.h \
 	      gui/charcreatedialog.cpp \
 	      gui/charcreatedialog.h \
 	      gui/chat.cpp \
 	      gui/chat.h \
-	      gui/confirm_dialog.cpp \
-	      gui/confirm_dialog.h \
+	      gui/confirmdialog.cpp \
+	      gui/confirmdialog.h \
 	      gui/debugwindow.cpp \
 	      gui/debugwindow.h \
-	      gui/emotecontainer.cpp \
-	      gui/emotecontainer.h \
+	      gui/emotepopup.cpp \
+	      gui/emotepopup.h \
 	      gui/emoteshortcutcontainer.cpp \
 	      gui/emoteshortcutcontainer.h \
-	      gui/emotewindow.cpp \
-	      gui/emotewindow.h \
 	      gui/equipmentwindow.cpp \
 	      gui/equipmentwindow.h \
 	      gui/focushandler.cpp \
@@ -95,8 +93,8 @@ tmw_SOURCES = gui/widgets/avatar.cpp \
 	      gui/help.h \
 	      gui/inventorywindow.cpp \
 	      gui/inventorywindow.h \
-	      gui/item_amount.cpp \
-	      gui/item_amount.h \
+	      gui/itemamount.cpp \
+	      gui/itemamount.h \
 	      gui/itemcontainer.cpp \
 	      gui/itemcontainer.h \
 	      gui/itemlinkhandler.cpp \
@@ -108,24 +106,16 @@ tmw_SOURCES = gui/widgets/avatar.cpp \
 	      gui/linkhandler.h \
 	      gui/login.cpp \
 	      gui/login.h \
-	      gui/menuwindow.cpp \
-	      gui/menuwindow.h \
 	      gui/minimap.cpp \
 	      gui/minimap.h \
 	      gui/ministatus.cpp \
 	      gui/ministatus.h \
-	      gui/npc_text.cpp \
-	      gui/npc_text.h \
-	      gui/npcintegerdialog.cpp \
-	      gui/npcintegerdialog.h \
-	      gui/npclistdialog.cpp \
-	      gui/npclistdialog.h \
+	      gui/npcdialog.cpp \
+	      gui/npcdialog.h \
 	      gui/npcpostdialog.cpp \
 	      gui/npcpostdialog.h \
-	      gui/npcstringdialog.cpp \
-	      gui/npcstringdialog.h \
-	      gui/ok_dialog.cpp \
-	      gui/ok_dialog.h \
+	      gui/okdialog.cpp \
+	      gui/okdialog.h \
 	      gui/palette.cpp \
 	      gui/palette.h \
 	      gui/partywindow.cpp \
@@ -176,8 +166,8 @@ tmw_SOURCES = gui/widgets/avatar.cpp \
 	      gui/storagewindow.h \
 	      gui/table.cpp \
 	      gui/table.h \
-	      gui/table_model.cpp \
-	      gui/table_model.h \
+	      gui/tablemodel.cpp \
+	      gui/tablemodel.h \
 	      gui/textdialog.cpp \
 	      gui/textdialog.h \
 	      gui/textrenderer.h \
@@ -189,12 +179,15 @@ tmw_SOURCES = gui/widgets/avatar.cpp \
 	      gui/updatewindow.h \
 	      gui/viewport.cpp \
 	      gui/viewport.h \
+	      gui/windowmenu.cpp \
+	      gui/windowmenu.h \
 	      net/adminhandler.h \
 	      net/charhandler.h \
 	      net/chathandler.h \
 	      net/generalhandler.h \
 	      net/guildhandler.h \
 	      net/inventoryhandler.h \
+	      net/logindata.h \
 	      net/loginhandler.h \
 	      net/logouthandler.h \
 	      net/maphandler.h \
@@ -209,6 +202,7 @@ tmw_SOURCES = gui/widgets/avatar.cpp \
 	      net/net.h \
 	      net/partyhandler.h \
 	      net/playerhandler.h \
+	      net/serverinfo.h \
 	      net/skillhandler.h \
 	      net/tradehandler.h \
 	      resources/action.cpp \
@@ -264,8 +258,6 @@ tmw_SOURCES = gui/widgets/avatar.cpp \
 	      utils/sha256.h \
 	      utils/stringutils.cpp \
 	      utils/stringutils.h \
-	      utils/strprintf.cpp \
-	      utils/strprintf.h \
 	      utils/mutex.h \
 	      utils/xml.cpp \
 	      utils/xml.h \
@@ -294,8 +286,8 @@ tmw_SOURCES = gui/widgets/avatar.cpp \
 	      engine.h \
 	      equipment.cpp \
 	      equipment.h \
-	      floor_item.cpp \
-	      floor_item.h \
+	      flooritem.cpp \
+	      flooritem.h \
 	      flooritemmanager.cpp \
 	      flooritemmanager.h \
 	      game.cpp \
@@ -320,7 +312,6 @@ tmw_SOURCES = gui/widgets/avatar.cpp \
 	      lockedarray.h \
 	      log.cpp \
 	      log.h \
-	      logindata.h \
 	      main.cpp \
 	      main.h \
 	      map.cpp\
@@ -340,12 +331,13 @@ tmw_SOURCES = gui/widgets/avatar.cpp \
 	      particleemitterprop.h \
 	      player.cpp \
 	      player.h \
-	      player_relations.cpp \
-	      player_relations.h \
+	      playerrelations.cpp \
+	      playerrelations.h \
 	      position.cpp \
 	      position.h \
 	      properties.h \
-	      serverinfo.h \
+	      rotationalparticle.cpp \
+	      rotationalparticle.h \
 	      shopitem.cpp \
 	      shopitem.h \
 	      simpleanimation.cpp \
@@ -502,7 +494,6 @@ tmw_SOURCES += \
 	      net/ea/partyhandler.h \
 	      net/ea/playerhandler.cpp \
 	      net/ea/playerhandler.h \
-	      net/ea/protocol.cpp \
 	      net/ea/protocol.h \
 	      net/ea/skillhandler.cpp \
 	      net/ea/skillhandler.h \

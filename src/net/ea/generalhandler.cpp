@@ -19,6 +19,8 @@
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#include "gui/inventorywindow.h"
+
 #include "net/ea/generalhandler.h"
 
 #include "net/ea/network.h"
@@ -87,17 +89,17 @@ GeneralHandler::GeneralHandler():
 
     std::list<ItemDB::Stat*> stats;
     ItemDB::Stat stat;
-    stat.tag = "str"; stat.tag = N_("Strength: %d");
+    stat.tag = "str"; stat.format = N_("Strength: %d");
     stats.push_back(&stat);
-    stat.tag = "agi"; stat.tag = N_("Agility: %d");
+    stat.tag = "agi"; stat.format = N_("Agility: %d");
     stats.push_back(&stat);
-    stat.tag = "vit"; stat.tag = N_("Vitality: %d");
+    stat.tag = "vit"; stat.format = N_("Vitality: %d");
     stats.push_back(&stat);
-    stat.tag = "int"; stat.tag = N_("Intelligence: %d");
+    stat.tag = "int"; stat.format = N_("Intelligence: %d");
     stats.push_back(&stat);
-    stat.tag = "dex"; stat.tag = N_("Dexterity: %d");
+    stat.tag = "dex"; stat.format = N_("Dexterity: %d");
     stats.push_back(&stat);
-    stat.tag = "luck"; stat.tag = N_("Luck: %d");
+    stat.tag = "luck"; stat.format = N_("Luck: %d");
     stats.push_back(&stat);
 
     ItemDB::setStatsList(stats);
@@ -126,7 +128,11 @@ void GeneralHandler::handleMessage(MessageIn &msg)
                     errorMessage = _("No servers available");
                     break;
                 case 2:
-                    errorMessage = _("This account is already logged in");
+                    if (state == STATE_GAME)
+                        errorMessage = _("Someone else is trying to use this "
+                                         "account");
+                    else
+                        errorMessage = _("This account is already logged in");
                     break;
                 case 3:
                     errorMessage = _("Speed hack detected");
@@ -189,18 +195,19 @@ void GeneralHandler::tick()
 
     if (mNetwork->getState() == Network::NET_ERROR)
     {
-        state = STATE_ERROR;
-
         if (!mNetwork->getError().empty())
             errorMessage = mNetwork->getError();
         else
             errorMessage = _("Got disconnected from server!");
+
+        state = STATE_ERROR;
     }
 }
 
 void GeneralHandler::guiWindowsLoaded()
 {
     partyTab = new PartyTab;
+    inventoryWindow->setSplitAllowed(false);
 }
 
 void GeneralHandler::guiWindowsUnloaded()

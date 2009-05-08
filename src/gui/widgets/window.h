@@ -95,6 +95,8 @@ class Window : public gcn::Window, gcn::WidgetListener
          */
         void setResizable(bool resize);
 
+        void redraw();
+
         /**
          * Called whenever the widget changes size.
          */
@@ -171,6 +173,26 @@ class Window : public gcn::Window, gcn::WidgetListener
          * handling, or not, if you force the sticky state.
          */
         void setVisible(bool visible, bool forceSticky);
+
+        /**
+         * Returns whether the window will save it's visibility.
+         */
+        bool isDefaultVisible() const { return mDefaultVisible; }
+
+        /**
+         * Returns whether the window will save it's visibility.
+         */
+        void setDefaultVisible(bool save) { mDefaultVisible = save; }
+
+        /**
+         * Returns whether the window will save it's visibility.
+         */
+        bool willSaveVisible() const { return mSaveVisible; }
+
+        /**
+         * Returns whether the window will save it's visibility.
+         */
+        void setSaveVisible(bool save) { mSaveVisible = save; }
 
         /**
          * Returns the parent window.
@@ -273,6 +295,11 @@ class Window : public gcn::Window, gcn::WidgetListener
         Layout &getLayout();
 
         /**
+         * Clears the Window's layout (useful for redesigning the window)
+         */
+        void clearLayout();
+
+        /**
          * Computes the position of the widgets according to the current
          * layout. Resizes the window so that the layout fits. Deletes the
          * layout.
@@ -335,6 +362,8 @@ class Window : public gcn::Window, gcn::WidgetListener
         bool mShowTitle;              /**< Window has a title bar */
         bool mModal;                  /**< Window is modal */
         bool mCloseButton;            /**< Window has a close button */
+        bool mDefaultVisible;         /**< Window's default visibility */
+        bool mSaveVisible;            /**< Window will save visibility */
         bool mStickyButton;           /**< Window has a sticky button */
         bool mSticky;                 /**< Window resists hiding*/
         int mMinWinWidth;             /**< Minimum window width */

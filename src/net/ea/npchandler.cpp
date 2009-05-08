@@ -32,10 +32,7 @@
 #include "localplayer.h"
 #include "npc.h"
 
-#include "gui/npc_text.h"
-#include "gui/npcintegerdialog.h"
-#include "gui/npclistdialog.h"
-#include "gui/npcstringdialog.h"
+#include "gui/npcdialog.h"
 
 #include <SDL_types.h>
 
@@ -61,66 +58,76 @@ NpcHandler::NpcHandler()
 void NpcHandler::handleMessage(MessageIn &msg)
 {
     int id;
+    bool resetPlayer = false;
 
     switch (msg.getId())
     {
         case SMSG_NPC_CHOICE:
             msg.readInt16();  // length
             current_npc = msg.readInt32();
-            player_node->setAction(LocalPlayer::STAND);
-            npcListDialog->parseItems(msg.readString(msg.getLength() - 8));
-            npcListDialog->setVisible(true);
-            npcListDialog->requestFocus();
+            npcDialog->setNpc(current_npc);
+            npcDialog->choiceRequest();
+            npcDialog->parseListItems(msg.readString(msg.getLength() - 8));
+            npcDialog->setVisible(true);
+            resetPlayer = true;
             break;
 
         case SMSG_NPC_MESSAGE:
             msg.readInt16();  // length
             current_npc = msg.readInt32();
-            player_node->setAction(LocalPlayer::STAND);
-            npcTextDialog->addText(msg.readString(msg.getLength() - 8));
-            npcTextDialog->setVisible(true);
-            npcTextDialog->requestFocus();
+            npcDialog->setNpc(current_npc);
+            npcDialog->addText(msg.readString(msg.getLength() - 8));
+            npcDialog->setVisible(true);
+            resetPlayer = true;
             break;
 
          case SMSG_NPC_CLOSE:
             id = msg.readInt32();
             // If we're talking to that NPC, show the close button
             if (id == current_npc)
-                npcTextDialog->showCloseButton();
+            {
+                npcDialog->showCloseButton();
+                resetPlayer = true;
+            }
             // Otherwise, move on as an empty dialog doesn't help
             else
-                npcTextDialog->closeDialog(id);
+                closeDialog(id);
             break;
 
         case SMSG_NPC_NEXT:
             id = msg.readInt32();
             // If we're talking to that NPC, show the next button
             if (id == current_npc)
-                npcTextDialog->showNextButton();
+            {
+                npcDialog->showNextButton();
+                resetPlayer = true;
+            }
             // Otherwise, move on as an empty dialog doesn't help
             else
-                npcTextDialog->nextDialog(id);
+                nextDialog(id);
             break;
 
         case SMSG_NPC_INT_INPUT:
             // Request for an integer
             current_npc = msg.readInt32();
-            player_node->setAction(LocalPlayer::STAND);
-            npcIntegerDialog->setRange(0, 2147483647);
-            npcIntegerDialog->setDefaultValue(0);
-            npcIntegerDialog->setVisible(true);
-            npcIntegerDialog->requestFocus();
+            npcDialog->setNpc(current_npc);
+            npcDialog->integerRequest(0);
+            npcDialog->setVisible(true);
+            resetPlayer = true;
             break;
 
         case SMSG_NPC_STR_INPUT:
             // Request for a string
             current_npc = msg.readInt32();
-            player_node->setAction(LocalPlayer::STAND);
-            npcStringDialog->setValue("");
-            npcStringDialog->setVisible(true);
-            npcStringDialog->requestFocus();
+            npcDialog->setNpc(current_npc);
+            npcDialog->textRequest("");
+            npcDialog->setVisible(true);
+            resetPlayer = true;
             break;
     }
+
+    if (resetPlayer && player_node->mAction != Being::SIT)
+        player_node->setAction(Being::STAND);
 }
 
 void NpcHandler::talk(int npcId)
@@ -140,6 +147,8 @@ void NpcHandler::closeDialog(int npcId)
 {
     MessageOut outMsg(CMSG_NPC_CLOSE);
     outMsg.writeInt32(npcId);
+    npcDialog->setText("");
+    npcDialog->setVisible(false);
 }
 
 void NpcHandler::listInput(int npcId, int value)

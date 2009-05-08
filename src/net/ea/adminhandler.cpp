@@ -30,13 +30,12 @@
 #include "being.h"
 #include "beingmanager.h"
 #include "game.h"
-#include "player_relations.h"
+#include "playerrelations.h"
 
 #include "gui/widgets/chattab.h"
 
 #include "utils/gettext.h"
 #include "utils/stringutils.h"
-#include "utils/strprintf.h"
 
 #include <string>
 

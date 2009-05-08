@@ -41,7 +41,6 @@
 
 #include "utils/dtor.h"
 #include "utils/stringutils.h"
-#include "utils/strprintf.h"
 
 #include <guichan/focushandler.hpp>
 #include <guichan/focuslistener.hpp>
@@ -76,7 +75,12 @@ ChatWindow::ChatWindow():
 {
     setWindowName("Chat");
 
+    // no title presented, title bar is padding so window can be moved.
+    gcn::Window::setTitleBarHeight(gcn::Window::getPadding() + 4);
+    setShowTitle(false);
     setResizable(true);
+    setDefaultVisible(true);
+    setSaveVisible(true);
     setDefaultSize(600, 123, ImageRect::LOWER_LEFT);
     setMinWidth(150);
     setMinHeight(90);
@@ -264,7 +268,7 @@ bool ChatWindow::requestChatFocus()
     return true;
 }
 
-bool ChatWindow::isInputFocused()
+bool ChatWindow::isInputFocused() const
 {
     return mChatInput->isFocused();
 }
@@ -293,7 +297,7 @@ void ChatWindow::addTab(ChatTab *tab)
     logic();
 }
 
-void ChatWindow::removeWhisper(std::string nick)
+void ChatWindow::removeWhisper(const std::string &nick)
 {
     mWhispers.erase(nick);
 }
@@ -308,6 +312,7 @@ void ChatWindow::doPresent()
 {
     const Beings &beings = beingManager->getAll();
     std::string response = "";
+    int playercount = 0;
 
     for (Beings::const_iterator bi = beings.begin(), be = beings.end();
          bi != be; ++bi)
@@ -319,8 +324,11 @@ void ChatWindow::doPresent()
                 response += ", ";
             }
             response += (*bi)->getName();
+            ++playercount;
         }
     }
+
+    std::string cpc = strprintf(_("%d players are present."), playercount);
 
     if (mRecorder->isRecording())
     {
@@ -336,14 +344,13 @@ void ChatWindow::doPresent()
             << (int) ((t / 60) % 60)
             << "] ";
 
-
-        mRecorder->record(timeStr.str() + _("Present: ") + response + ".");
+        mRecorder->record(timeStr.str() + _("Present: ") + response + _("; ") + cpc);
         getFocused()->chatLog(_("Attendance written to record log."),
                               BY_SERVER, true);
     }
     else
     {
-        getFocused()->chatLog(_("Present: ") + response, BY_SERVER);
+        getFocused()->chatLog(_("Present: ") + response + _("; ") + cpc, BY_SERVER);
     }
 }
 
@@ -358,20 +365,27 @@ void ChatWindow::scroll(int amount)
 
 void ChatWindow::keyPressed(gcn::KeyEvent &event)
 {
-    if (event.getKey().getValue() == Key::DOWN &&
-            mCurHist != mHistory.end())
+    if (event.getKey().getValue() == Key::DOWN)
     {
-        // Move forward through the history
-        HistoryIterator prevHist = mCurHist++;
-
         if (mCurHist != mHistory.end())
         {
-            mChatInput->setText(*mCurHist);
-            mChatInput->setCaretPosition(mChatInput->getText().length());
+            // Move forward through the history
+            HistoryIterator prevHist = mCurHist++;
+
+            if (mCurHist != mHistory.end())
+            {
+                mChatInput->setText(*mCurHist);
+                mChatInput->setCaretPosition(mChatInput->getText().length());
+            }
+            else
+            {
+                mChatInput->setText("");
+                mCurHist = prevHist;
+            }
         }
-        else
+        else if (mChatInput->getText() != "")
         {
-            mCurHist = prevHist;
+            mChatInput->setText("");
         }
     }
     else if (event.getKey().getValue() == Key::UP &&
@@ -415,7 +429,7 @@ void ChatWindow::setRecordingFile(const std::string &msg)
 
 void ChatWindow::whisper(const std::string &nick, std::string mes, bool own)
 {
-    if (mes.length() == 0)
+    if (mes.empty())
         return;
 
     std::string playerName = player_node->getName();
@@ -455,7 +469,7 @@ void ChatWindow::whisper(const std::string &nick, std::string mes, bool own)
     }
 }
 
-ChatTab *ChatWindow::addWhisperTab(const std::string &nick)
+ChatTab *ChatWindow::addWhisperTab(const std::string &nick, bool switchTo)
 {
     std::string playerName = player_node->getName();
     std::string tempNick = nick;
@@ -466,5 +480,9 @@ ChatTab *ChatWindow::addWhisperTab(const std::string &nick)
     if (mWhispers[tempNick] || tempNick.compare(playerName) == 0)
         return NULL;
 
-    return mWhispers[tempNick] = new WhisperTab(nick);
+    ChatTab *ret = mWhispers[tempNick] = new WhisperTab(nick);
+
+    mChatTabs->setSelectedTab(ret);
+
+    return ret;
 }

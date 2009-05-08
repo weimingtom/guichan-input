@@ -23,16 +23,15 @@
 
 #include "net/ea/protocol.h"
 
+#include "net/logindata.h"
 #include "net/messagein.h"
 #include "net/messageout.h"
+#include "net/serverinfo.h"
 
 #include "log.h"
-#include "logindata.h"
 #include "main.h"
-#include "serverinfo.h"
 
 #include "utils/gettext.h"
-#include "utils/strprintf.h"
 #include "utils/stringutils.h"
 
 extern SERVER_INFO **server_info;
@@ -45,8 +44,8 @@ LoginHandler::LoginHandler()
 {
     static const Uint16 _messages[] = {
         SMSG_UPDATE_HOST,
-        0x0069,
-        0x006a,
+        SMSG_LOGIN_DATA,
+        SMSG_LOGIN_ERROR,
         0
     };
     handledMessages = _messages;
@@ -69,7 +68,7 @@ void LoginHandler::handleMessage(MessageIn &msg)
                      mUpdateHost.c_str());
              break;
 
-        case 0x0069:
+        case SMSG_LOGIN_DATA:
             // Skip the length word
             msg.skip(2);
 
@@ -102,7 +101,7 @@ void LoginHandler::handleMessage(MessageIn &msg)
             state = STATE_CHAR_SERVER;
             break;
 
-        case 0x006a:
+        case SMSG_LOGIN_ERROR:
             code = msg.readInt8();
             logger->log("Login::error code: %i", code);
 
@@ -192,11 +191,11 @@ void LoginHandler::sendLoginRegister(const std::string &username,
 
     /*
      * eAthena calls the last byte "client version 2", but it isn't used at
-     * at all. We're retasking it, with bit 0 to indicate whether the client
-     * can handle the 0x63 "update host" packet. Clients prior to 0.0.25 send
-     * 0 here.
+     * at all. We're retasking it, as a bit mask:
+     *  0 - can handle the 0x63 "update host" packet
+     *  1 - defaults to the first char-server (instead of the last)
      */
-    outMsg.writeInt8(0x01);
+    outMsg.writeInt8(0x03);
 }
 
 } // namespace EAthena

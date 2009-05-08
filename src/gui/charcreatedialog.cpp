@@ -21,9 +21,9 @@
 
 #include "gui/charcreatedialog.h"
 
-#include "gui/char_select.h"
-#include "gui/confirm_dialog.h"
-#include "gui/ok_dialog.h"
+#include "gui/charselectdialog.h"
+#include "gui/confirmdialog.h"
+#include "gui/okdialog.h"
 #include "gui/playerbox.h"
 
 #include "gui/widgets/button.h"
@@ -46,7 +46,6 @@
 #include "resources/colordb.h"
 
 #include "utils/gettext.h"
-#include "utils/strprintf.h"
 #include "utils/stringutils.h"
 
 #include <guichan/font.hpp>

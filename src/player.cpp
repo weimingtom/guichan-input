@@ -20,6 +20,7 @@
  */
 
 #include "animatedsprite.h"
+#include "configuration.h"
 #include "game.h"
 #ifdef TMWSERV_SUPPORT
 #include "guild.h"
@@ -35,22 +36,26 @@
 #include "resources/itemdb.h"
 #include "resources/iteminfo.h"
 
-#include "utils/strprintf.h"
+#include "utils/stringutils.h"
 
 Player::Player(int id, int job, Map *map):
-    Being(id, job, map)
+    Being(id, job, map),
+    mName(0),
+    mIsGM(false),
+    mInParty(false)
 {
-    mName = NULL;
+    config.addListener("visiblenames", this);
 }
 
 Player::~Player()
 {
+    config.removeListener("visiblenames", this);
     delete mName;
 }
 
 void Player::setName(const std::string &name)
 {
-    if (mName == NULL)
+    if (!mName)
     {
         if (mIsGM)
         {
@@ -72,8 +77,8 @@ void Player::setName(const std::string &name)
                                   &guiPalette->getColor(Palette::SELF) :
                                   &guiPalette->getColor(Palette::PC));
         }
-        Being::setName(name);
     }
+    Being::setName(name);
 }
 
 #ifdef EATHENA_SUPPORT
@@ -183,6 +188,10 @@ void Player::setHairStyle(int style, int color)
 
 void Player::setSprite(int slot, int id, const std::string &color)
 {
+    // TODO: Find a better way
+    if (getType() == NPC)
+        return;
+
     // id = 0 means unequip
     if (id == 0)
     {
@@ -280,4 +289,21 @@ short Player::getNumberOfGuilds()
 void Player::setInParty(bool value)
 {
     mInParty = value;
+}
+
+void Player::optionChanged(const std::string &value)
+{
+    if (value == "visiblenames" && getType() == Being::PLAYER && player_node != this)
+    {
+        bool value = config.getValue("visiblenames", 1);
+        if (!value && mName)
+        {
+            delete mName;
+            mName = NULL;
+        }
+        else if (value && !mName && !(getName().empty()))
+        {
+            setName(getName());
+        }
+    }
 }

@@ -40,7 +40,6 @@
 #include "resources/iteminfo.h"
 
 #include "utils/gettext.h"
-#include "utils/strprintf.h"
 #include "utils/stringutils.h"
 
 #include <SDL_types.h>
@@ -191,8 +190,8 @@ void InventoryHandler::handleMessage(MessageIn &msg)
 
                 if (config.getValue("showpickupchat", 1))
                 {
-                    localChatTab->chatLog(strprintf(_("You picked up %s [%s]"),
-                        amountStr.c_str(), itemInfo.getName().c_str()),
+                    localChatTab->chatLog(strprintf(_("You picked up %s [@@%d|%s@@]"),
+                        amountStr.c_str(), itemInfo.getId(), itemInfo.getName().c_str()),
                         BY_SERVER);
                 }
 
@@ -302,7 +301,7 @@ void InventoryHandler::handleMessage(MessageIn &msg)
     }
 }
 
-void InventoryHandler::equipItem(Item *item)
+void InventoryHandler::equipItem(const Item *item)
 {
     if (!item)
         return;
@@ -312,7 +311,7 @@ void InventoryHandler::equipItem(Item *item)
     outMsg.writeInt16(0);
 }
 
-void InventoryHandler::unequipItem(Item *item)
+void InventoryHandler::unequipItem(const Item *item)
 {
     if (!item)
         return;
@@ -321,7 +320,7 @@ void InventoryHandler::unequipItem(Item *item)
     outMsg.writeInt16(item->getInvIndex() + INVENTORY_OFFSET);
 }
 
-void InventoryHandler::useItem(Item *item)
+void InventoryHandler::useItem(const Item *item)
 {
     if (!item)
         return;
@@ -331,7 +330,7 @@ void InventoryHandler::useItem(Item *item)
     outMsg.writeInt32(item->getId()); // unused
 }
 
-void InventoryHandler::dropItem(Item *item, int amount)
+void InventoryHandler::dropItem(const Item *item, int amount)
 {
     // TODO: Fix wrong coordinates of drops, serverside? (what's wrong here?)
     MessageOut outMsg(CMSG_PLAYER_INVENTORY_DROP);
@@ -339,7 +338,17 @@ void InventoryHandler::dropItem(Item *item, int amount)
     outMsg.writeInt16(amount);
 }
 
-void InventoryHandler::splitItem(Item *item, int amount)
+bool InventoryHandler::canSplit(const Item *item)
+{
+    return false;
+}
+
+void InventoryHandler::splitItem(const Item *item, int amount)
+{
+    // Not implemented for eAthena (possible?)
+}
+
+void InventoryHandler::moveItem(int oldIndex, int newIndex)
 {
     // Not implemented for eAthena (possible?)
 }

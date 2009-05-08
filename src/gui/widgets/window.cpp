@@ -39,7 +39,8 @@
 int Window::instances = 0;
 int Window::mouseResize = 0;
 
-Window::Window(const std::string &caption, bool modal, Window *parent, const std::string &skin):
+Window::Window(const std::string &caption, bool modal, Window *parent,
+               const std::string &skin):
     gcn::Window(caption),
     mGrip(0),
     mParent(parent),
@@ -49,6 +50,8 @@ Window::Window(const std::string &caption, bool modal, Window *parent, const std
     mShowTitle(true),
     mModal(modal),
     mCloseButton(false),
+    mDefaultVisible(false),
+    mSaveVisible(false),
     mStickyButton(false),
     mSticky(false),
     mMinWinWidth(100),
@@ -242,7 +245,8 @@ void Window::setMaxHeight(int height)
 
 void Window::setResizable(bool r)
 {
-    if ((bool) mGrip == r) return;
+    if ((bool) mGrip == r)
+        return;
 
     if (r)
     {
@@ -376,9 +380,7 @@ void Window::mouseReleased(gcn::MouseEvent &event)
 void Window::mouseExited(gcn::MouseEvent &event)
 {
     if (mGrip && !mouseResize)
-    {
         gui->setCursorType(Gui::CURSOR_POINTER);
-    }
 }
 
 void Window::mouseMoved(gcn::MouseEvent &event)
@@ -434,9 +436,7 @@ void Window::mouseDragged(gcn::MouseEvent &event)
                                      std::max(mMinWinHeight, newHeight));
 
             if (mouseResize & TOP)
-            {
                 newDim.y -= newDim.height - getHeight();
-            }
         }
 
         if (mouseResize & (LEFT | RIGHT))
@@ -446,9 +446,7 @@ void Window::mouseDragged(gcn::MouseEvent &event)
                                     std::max(mMinWinWidth, newWidth));
 
             if (mouseResize & LEFT)
-            {
                 newDim.x -= newDim.width - getWidth();
-            }
         }
 
         // Keep guichan window inside screen (supports resizing any side)
@@ -496,8 +494,8 @@ void Window::loadWindowState()
     setPosition((int) config.getValue(name + "WinX", mDefaultX),
                 (int) config.getValue(name + "WinY", mDefaultY));
 
-    if (mCloseButton)
-        setVisible((bool) config.getValue(name + "Visible", false));
+    if (mSaveVisible)
+        setVisible((bool) config.getValue(name + "Visible", mDefaultVisible));
 
     if (mStickyButton)
         setSticky((bool) config.getValue(name + "Sticky", isSticky()));
@@ -538,7 +536,7 @@ void Window::saveWindowState()
         config.setValue(mWindowName + "WinX", getX());
         config.setValue(mWindowName + "WinY", getY());
 
-        if (mCloseButton)
+        if (mSaveVisible)
             config.setValue(mWindowName + "Visible", isVisible());
 
         if (mStickyButton)
@@ -689,6 +687,19 @@ Layout &Window::getLayout()
     return *mLayout;
 }
 
+void Window::clearLayout()
+{
+    clear();  // This removes widgets from the container
+
+    while (!mWidgets.empty())
+        delete mWidgets.front();
+
+    if (!mLayout)
+        delete mLayout;
+    mLayout = new Layout;
+    
+}
+
 LayoutCell &Window::place(int x, int y, gcn::Widget *wg, int w, int h)
 {
     add(wg);
@@ -707,6 +718,17 @@ void Window::reflowLayout(int w, int h)
     delete mLayout;
     mLayout = NULL;
     setContentSize(w, h);
+}
+
+void Window::redraw()
+{
+    if (mLayout)
+    {
+        const gcn::Rectangle area = getChildrenArea();
+        int w = area.width;
+        int h = area.height;
+        mLayout->reflow(w, h);
+    }
 }
 
 void Window::center()

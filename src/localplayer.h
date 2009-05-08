@@ -154,6 +154,8 @@ class LocalPlayer : public Player
 
         virtual void logic();
 
+        virtual void setAction(Action action, int attackType = 0);
+
         /**
          * Adds a new step when walking before calling super. Also, when
          * specified it picks up an item at the end of a path.
@@ -214,9 +216,7 @@ class LocalPlayer : public Player
 
         void dropItem(Item *item, int quantity);
 
-#ifdef TMWSERV_SUPPORT
         void splitItem(Item *item, int quantity);
-#endif
 
         void pickUp(FloorItem *item);
 
@@ -277,7 +277,7 @@ class LocalPlayer : public Player
          * @param damage the amount of damage dealt (0 means miss)
          * @param type the attack type
          */
-        virtual void handleAttack(Being *victim, int damage, AttackType type) {}
+        //virtual void handleAttack(Being *victim, int damage, AttackType type) {}
         virtual void handleAttack() {}
 
         /**
@@ -285,7 +285,6 @@ class LocalPlayer : public Player
          * currently targeted.
          */
         Being* getTarget() const;
-
 
         /**
          * Sets the target being of the player.
@@ -473,8 +472,6 @@ class LocalPlayer : public Player
         bool mUpdateName;     /** Whether or not the name settings have changed */
 
         bool mMapInitialized; /** Whether or not the map is available yet */
-
-        float mLastAttackTime; /**< Used to synchronize the charge dialog */
 
         const std::auto_ptr<Equipment> mEquipment;
 

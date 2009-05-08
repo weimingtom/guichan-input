@@ -21,7 +21,7 @@
 
 #include "gui/login.h"
 
-#include "gui/ok_dialog.h"
+#include "gui/okdialog.h"
 
 #include "gui/widgets/button.h"
 #include "gui/widgets/checkbox.h"
@@ -31,8 +31,9 @@
 #include "gui/widgets/passwordfield.h"
 #include "gui/widgets/textfield.h"
 
+#include "net/logindata.h"
+
 #include "main.h"
-#include "logindata.h"
 #include "configuration.h"
 
 #include "utils/gettext.h"

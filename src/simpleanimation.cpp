@@ -129,7 +129,17 @@ void SimpleAnimation::reset()
     mAnimationPhase = 0;
 }
 
-void SimpleAnimation::update(unsigned int timePassed)
+void SimpleAnimation::setFrame(int frame)
+{
+    if (frame < 0)
+        frame = 0;
+    if (frame >= mAnimation->getLength())
+        frame = mAnimation->getLength() - 1;
+    mAnimationPhase = frame;
+    mCurrentFrame = mAnimation->getFrame(mAnimationPhase);
+}
+
+void SimpleAnimation::update(int timePassed)
 {
     mAnimationTime += timePassed;
 
@@ -143,6 +153,11 @@ void SimpleAnimation::update(unsigned int timePassed)
 
         mCurrentFrame = mAnimation->getFrame(mAnimationPhase);
     }
+}
+
+int SimpleAnimation::getLength() const
+{
+    return mAnimation->getLength();
 }
 
 Image *SimpleAnimation::getCurrentImage() const
