@@ -709,9 +709,7 @@ inline bool KeyboardConfig::parseWindows(KeyData kd)
 inline bool KeyboardConfig::parseItemShortcut(KeyData kd)
 {
     // Checks if any item shortcut is pressed.
-    for (int i = KEY_SHORTCUT_1;
-             i <= KEY_SHORTCUT_12;
-             i++)
+    for (int i = KEY_SHORTCUT_1; i <= KEY_SHORTCUT_12; i++)
     {
         if (keyMatch(i, kd))
         {
@@ -726,13 +724,11 @@ inline bool KeyboardConfig::parseItemShortcut(KeyData kd)
 inline bool KeyboardConfig::parseEmoteShortcut(KeyData kd)
 {
     // Checks if any item shortcut is pressed.
-    for (int i = KEY_EMOTE_1;
-             i <= KEY_EMOTE_12;
-             i++)
+    for (int i = KEY_EMOTE_1; i <= KEY_EMOTE_12; i++)
     {
         if (keyMatch(i, kd))
         {
-            emoteShortcut->useEmote(i - KEY_EMOTE_1);
+            emoteShortcut->useEmote(1 + i - KEY_EMOTE_1);
             return true;
         }
     }
