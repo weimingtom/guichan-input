@@ -22,13 +22,16 @@
 #include "being.h"
 #include "beingmanager.h"
 #include "configuration.h"
+#include "game.h"
 #include "guichanfwd.h"
 #include "keyboardconfig.h"
 #include "localplayer.h"
 #include "log.h"
 #include "main.h"
 #include "npc.h"
+#include "playerrelations.h"
 
+#include "gui/widgets/chattab.h"
 #include "gui/chat.h"
 #include "gui/debugwindow.h"
 #include "gui/equipmentwindow.h"
@@ -36,13 +39,14 @@
 #include "gui/inventorywindow.h"
 #include "gui/minimap.h"
 #include "gui/npcdialog.h"
+#include "gui/partywindow.h"
 #include "gui/sdlinput.h"
 #include "gui/setup.h"
 #include "gui/setup_keyboard.h"
 #include "gui/shortcutwindow.h"
 #include "gui/skill.h"
 #include "gui/status.h"
-#include "gui/partywindow.h"
+#include "gui/viewport.h"
 
 #include "utils/gettext.h"
 #include "utils/stringutils.h"
@@ -390,6 +394,20 @@ void KeyboardConfig::keyPressed(gcn::KeyEvent &event)
 
     if (parseWindows(kd))
         return;
+    else if (keyMatch(KEY_HIDE_WINDOWS, kd))
+    {
+        statusWindow->setVisible(false);
+        inventoryWindow->setVisible(false);
+        skillDialog->setVisible(false);
+        setupWindow->setVisible(false);
+        equipmentWindow->setVisible(false);
+        helpWindow->setVisible(false);
+        debugWindow->setVisible(false);
+#ifdef TMWSERV_SUPPORT
+        guildWindow->setVisible(false);
+        buddyWindow->setVisible(false);
+#endif
+    }
     else if (parseMovement(kd, true))
         return;
     else if (keyMatch(KEY_TARGET, kd))
@@ -402,6 +420,37 @@ void KeyboardConfig::keyPressed(gcn::KeyEvent &event)
     else if (keyMatch(KEY_ATTACK, kd))
     {
         key_state |= KS_ATTACK;
+    }
+    else if (keyMatch(KEY_PICKUP, kd))
+    {
+        player_node->pickUp();
+    }
+    else if (keyMatch(KEY_SCREENSHOT, kd))
+    {
+        Game::saveScreenshot();
+    }
+    else if (keyMatch(KEY_PATHFIND, kd))
+    {
+        viewport->toggleDebugPath();
+    }
+    else if (keyMatch(KEY_TRADE, kd))
+    {
+        // Toggle accepting of incoming trade requests
+        unsigned int deflt = player_relations.getDefault();
+        if (deflt & PlayerRelation::TRADE)
+        {
+            localChatTab->chatLog(_("Ignoring incoming trade requests"),
+                        BY_SERVER);
+            deflt &= ~PlayerRelation::TRADE;
+        }
+        else
+        {
+            localChatTab->chatLog(_("Accepting incoming trade requests"),
+                        BY_SERVER);
+            deflt |= PlayerRelation::TRADE;
+        }
+
+        player_relations.setDefault(deflt);
     }
     else if (keyMatch(KEY_TOGGLE_CHAT, kd))
     {
@@ -436,6 +485,10 @@ void KeyboardConfig::keyPressed(gcn::KeyEvent &event)
             if (target && target->getType() == Being::NPC)
                 dynamic_cast<NPC*>(target)->talk();
         }
+    }
+    else if (keyMatch(KEY_QUIT, kd))
+    {
+        Game::quit();
     }
     // Otherwise, just print the key for now
     else

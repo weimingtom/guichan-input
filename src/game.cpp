@@ -362,7 +362,7 @@ Game::~Game()
     SDL_RemoveTimer(mSecondsCounterId);
 }
 
-static bool saveScreenshot()
+bool Game::saveScreenshot()
 {
     static unsigned int screenshotCount = 0;
 
@@ -511,4 +511,32 @@ void Game::handleInput()
             guiInput->pushInput(event);
         }
     }
+}
+
+void Game::quit()
+{
+#ifdef TMWSERV_SUPPORT
+    if (!quitDialog)
+    {
+        quitDialog = new QuitDialog(&done, &quitDialog);
+        quitDialog->requestMoveToTop();
+    }
+    else
+    {
+        quitDialog->action(gcn::ActionEvent(NULL, "cancel"));
+    }
+#else
+    if (!exitConfirm)
+    {
+        exitConfirm = new ConfirmDialog(_("Quit"),
+                                        _("Are you sure you "
+                                          "want to quit?"));
+        exitConfirm->addActionListener(&exitListener);
+        exitConfirm->requestMoveToTop();
+    }
+    else
+    {
+        exitConfirm->action(gcn::ActionEvent(NULL, _("no")));
+    }
+#endif
 }

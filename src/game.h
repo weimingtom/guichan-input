@@ -45,6 +45,10 @@ class Game : public ConfigListener
 
         void optionChanged(const std::string &name);
 
+        static bool saveScreenshot();
+
+        static void quit();
+
     private:
         /** Used to determine whether to draw the next frame. */
         int mDrawTime;

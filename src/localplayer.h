@@ -218,6 +218,8 @@ class LocalPlayer : public Player
 
         void splitItem(Item *item, int quantity);
 
+        void pickUp();
+
         void pickUp(FloorItem *item);
 
 #ifdef EATHENA_SUPPORT

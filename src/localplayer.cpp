@@ -24,6 +24,7 @@
 #include "configuration.h"
 #include "equipment.h"
 #include "flooritem.h"
+#include "flooritemmanager.h"
 #include "game.h"
 #include "graphics.h"
 #include "inventory.h"
@@ -381,6 +382,39 @@ void LocalPlayer::dropItem(Item *item, int quantity)
 void LocalPlayer::splitItem(Item *item, int quantity)
 {
     Net::getInventoryHandler()->splitItem(item, quantity);
+}
+
+void LocalPlayer::pickUp()
+{
+#ifdef TMWSERV_SUPPORT
+    Uint16 x = (int) getPosition().x / 32;
+    Uint16 y = (int) getPosition().y / 32;
+#else
+    Uint16 x = mX;
+    Uint16 y = mY;
+#endif
+    FloorItem *item = floorItemManager->findByCoordinates(x, y);
+
+    // If none below the player, try the tile in front
+    // of the player
+    if (!item)
+    {
+        // Temporary until tile-based picking is
+        // removed.
+        switch (getSpriteDirection())
+        {
+            case DIRECTION_UP   : --y; break;
+            case DIRECTION_DOWN : ++y; break;
+            case DIRECTION_LEFT : --x; break;
+            case DIRECTION_RIGHT: ++x; break;
+            default: break;
+        }
+
+        item = floorItemManager->findByCoordinates(x, y);
+    }
+
+    if (item)
+        pickUp(item);
 }
 
 void LocalPlayer::pickUp(FloorItem *item)
