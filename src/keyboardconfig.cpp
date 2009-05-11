@@ -30,9 +30,19 @@
 #include "npc.h"
 
 #include "gui/chat.h"
+#include "gui/debugwindow.h"
+#include "gui/equipmentwindow.h"
+#include "gui/help.h"
+#include "gui/inventorywindow.h"
+#include "gui/minimap.h"
 #include "gui/npcdialog.h"
 #include "gui/sdlinput.h"
+#include "gui/setup.h"
 #include "gui/setup_keyboard.h"
+#include "gui/shortcutwindow.h"
+#include "gui/skill.h"
+#include "gui/status.h"
+#include "gui/partywindow.h"
 
 #include "utils/gettext.h"
 #include "utils/stringutils.h"
@@ -378,7 +388,9 @@ void KeyboardConfig::keyPressed(gcn::KeyEvent &event)
 
     KeyData kd = keyConvert(event);
 
-    if (parseMovement(kd, true))
+    if (parseWindows(kd))
+        return;
+    else if (parseMovement(kd, true))
         return;
     else if (keyMatch(KEY_TARGET, kd))
     {
@@ -566,4 +578,55 @@ inline bool KeyboardConfig::parseTarget(KeyData kd, bool press)
         player_node->setTarget(target);
         lastTarget = currentTarget;
     }
+}
+
+inline bool KeyboardConfig::parseWindows(KeyData kd)
+{
+    gcn::Window *requestedWindow = NULL;
+
+    if (keyMatch(KEY_WINDOW_HELP, kd))
+        // Needs special handling
+        {
+            if (helpWindow->isVisible())
+                helpWindow->setVisible(false);
+            else
+            {
+                helpWindow->loadHelp("index");
+                helpWindow->requestMoveToTop();
+            }
+
+            return true;
+        }
+    else if (keyMatch(KEY_WINDOW_STATUS, kd))
+        requestedWindow = statusWindow;
+    else if (keyMatch(KEY_WINDOW_INVENTORY, kd))
+        requestedWindow = inventoryWindow;
+    else if (keyMatch(KEY_WINDOW_EQUIPMENT, kd))
+        requestedWindow = equipmentWindow;
+    else if (keyMatch(KEY_WINDOW_SKILL, kd))
+        requestedWindow = skillDialog;
+    else if (keyMatch(KEY_WINDOW_MINIMAP, kd))
+        requestedWindow = minimap;
+    else if (keyMatch(KEY_WINDOW_CHAT, kd))
+        requestedWindow = chatWindow;
+    else if (keyMatch(KEY_WINDOW_SHORTCUT, kd))
+        requestedWindow = itemShortcutWindow;
+    else if (keyMatch(KEY_WINDOW_SETUP, kd))
+        requestedWindow = setupWindow;
+    else if (keyMatch(KEY_WINDOW_DEBUG, kd))
+        requestedWindow = debugWindow;
+    else if (keyMatch(KEY_WINDOW_PARTY, kd))
+        requestedWindow = partyWindow;
+    else if (keyMatch(KEY_WINDOW_EMOTE_SHORTCUT, kd))
+        requestedWindow = emoteShortcutWindow;
+
+    if (requestedWindow)
+    {
+        requestedWindow->setVisible(!requestedWindow->isVisible());
+        if (requestedWindow->isVisible())
+            requestedWindow->requestMoveToTop();
+        return true;
+    }
+
+    return false;
 }
