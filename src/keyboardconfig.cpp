@@ -407,6 +407,22 @@ void KeyboardConfig::keyPressed(gcn::KeyEvent &event)
     {
         chatWindow->requestChatFocus();
     }
+    else if (keyMatch(KEY_SCROLL_CHAT_UP, kd))
+    {
+        chatWindow->scroll(-DEFAULT_CHAT_WINDOW_SCROLL);
+    }
+    else if (keyMatch(KEY_SCROLL_CHAT_DOWN, kd))
+    {
+        chatWindow->scroll(DEFAULT_CHAT_WINDOW_SCROLL);
+    }
+    else if (keyMatch(KEY_PREV_CHAT_TAB, kd))
+    {
+        chatWindow->prevTab();
+    }
+    else if (keyMatch(KEY_NEXT_CHAT_TAB, kd))
+    {
+        chatWindow->nextTab();
+    }
     else if (keyMatch(KEY_SIT, kd))
     {
         player_node->toggleSit();
