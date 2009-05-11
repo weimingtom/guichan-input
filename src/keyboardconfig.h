@@ -254,6 +254,8 @@ class KeyboardConfig : public gcn::KeyListener
         inline bool parseMovement(KeyData kd, bool press);
         inline bool parseTarget(KeyData kd, bool press);
         inline bool parseWindows(KeyData kd);
+        inline bool parseItemShortcut(KeyData kd);
+        inline bool parseEmoteShortcut(KeyData kd);
 };
 
 extern KeyboardConfig keyboard;

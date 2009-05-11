@@ -22,8 +22,10 @@
 #include "being.h"
 #include "beingmanager.h"
 #include "configuration.h"
+#include "emoteshortcut.h"
 #include "game.h"
 #include "guichanfwd.h"
+#include "itemshortcut.h"
 #include "keyboardconfig.h"
 #include "localplayer.h"
 #include "log.h"
@@ -452,6 +454,10 @@ void KeyboardConfig::keyPressed(gcn::KeyEvent &event)
 
         player_relations.setDefault(deflt);
     }
+    else if (parseItemShortcut(kd))
+        return;
+    else if (parseEmoteShortcut(kd))
+        return;
     else if (keyMatch(KEY_TOGGLE_CHAT, kd))
     {
         chatWindow->requestChatFocus();
@@ -695,6 +701,40 @@ inline bool KeyboardConfig::parseWindows(KeyData kd)
         if (requestedWindow->isVisible())
             requestedWindow->requestMoveToTop();
         return true;
+    }
+
+    return false;
+}
+
+inline bool KeyboardConfig::parseItemShortcut(KeyData kd)
+{
+    // Checks if any item shortcut is pressed.
+    for (int i = KEY_SHORTCUT_1;
+             i <= KEY_SHORTCUT_12;
+             i++)
+    {
+        if (keyMatch(i, kd))
+        {
+            itemShortcut->useItem(i - KEY_SHORTCUT_1);
+            return true;
+        }
+    }
+
+    return false;
+}
+
+inline bool KeyboardConfig::parseEmoteShortcut(KeyData kd)
+{
+    // Checks if any item shortcut is pressed.
+    for (int i = KEY_EMOTE_1;
+             i <= KEY_EMOTE_12;
+             i++)
+    {
+        if (keyMatch(i, kd))
+        {
+            emoteShortcut->useEmote(i - KEY_EMOTE_1);
+            return true;
+        }
     }
 
     return false;
