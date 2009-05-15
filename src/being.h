@@ -131,8 +131,7 @@ class Being : public Sprite, public ConfigListener
             NO_SPEECH = 0,
             TEXT_OVERHEAD,
             NO_NAME_IN_BUBBLE,
-            NAME_IN_BUBBLE,
-            NUM_SPEECH
+            NAME_IN_BUBBLE
         };
 
         enum AttackType
@@ -584,7 +583,7 @@ class Being : public Sprite, public ConfigListener
         Uint16 mStunMode;               /**< Stun mode; zero if not stunned */
         std::set<int> mStatusEffects;   /**< set of active status effects */
 
-        const gcn::Color* mNameColor;
+        const gcn::Color *mNameColor;
 
         std::vector<AnimatedSprite*> mSprites;
         std::vector<int> mSpriteIDs;

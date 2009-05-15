@@ -34,12 +34,7 @@ class Icon;
 class Avatar : public Container
 {
 public:
-    /**
-     * Constructor.
-     * @param name Character name
-     */
-    Avatar(const std::string &name);
-
+    Avatar();
     ~Avatar();
 
     /**
@@ -52,8 +47,16 @@ public:
      */
     void setOnline(bool online);
 
+    void setHp(int hp);
+
+    void setMaxHp(int maxHp);
+
 private:
+    void updateAvatarLabel();
+
     std::string mName;
+    int mHp;
+    int mMaxHp;
     Icon *mStatus;
     gcn::Label *mLabel;
 };

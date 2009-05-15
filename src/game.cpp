@@ -57,6 +57,7 @@
 #include "gui/ministatus.h"
 #include "gui/npcdialog.h"
 #include "gui/okdialog.h"
+#include "gui/outfitwindow.h"
 #include "gui/sdlinput.h"
 #include "gui/sell.h"
 #include "gui/setup.h"
@@ -87,6 +88,7 @@
 #include "utils/gettext.h"
 
 #include <guichan/exception.hpp>
+#include <guichan/focushandler.hpp>
 
 #include <fstream>
 #include <physfs.h>
@@ -137,6 +139,7 @@ HelpWindow *helpWindow;
 DebugWindow *debugWindow;
 ShortcutWindow *itemShortcutWindow;
 ShortcutWindow *emoteShortcutWindow;
+OutfitWindow *outfitWindow;
 
 BeingManager *beingManager = NULL;
 FloorItemManager *floorItemManager = NULL;
@@ -231,6 +234,7 @@ static void createGuiWindows()
                                             new ItemShortcutContainer);
     emoteShortcutWindow = new ShortcutWindow("EmoteShortcut",
                                              new EmoteShortcutContainer);
+    outfitWindow = new OutfitWindow();
 
     localChatTab = new ChatTab(_("General"));
 
@@ -276,6 +280,7 @@ static void destroyGuiWindows()
     delete itemShortcutWindow;
     delete emoteShortcutWindow;
     delete storageWindow;
+    delete outfitWindow;
 }
 
 Game::Game():

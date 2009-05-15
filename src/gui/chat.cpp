@@ -45,6 +45,8 @@
 #include <guichan/focushandler.hpp>
 #include <guichan/focuslistener.hpp>
 
+#include <sstream>
+
 /**
  * The chat input hides when it loses focus. It is also invisible by default.
  */
@@ -104,14 +106,6 @@ ChatWindow::ChatWindow():
 
     mReturnToggles = config.getValue("ReturnToggles", "0") == "1";
 
-#ifdef EATHENA_SUPPORT
-    // If the player had @assert on in the last session, ask the server to
-    // run the @assert command for the player again. Convenience for GMs.
-    if (config.getValue(player_node->getName() + "GMassert", 0)) {
-        std::string cmd = "@assert";
-        chatInput(cmd);
-    }
-#endif
     mRecorder = new Recorder(this);
 }
 
@@ -329,6 +323,7 @@ void ChatWindow::doPresent()
     }
 
     std::string cpc = strprintf(_("%d players are present."), playercount);
+    std::string log = _("Present: ") + response + std::string("; ") + cpc;
 
     if (mRecorder->isRecording())
     {
@@ -337,20 +332,20 @@ void ChatWindow::doPresent()
         time(&t);
 
         // Format the time string properly
-        std::stringstream timeStr;
+        std::ostringstream timeStr;
         timeStr << "[" << ((((t / 60) / 60) % 24 < 10) ? "0" : "")
             << (int) (((t / 60) / 60) % 24)
             << ":" << (((t / 60) % 60 < 10) ? "0" : "")
             << (int) ((t / 60) % 60)
             << "] ";
 
-        mRecorder->record(timeStr.str() + _("Present: ") + response + _("; ") + cpc);
+        mRecorder->record(timeStr.str() + log);
         getFocused()->chatLog(_("Attendance written to record log."),
                               BY_SERVER, true);
     }
     else
     {
-        getFocused()->chatLog(_("Present: ") + response + _("; ") + cpc, BY_SERVER);
+        getFocused()->chatLog(log, BY_SERVER);
     }
 }
 
@@ -360,7 +355,8 @@ void ChatWindow::scroll(int amount)
         return;
 
     ChatTab *tab = getFocused();
-    if (tab) tab->scroll(amount);
+    if (tab)
+        tab->scroll(amount);
 }
 
 void ChatWindow::keyPressed(gcn::KeyEvent &event)
@@ -398,16 +394,24 @@ void ChatWindow::keyPressed(gcn::KeyEvent &event)
     }
 }
 
-void ChatWindow::addInputText(std::string input_str)
+void ChatWindow::addInputText(const std::string &text)
 {
-     mChatInput->setText(mChatInput->getText() + input_str + " ");
-     requestChatFocus();
+    const int caretPos = mChatInput->getCaretPosition();
+    const std::string inputText = mChatInput->getText();
+
+    std::ostringstream ss;
+    ss << inputText.substr(0, caretPos) << text << " ";
+    ss << inputText.substr(caretPos);
+
+    mChatInput->setText(ss.str());
+    mChatInput->setCaretPosition(caretPos + text.length() + 1);
+    requestChatFocus();
 }
 
 void ChatWindow::addItemText(const std::string &item)
 {
     std::ostringstream text;
-    text << "[" << item << "] ";
+    text << "[" << item << "]";
     addInputText(text.str());
 }
 
@@ -482,7 +486,8 @@ ChatTab *ChatWindow::addWhisperTab(const std::string &nick, bool switchTo)
 
     ChatTab *ret = mWhispers[tempNick] = new WhisperTab(nick);
 
-    mChatTabs->setSelectedTab(ret);
+    if (switchTo)
+        mChatTabs->setSelectedTab(ret);
 
     return ret;
 }

@@ -154,8 +154,6 @@ class LocalPlayer : public Player
 
         virtual void logic();
 
-        virtual void setAction(Action action, int attackType = 0);
-
         /**
          * Adds a new step when walking before calling super. Also, when
          * specified it picks up an item at the end of a path.
@@ -187,7 +185,38 @@ class LocalPlayer : public Player
         void setInvItem(int index, int id, int amount);
 #endif
 
-        void pickUp();
+        /**
+         * Invite a player to join their party
+         */
+        void inviteToParty(const std::string &name);
+
+        /**
+         * Invite a player to join their party
+         */
+        void inviteToParty(Player *player);
+
+        /**
+         * Move the Inventory item from the old slot to the new slot.
+         */
+        void moveInvItem(Item *item, int newIndex);
+
+        /**
+         * Equips an item.
+         */
+        void equipItem(Item *item);
+
+        /**
+         * Unequips an item.
+         */
+        void unequipItem(Item *item);
+
+        void useItem(Item *item);
+
+        void dropItem(Item *item, int quantity);
+
+#ifdef TMWSERV_SUPPORT
+        void splitItem(Item *item, int quantity);
+#endif
 
         void pickUp(FloorItem *item);
 
@@ -204,10 +233,20 @@ class LocalPlayer : public Player
         int getAttackRange();
 
         /**
+         * Sents a trade request to the given being.
+         */
+        void trade(Being *being) const;
+
+        /**
+         * Accept or decline a trade offer
+         */
+        void tradeReply(bool accept);
+
+        /**
          * Returns true when the player is ready to accept a trade offer.
          * Returns false otherwise.
          */
-        bool tradeRequestOk() const { return !mTrading; }
+        bool tradeRequestOk() const;
 
         /**
          * Sets the trading state of the player, i.e. whether or not he is
@@ -225,9 +264,7 @@ class LocalPlayer : public Player
         /**
          * Triggers whether or not to show the name as a GM name.
          */
-        virtual void setGM(bool gm);
-
-        void setGMLevel(int level);
+        virtual void setGM();
 
         void stopAttack();
 
@@ -240,7 +277,7 @@ class LocalPlayer : public Player
          * @param damage the amount of damage dealt (0 means miss)
          * @param type the attack type
          */
-        //virtual void handleAttack(Being *victim, int damage, AttackType type) {}
+        virtual void handleAttack(Being *victim, int damage, AttackType type) {}
         virtual void handleAttack() {}
 
         /**
@@ -248,6 +285,7 @@ class LocalPlayer : public Player
          * currently targeted.
          */
         Being* getTarget() const;
+
 
         /**
          * Sets the target being of the player.
@@ -289,7 +327,10 @@ class LocalPlayer : public Player
          */
         void stopWalking(bool sendToServer = true);
 
-#ifdef TMWSERV_SUPPORT
+#ifdef EATHENA_SUPPORT
+        void raiseSkill(Uint16 skillId);
+#else
+
         /**
          * Uses a character point to raise an attribute
          */
@@ -303,6 +344,8 @@ class LocalPlayer : public Player
 
         void toggleSit();
         void emote(Uint8 emotion);
+
+        void revive();
 
         /**
          * Shows item pickup effect if the player is on a map.
@@ -431,10 +474,13 @@ class LocalPlayer : public Player
 
         bool mMapInitialized; /** Whether or not the map is available yet */
 
+        float mLastAttackTime; /**< Used to synchronize the charge dialog */
+
         const std::auto_ptr<Equipment> mEquipment;
 
     protected:
-        virtual void handleStatusEffect(StatusEffect *effect, int effectId);
+        virtual void
+        handleStatusEffect(StatusEffect *effect, int effectId);
 
         void walk(unsigned char dir);
 
@@ -461,8 +507,6 @@ class LocalPlayer : public Player
         int mMaxWeight;
         int mHp;
         int mMaxHp;
-
-        int mGMLevel;
 
         Being *mTarget;
         FloorItem *mPickUpTarget;
@@ -492,8 +536,7 @@ class LocalPlayer : public Player
         /**
          * Helper function for loading target cursors
          */
-        void loadTargetCursor(const std::string &filename,
-                              int width, int height,
+        void loadTargetCursor(std::string filename, int width, int height,
                               bool outRange, Being::TargetCursorSize size);
 
         /** Images of the target cursor. */

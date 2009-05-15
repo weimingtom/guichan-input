@@ -23,6 +23,9 @@
 
 #include "gui/widgets/chattab.h"
 
+#include "beingmanager.h"
+#include "player.h"
+
 #include "net/net.h"
 #include "net/partyhandler.h"
 
@@ -30,19 +33,31 @@
 #include "utils/gettext.h"
 #include "utils/stringutils.h"
 
-PartyWindow::PartyWindow() : Window(_("Party"))
+PartyMember::PartyMember():
+    avatar(new Avatar)
+{
+}
+
+PartyMember::~PartyMember()
+{
+    delete avatar;
+}
+
+
+PartyWindow::PartyWindow() :
+    Window(_("Party"))
 {
     setWindowName("Party");
     setVisible(false);
-    setResizable(false);
+    setSaveVisible(true);
+    setResizable(true);
     setSaveVisible(true);
     setCloseButton(true);
-    setMinWidth(110);
+    setMinWidth(120);
     setMinHeight(200);
-    setDefaultSize(620, 300, 110, 200);
+    setDefaultSize(590, 200, 150, 200);
 
     loadWindowState();
-    setVisible(false); // Do not start out visible
 }
 
 PartyWindow::~PartyWindow()
@@ -50,15 +65,19 @@ PartyWindow::~PartyWindow()
     delete_all(mMembers);
 }
 
-void PartyWindow::draw(gcn::Graphics *graphics)
+void PartyWindow::setPartyName(const std::string &name)
 {
-    Window::draw(graphics);
+    setCaption(strprintf(_("Party (%s)"), name.c_str()));
+}
+
+void PartyWindow::clearPartyName()
+{
+    setCaption(_("Party"));
 }
 
 PartyMember *PartyWindow::findMember(int id) const
 {
     PartyList::const_iterator it = mMembers.find(id);
-
     if (it == mMembers.end())
         return NULL;
     else
@@ -72,10 +91,10 @@ PartyMember *PartyWindow::findOrCreateMember(int id)
     if (!member)
     {
         member = new PartyMember;
-        member->avatar = new Avatar("");
         mMembers[id] = member;
-        add(member->avatar, 0, (mMembers.size() - 1) * 14);
     }
+
+    buildLayout();
 
     return member;
 }
@@ -100,34 +119,38 @@ int PartyWindow::findMember(const std::string &name) const
 void PartyWindow::updateMember(int id, const std::string &memberName,
                                bool leader, bool online)
 {
-    PartyMember *player = findOrCreateMember(id);
-    player->name = memberName;
-    player->leader = leader;
-    player->online = online;
-    player->avatar->setName(memberName);
-    player->avatar->setOnline(online);
+    PartyMember *member = findOrCreateMember(id);
+    member->name = memberName;
+    member->leader = leader;
+    member->online = online;
+    member->avatar->setName(memberName);
+    member->avatar->setOnline(online);
 
-    // show the window
-    if (mMembers.size() > 0)
-    {
-        setVisible(true);
-    }
+    Player *player = dynamic_cast<Player*>(beingManager->findBeing(id));
+    if (player && online)
+        player->setInParty(true);
+}
+
+void PartyWindow::updateMemberHP(int id, int hp, int maxhp)
+{
+    PartyMember *player = findOrCreateMember(id);
+    player->avatar->setHp(hp);
+    player->avatar->setMaxHp(maxhp);
 }
 
 void PartyWindow::removeMember(int id)
 {
     mMembers.erase(id);
 
-    // if no-one left, remove the party window
-    if (mMembers.size() < 1)
-    {
-        setVisible(false);
-    }
+    if (Player *player = dynamic_cast<Player*>(beingManager->findBeing(id)))
+        player->setInParty(false);
 }
 
 void PartyWindow::removeMember(const std::string &name)
 {
     removeMember(findMember(name));
+
+    buildLayout();
 }
 
 void PartyWindow::updateOnlne(int id, bool online)
@@ -189,9 +212,35 @@ void PartyWindow::action(const gcn::ActionEvent &event)
     }
 }
 
-void PartyWindow::clear()
+void clearMembersSub(const std::pair<int, PartyMember*> &p)
 {
-    Window::clear();
+    Player *player = dynamic_cast<Player*>(beingManager->findBeing(p.first));
+    if (player)
+        player->setInParty(false);
+}
 
+void PartyWindow::clearMembers()
+{
+    clearLayout();
+
+    std::for_each(mMembers.begin(), mMembers.end(), clearMembersSub);
+
+    delete_all(mMembers);
     mMembers.clear();
+}
+
+void PartyWindow::buildLayout()
+{
+    clearLayout();
+    int lastPos = 0;
+
+    PartyList::iterator it;
+    PartyMember *member;
+
+    for (it = mMembers.begin(); it != mMembers.end(); it++)
+    {
+        member = (*it).second;
+        add(member->avatar, 0, lastPos);
+        lastPos += member->avatar->getHeight() + 2;
+    }
 }

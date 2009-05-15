@@ -37,15 +37,18 @@
  * Party Member
  * Used for storing players in the party
  */
-struct PartyMember
+class PartyMember
 {
-    std::string name;
-    int health;
-    int healthMax;
-    bool leader;
-    bool online;
-    Avatar *avatar;
+    public:
+        PartyMember();
+        ~PartyMember();
+
+        std::string name;
+        bool leader;
+        bool online;
+        Avatar *avatar;
 };
+
 
 /**
  * Party window.
@@ -62,10 +65,9 @@ class PartyWindow : public Window, gcn::ActionListener
          */
         ~PartyWindow();
 
-        /**
-         * Draws the party window.
-         */
-        void draw(gcn::Graphics *graphics);
+        void setPartyName(const std::string &name);
+
+        void clearPartyName();
 
         /**
          * Find a party member based on ID. Returns NULL if not found.
@@ -83,6 +85,11 @@ class PartyWindow : public Window, gcn::ActionListener
          */
         void updateMember(int id, const std::string &memberName,
                           bool leader = false, bool online = true);
+
+        /**
+         * Update a member's HP and Max HP
+         */
+        void updateMemberHP(int id, int hp, int maxhp);
 
         /**
          * Remove party member with the given id.
@@ -110,13 +117,15 @@ class PartyWindow : public Window, gcn::ActionListener
          */
         void action(const gcn::ActionEvent &event);
 
-        void clear();
+        void clearMembers();
 
     private:
         /**
          * Find a party member based on ID. Creates if not found.
          */
         PartyMember *findOrCreateMember(int id);
+
+        void buildLayout();
 
         typedef std::map<int, PartyMember*> PartyList;
         PartyList mMembers;

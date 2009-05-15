@@ -34,6 +34,7 @@
 #include "net/chathandler.h"
 #include "net/maphandler.h"
 #include "net/net.h"
+#include "net/partyhandler.h"
 
 #include "utils/gettext.h"
 #include "utils/stringutils.h"
@@ -278,8 +279,9 @@ void CommandHandler::handleWhere(const std::string &args, ChatTab *tab)
 {
     std::ostringstream where;
     where << map_path << ", coordinates: " 
-          << (player_node->getPixelX() / 32)
-          << (player_node->getPixelY() / 32);
+          << (player_node->getPixelX() / 32) << ", "
+          << ((player_node->getPixelY() / 32) - 1); // Not real sure why we remove 1, 
+                                                    // but it makes it in sync with @where
     tab->chatLog(where.str(), BY_SERVER);
 }
 
@@ -368,7 +370,7 @@ void CommandHandler::handleListChannels(const std::string &args, ChatTab *tab)
 void CommandHandler::handleParty(const std::string &args, ChatTab *tab)
 {
     if (args != "")
-        player_node->inviteToParty(args);
+        Net::getPartyHandler()->invite(args);
     else
         tab->chatLog("Please specify a name.", BY_SERVER);
 }

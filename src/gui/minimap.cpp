@@ -61,14 +61,15 @@ Minimap::Minimap():
     setSticky(false);
 
     loadWindowState();
+    setVisible(mShow, isSticky());
 }
 
 Minimap::~Minimap()
 {
+    config.setValue(getWindowName() + "Show", mShow);
+
     if (mMapImage)
         mMapImage->decRef();
-
-    config.setValue(getWindowName() + "Show", mShow);
 }
 
 void Minimap::setMap(Map *map)
@@ -115,17 +116,20 @@ void Minimap::setMap(Map *map)
         setDefaultSize(getX(), getY(), getWidth(), getHeight());
         resetToDefaultSize();
 
-        setVisible(mShow);
+        if (mShow)
+            setVisible(true);
     }
     else
     {
-        setVisible(false);
+        if (!isSticky())
+            setVisible(false);
     }
 }
 
 void Minimap::toggle()
 {
-    setVisible(!isVisible(), true);
+    setVisible(!isVisible(), isSticky());
+    mShow = isVisible();
 }
 
 void Minimap::draw(gcn::Graphics *graphics)
@@ -177,6 +181,8 @@ void Minimap::draw(gcn::Graphics *graphics)
         {
             case Being::PLAYER:
                 {
+                    const Player *player = static_cast<const Player*>(being);
+
                     Palette::ColorType type = Palette::PC;
 
                     if (being == player_node)
@@ -184,9 +190,14 @@ void Minimap::draw(gcn::Graphics *graphics)
                         type = Palette::SELF;
                         dotSize = 3;
                     }
-
-                    if (static_cast<const Player*>(being)->isGM())
+                    else if (player->isGM())
+                    {
                         type = Palette::GM_NAME;
+                    }
+                    else if (player->isInParty())
+                    {
+                        type = Palette::PARTY;
+                    }
 
                     graphics->setColor(guiPalette->getColor(type));
                     break;

@@ -33,6 +33,9 @@
 #include "localplayer.h"
 #include "log.h"
 
+#include "net/net.h"
+#include "net/skillhandler.h"
+
 #include "utils/dtor.h"
 #include "utils/gettext.h"
 #include "utils/stringutils.h"
@@ -150,7 +153,7 @@ SkillDialog::SkillDialog():
     skillScrollArea->setHorizontalScrollPolicy(gcn::ScrollArea::SHOW_NEVER);
 
     place(0, 0, skillScrollArea, 5).setPadding(3);
-    place(0, 1, mPointsLabel, 2);
+    place(0, 1, mPointsLabel, 4);
     place(3, 2, mIncButton);
     place(4, 2, mUseButton);
 
@@ -173,7 +176,7 @@ void SkillDialog::action(const gcn::ActionEvent &event)
         // Increment skill
         int selectedSkill = mTable->getSelectedRow();
         if (selectedSkill >= 0)
-            player_node->raiseSkill(mSkillList[selectedSkill]->id);
+            Net::getSkillHandler()->up(mSkillList[selectedSkill]->id);
     }
     else if (event.getId() == "skill" && mTable->getSelectedRow() > -1)
     {

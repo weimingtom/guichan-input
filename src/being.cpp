@@ -123,7 +123,6 @@ Being::~Being()
 {
     mUsedTargetCursor = NULL;
     delete_all(mSprites);
-    clearPath();
 
     if (player_node && player_node->getTarget() == this)
         player_node->setTarget(NULL);
@@ -146,7 +145,7 @@ void Being::setPosition(const Vector &pos)
 
     if (mText)
         mText->adviseXY(mPx,
-                        mPy - getHeight() - mText->getHeight());
+                        mPy - getHeight() - mText->getHeight() - 6);
 }
 
 #ifdef EATHENA_SUPPORT
@@ -363,7 +362,7 @@ void Being::setSpeech(const std::string &text, int time)
     // Trim whitespace
     trim(mSpeech);
 
-    // check for links
+    // Check for links
     std::string::size_type start = mSpeech.find('[');
     std::string::size_type end = mSpeech.find(']', start);
 
@@ -397,8 +396,9 @@ void Being::setSpeech(const std::string &text, int time)
     if (!mSpeech.empty())
         mSpeechTime = time <= SPEECH_MAX_TIME ? time : SPEECH_MAX_TIME;
 
-    const int speech = (int) config.getValue("speech", NAME_IN_BUBBLE);
-    if (speech == TEXT_OVERHEAD) {
+    const int speech = (int) config.getValue("speech", TEXT_OVERHEAD);
+    if (speech == TEXT_OVERHEAD)
+    {
         if (mText)
             delete mText;
 
@@ -415,7 +415,7 @@ void Being::takeDamage(Being *attacker, int amount, AttackType type)
     gcn::Font *font;
     std::string damage = amount ? toString(amount) : type == FLEE ?
             "dodge" : "miss";
-    const gcn::Color* color;
+    const gcn::Color *color;
 
     font = gui->getInfoParticleFont();
 
@@ -776,7 +776,7 @@ void Being::drawSpeech(int offsetX, int offsetY)
 {
     const int px = mPx - offsetX;
     const int py = mPy - offsetY;
-    const int speech = (int) config.getValue("speech", NAME_IN_BUBBLE);
+    const int speech = (int) config.getValue("speech", TEXT_OVERHEAD);
 
     // Draw speech above this being
     if (mSpeechTime == 0)

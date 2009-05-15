@@ -23,8 +23,7 @@
 
 #include "configuration.h"
 #include "equipment.h"
-#include "flooritem.h"
-#include "flooritemmanager.h"
+#include "floor_item.h"
 #include "game.h"
 #include "graphics.h"
 #include "inventory.h"
@@ -81,6 +80,13 @@ LocalPlayer *player_node = NULL;
 LocalPlayer::LocalPlayer():
     Player(65535, 0, NULL),
     mEquipment(new Equipment),
+    mAttributeBase(NB_CHARACTER_ATTRIBUTES, -1),
+    mAttributeEffective(NB_CHARACTER_ATTRIBUTES, -1),
+    mExpCurrent(CHAR_SKILL_NB, -1),
+    mExpNext(CHAR_SKILL_NB, -1),
+    mCharacterPoints(-1),
+    mCorrectionPoints(-1),
+    mLevelProgress(0),
 #else
 LocalPlayer::LocalPlayer(int id, int job, Map *map):
     Player(id, job, map),
@@ -95,39 +101,26 @@ LocalPlayer::LocalPlayer(int id, int job, Map *map):
     mStatPoint(0), mSkillPoint(0),
     mStatsPointsToAttribute(0),
     mEquipment(new Equipment),
-#endif
-    mInStorage(false),
-#ifdef EATHENA_SUPPORT
     mXp(0),
     mTargetTime(-1),
 #endif
     mLastTarget(-1),
-#ifdef TMWSERV_SUPPORT
-    mAttributeBase(NB_CHARACTER_ATTRIBUTES, -1),
-    mAttributeEffective(NB_CHARACTER_ATTRIBUTES, -1),
-    mExpCurrent(CHAR_SKILL_NB, -1),
-    mExpNext(CHAR_SKILL_NB, -1),
-    mCharacterPoints(-1),
-    mCorrectionPoints(-1),
-    mLevelProgress(0),
-#endif
+    mInStorage(false),
     mLevel(1),
     mMoney(0),
     mTotalWeight(1), mMaxWeight(1),
     mHp(1), mMaxHp(1),
     mTarget(NULL), mPickUpTarget(NULL),
-    mTrading(false), mGoingToTarget(false), mKeepAttacking(false),
+    mTrading(false), mGoingToTarget(false),
     mLastAction(-1),
     mWalkingDir(0),
     mDestX(0), mDestY(0),
     mInventory(new Inventory(INVENTORY_SIZE)),
 #ifdef TMWSERV_SUPPORT
     mLocalWalkTime(-1),
+    mExpMessageTime(0),
 #endif
     mStorage(new Inventory(STORAGE_SIZE))
-#ifdef TMWSERV_SUPPORT
-    , mExpMessageTime(0)
-#endif
 {
     // Variable to keep the local player from doing certain actions before a map
     // is initialized. e.g. drawing a player's name using the TextManager, since
@@ -226,28 +219,14 @@ void LocalPlayer::logic()
     Player::logic();
 }
 
-void LocalPlayer::setAction(Action action, int attackType)
+void LocalPlayer::setGM()
 {
-    if (action == DEAD)
-    {
-        mLastTarget = -1;
-        setTarget(NULL);
-    }
-
-    Player::setAction(action, attackType);
-}
-
-void LocalPlayer::setGM(bool gm)
-{
-    mIsGM = gm;
-}
-
-void LocalPlayer::setGMLevel(int level)
-{
-    mGMLevel = level;
-
-    if (level > 0)
-        setGM(true);
+    mIsGM = !mIsGM;
+    mNameColor = mIsGM ?
+            &guiPalette->getColor(Palette::GM) :
+            &guiPalette->getColor(Palette::PLAYER);
+    setName(getName());
+    config.setValue(getName() + "GMassert", mIsGM);
 }
 
 void LocalPlayer::setName(const std::string &name)
@@ -340,38 +319,67 @@ void LocalPlayer::setInvItem(int index, int id, int amount)
 
 #endif
 
-void LocalPlayer::pickUp()
+void LocalPlayer::inviteToParty(const std::string &name)
 {
-#ifdef TMWSERV_SUPPORT
-    Uint16 x = (int) getPosition().x / 32;
-    Uint16 y = (int) getPosition().y / 32;
-#else
-    Uint16 x = mX;
-    Uint16 y = mY;
-#endif
-    FloorItem *item = floorItemManager->findByCoordinates(x, y);
-
-    // If none below the player, try the tile in front
-    // of the player
-    if (!item)
-    {
-        // Temporary until tile-based picking is
-        // removed.
-        switch (getSpriteDirection())
-        {
-            case DIRECTION_UP   : --y; break;
-            case DIRECTION_DOWN : ++y; break;
-            case DIRECTION_LEFT : --x; break;
-            case DIRECTION_RIGHT: ++x; break;
-            default: break;
-        }
-
-        item = floorItemManager->findByCoordinates(x, y);
-    }
-
-    if (item)
-        pickUp(item);
+    Net::getPartyHandler()->invite(name);
 }
+
+void LocalPlayer::inviteToParty(Player *player)
+{
+    Net::getPartyHandler()->invite(player);
+}
+
+void LocalPlayer::moveInvItem(Item *item, int newIndex)
+{
+    // special case, the old and new cannot copy over each other.
+    if (item->getInvIndex() == newIndex)
+        return;
+
+#ifdef TMWSERV_SUPPORT
+    Net::GameServer::Player::moveItem(
+        item->getInvIndex(), newIndex, item->getQuantity());
+#endif
+    // TODO: eAthena support
+}
+
+void LocalPlayer::equipItem(Item *item)
+{
+    Net::getInventoryHandler()->equipItem(item);
+}
+
+void LocalPlayer::unequipItem(Item *item)
+{
+    Net::getInventoryHandler()->unequipItem(item);
+
+    // Tidy equipment directly to avoid weapon still shown bug, for instance
+#ifdef TMWSERV_SUPPORT
+    mEquipment->setEquipment(item->getInvIndex(), 0);
+#else
+    mEquipment->removeEquipment(item->getInvIndex());
+#endif
+}
+
+void LocalPlayer::useItem(Item *item)
+{
+    Net::getInventoryHandler()->useItem(item);
+}
+
+void LocalPlayer::dropItem(Item *item, int quantity)
+{
+    Net::getInventoryHandler()->dropItem(item, quantity);
+}
+
+#ifdef TMWSERV_SUPPORT
+void LocalPlayer::splitItem(Item *item, int quantity)
+{
+    int newIndex = mInventory->getFreeSlot();
+    if (newIndex > Inventory::NO_SLOT_INDEX)
+    {
+        Net::GameServer::Player::moveItem(
+            item->getInvIndex(), newIndex, quantity);
+    }
+}
+#endif
 
 void LocalPlayer::pickUp(FloorItem *item)
 {
@@ -502,7 +510,7 @@ void LocalPlayer::walk(unsigned char dir)
     }
 }
 
-Being *LocalPlayer::getTarget() const
+Being* LocalPlayer::getTarget() const
 {
     return mTarget;
 }
@@ -516,7 +524,7 @@ void LocalPlayer::setTarget(Being *target)
     mLastTarget = tick_time;
 
     if (target == mTarget)
-        return;
+        target = NULL;
 
     if (target || mAction == ATTACK)
     {
@@ -577,8 +585,6 @@ void LocalPlayer::setDestination(Uint16 x, Uint16 y)
     }
 
     mPickUpTarget = NULL;
-    mKeepAttacking = false;
-
     Being::setDestination(x, y);
 }
 
@@ -607,13 +613,22 @@ void LocalPlayer::stopWalking(bool sendToServer)
         Being::setDestination(getPosition().x,getPosition().y);
         if (sendToServer)
             Net::getPlayerHandler()->setDestination(getPosition().x,
-                                                    getPosition().y,
-                                                    mDirection);
+                                                getPosition().y , mDirection);
         setAction(STAND);
     }
 
     clearPath();
 }
+
+#ifdef EATHENA_SUPPORT
+void LocalPlayer::raiseSkill(Uint16 skillId)
+{
+    if (mSkillPoint <= 0)
+        return;
+
+    Net::getSkillHandler()->up(skillId);
+}
+#endif
 
 void LocalPlayer::toggleSit()
 {
@@ -639,6 +654,24 @@ void LocalPlayer::emote(Uint8 emotion)
     mLastAction = tick_time;
 
     Net::getPlayerHandler()->emote(emotion);
+}
+
+void LocalPlayer::tradeReply(bool accept)
+{
+    if (!accept)
+        mTrading = false;
+
+    Net::getTradeHandler()->respond(accept);
+}
+
+void LocalPlayer::trade(Being *being) const
+{
+    Net::getTradeHandler()->request(being);
+}
+
+bool LocalPlayer::tradeRequestOk() const
+{
+    return !mTrading;
 }
 
 #ifdef TMWSERV_SUPPORT
@@ -707,7 +740,7 @@ void LocalPlayer::attack(Being *target, bool keep)
     if (!target || target->getType() == Being::NPC)
         return;
 
-    if (mTarget != target || !mTarget)
+    if ((mTarget != target) || !mTarget)
     {
         mLastTarget = -1;
         setTarget(target);
@@ -717,8 +750,7 @@ void LocalPlayer::attack(Being *target, bool keep)
     int dist_y = target->mY - mY;
 
     // Must be standing to attack
-    if (mAction != STAND)
-        return;
+    if (mAction != STAND) return;
 
     if (abs(dist_y) >= abs(dist_x))
     {
@@ -768,6 +800,11 @@ void LocalPlayer::stopAttack()
     }
     setTarget(NULL);
     mLastTarget = -1;
+}
+
+void LocalPlayer::revive()
+{
+    Net::getPlayerHandler()->respawn();
 }
 
 #ifdef TMWSERV_SUPPORT
@@ -868,7 +905,7 @@ void LocalPlayer::pickedUp(const std::string &item)
                 getPixelX() + 16,
                 getPixelY() - 16,
                 &guiPalette->getColor(Palette::PICKUP_INFO),
-                gui->getInfoParticleFont(), true);
+                gui->getInfoParticleFont (), true);
     }
 }
 
@@ -931,8 +968,9 @@ void LocalPlayer::handleStatusEffect(StatusEffect *effect, int effectId)
 {
     Being::handleStatusEffect(effect, effectId);
 
-    if (effect)
-    {
+
+
+    if (effect) {
         effect->deliverMessage();
         effect->playSFX();
 
@@ -982,8 +1020,7 @@ void LocalPlayer::initTargetCursor()
                      true, TC_LARGE);
 }
 
-void LocalPlayer::loadTargetCursor(const std::string &filename,
-                                   int width, int height,
+void LocalPlayer::loadTargetCursor(std::string filename, int width, int height,
                                    bool outRange, TargetCursorSize size)
 {
     assert(size > -1);

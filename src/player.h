@@ -67,7 +67,7 @@ class Player : public Being
         /**
          * Triggers whether or not to show the name as a GM name.
          */
-        virtual void setGM() { mIsGM = true; }
+        virtual void setGM(bool gm);
 
         /**
          * Sets the hair style and color for this player.
@@ -105,12 +105,12 @@ class Player : public Being
         /**
          * Returns a pointer to the specified guild.
          */
-        Guild *getGuild(const std::string &guildName);
+        Guild *getGuild(const std::string &guildName) const;
 
         /**
          * Returns a pointer to the guild with matching id.
          */
-        Guild *getGuild(int id);
+        Guild *getGuild(int id) const;
 
         /**
          * Get number of guilds the player belongs to.
@@ -120,14 +120,13 @@ class Player : public Being
 #endif
 
         /**
-         * Set the player in party
+         * Set whether the player in the LocalPlayer's party. Players that are
+         * in the same party as the local player get their name displayed in
+         * a different color.
          */
-        void setInParty(bool value);
+        void setInParty(bool inParty);
 
-        /**
-         * Returns whether player is in the party
-         */
-        bool getInParty() const { return mInParty; }
+        bool isInParty() const { return mInParty; }
 
         /**
          * Gets the way the character is blocked by other objects.
@@ -138,7 +137,6 @@ class Player : public Being
         /**
          * Called when a option (set with config.addListener()) is changed
          */
-
         void optionChanged(const std::string &value);
 
     protected:
@@ -155,6 +153,7 @@ class Player : public Being
         std::map<int, Guild*> mGuilds;
 #endif
 
+        bool mShowName;
         FlashText *mName;
 
         bool mIsGM;

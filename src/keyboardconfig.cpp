@@ -41,6 +41,7 @@
 #include "gui/inventorywindow.h"
 #include "gui/minimap.h"
 #include "gui/npcdialog.h"
+#include "gui/outfitwindow.h"
 #include "gui/partywindow.h"
 #include "gui/sdlinput.h"
 #include "gui/setup.h"
@@ -114,6 +115,7 @@ static KeyDefault const keyData[KeyboardConfig::KEY_TOTAL] = {
     {"keyWindowDebug", Key::F10, 0, _("Debug Window")},
     {"keyWindowParty", Key::F11, 0, _("Party Window")},
     {"keyWindowEmoteBar", Key::F12, 0, _("Emote Shortcut Window")},
+    {"keyWindowOutfit", 'o', 0, _("Outfit Shortcut Window")},
     {"keyEmoteShortcut1", '1', KEY_MASK_ALT, strprintf(_("Emote Shortcut %d"), 1)},
     {"keyEmoteShortcut2", '2', KEY_MASK_ALT, strprintf(_("Emote Shortcut %d"), 2)},
     {"keyEmoteShortcut3", '3', KEY_MASK_ALT, strprintf(_("Emote Shortcut %d"), 3)},
@@ -409,6 +411,7 @@ void KeyboardConfig::keyPressed(gcn::KeyEvent &event)
         guildWindow->setVisible(false);
         buddyWindow->setVisible(false);
 #endif
+        outfitWindow->setVisible(false);
     }
     else if (parseMovement(kd, true))
         return;
@@ -694,6 +697,8 @@ inline bool KeyboardConfig::parseWindows(KeyData kd)
         requestedWindow = partyWindow;
     else if (keyMatch(KEY_WINDOW_EMOTE_SHORTCUT, kd))
         requestedWindow = emoteShortcutWindow;
+    else if (keyMatch(KEY_WINDOW_OUTFIT, kd))
+        requestedWindow = outfitWindow;
 
     if (requestedWindow)
     {

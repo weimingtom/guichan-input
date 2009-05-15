@@ -44,6 +44,7 @@ Player::Player(int id, int job, Map *map):
     mIsGM(false),
     mInParty(false)
 {
+    mShowName = config.getValue("visiblenames", 1);
     config.addListener("visiblenames", this);
 }
 
@@ -55,29 +56,36 @@ Player::~Player()
 
 void Player::setName(const std::string &name)
 {
-    if (!mName)
+    if (!mName && mShowName)
     {
-        if (mIsGM)
+        mNameColor = &guiPalette->getColor(Palette::PLAYER);
+
+        const gcn::Color *color;
+        if (this == player_node)
+        {
+            color = &guiPalette->getColor(Palette::SELF);
+        }
+        else if (mIsGM)
         {
             mNameColor = &guiPalette->getColor(Palette::GM);
-            mName = new FlashText("(GM) " + name,
-                                  getPixelX(),
-                                  getPixelY(),
-                                  gcn::Graphics::CENTER,
-                                  &guiPalette->getColor(Palette::GM_NAME));
+            color = &guiPalette->getColor(Palette::GM_NAME);
+        }
+        else if (mInParty)
+        {
+            color = &guiPalette->getColor(Palette::PARTY);
         }
         else
         {
-            mNameColor = &guiPalette->getColor(Palette::PLAYER);
-            mName = new FlashText(name,
-                                  getPixelX(),
-                                  getPixelY(),
-                                  gcn::Graphics::CENTER,
-                                  (this == player_node) ?
-                                  &guiPalette->getColor(Palette::SELF) :
-                                  &guiPalette->getColor(Palette::PC));
+            color = &guiPalette->getColor(Palette::PC);
         }
+
+        mName = new FlashText(name,
+                              getPixelX(),
+                              getPixelY(),
+                              gcn::Graphics::CENTER,
+                              color);
     }
+
     Being::setName(name);
 }
 
@@ -173,6 +181,14 @@ void Player::setGender(Gender gender)
     }
 }
 
+void Player::setGM(bool gm)
+{
+    mIsGM = gm;
+
+    if (gm && mName)
+        mName->setColor(&guiPalette->getColor(Palette::GM));
+}
+
 void Player::setHairStyle(int style, int color)
 {
     style = style < 0 ? mHairStyle : style % mNumberOfHairstyles;
@@ -252,9 +268,9 @@ void Player::removeGuild(int id)
     mGuilds.erase(id);
 }
 
-Guild* Player::getGuild(const std::string &guildName)
+Guild *Player::getGuild(const std::string &guildName) const
 {
-    std::map<int, Guild*>::iterator itr, itr_end = mGuilds.end();
+    std::map<int, Guild*>::const_iterator itr, itr_end = mGuilds.end();
     for (itr = mGuilds.begin(); itr != itr_end; ++itr)
     {
         Guild *guild = itr->second;
@@ -267,9 +283,9 @@ Guild* Player::getGuild(const std::string &guildName)
     return NULL;
 }
 
-Guild* Player::getGuild(int id)
+Guild *Player::getGuild(int id) const
 {
-    std::map<int, Guild*>::iterator itr;
+    std::map<int, Guild*>::const_iterator itr;
     itr = mGuilds.find(id);
     if (itr != mGuilds.end())
     {
@@ -286,22 +302,28 @@ short Player::getNumberOfGuilds()
 
 #endif
 
-void Player::setInParty(bool value)
+void Player::setInParty(bool inParty)
 {
-    mInParty = value;
+    mInParty = inParty;
+
+    if (this != player_node && mName)
+    {
+        Palette::ColorType colorType = mInParty ? Palette::PARTY : Palette::PC;
+        mName->setColor(&guiPalette->getColor(colorType));
+    }
 }
 
 void Player::optionChanged(const std::string &value)
 {
     if (value == "visiblenames" && getType() == Being::PLAYER && player_node != this)
     {
-        bool value = config.getValue("visiblenames", 1);
-        if (!value && mName)
+        mShowName = config.getValue("visiblenames", 1);
+        if (!mShowName && mName)
         {
             delete mName;
             mName = NULL;
         }
-        else if (value && !mName && !(getName().empty()))
+        else if (mShowName && !mName && !(getName().empty()))
         {
             setName(getName());
         }

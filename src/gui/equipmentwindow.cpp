@@ -33,6 +33,9 @@
 #include "item.h"
 #include "localplayer.h"
 
+#include "net/inventoryhandler.h"
+#include "net/net.h"
+
 #include "resources/image.h"
 #include "resources/iteminfo.h"
 #include "resources/resourcemanager.h"
@@ -84,13 +87,14 @@ EquipmentWindow::EquipmentWindow():
     setDefaultSize(180, 300, ImageRect::CENTER);
     loadWindowState();
 
-    gcn::Button *unequip = new Button(_("Unequip"), "unequip", this);
-    gcn::Rectangle const &area = getChildrenArea();
-    unequip->setPosition(area.width  - unequip->getWidth() - 5,
-                         area.height - unequip->getHeight() - 5);
+    mUnequip = new Button(_("Unequip"), "unequip", this);
+    const gcn::Rectangle &area = getChildrenArea();
+    mUnequip->setPosition(area.width  - mUnequip->getWidth() - 5,
+                          area.height - mUnequip->getHeight() - 5);
+    mUnequip->setEnabled(false);
 
     add(playerBox);
-    add(unequip);
+    add(mUnequip);
 
     for (int i = 0; i < EQUIP_VECTOREND; i++)
     {
@@ -175,12 +179,12 @@ void EquipmentWindow::action(const gcn::ActionEvent &event)
                      mInventory->getItem(mEquipment->getEquipment(mSelected)) :
                      mInventory->getItem(mEquipment->getArrows());
 #endif
-        player_node->unequipItem(item);
-        mSelected = -1;
+        Net::getInventoryHandler()->unequipItem(item);
+        setSelected(-1);
     }
 }
 
-Item* EquipmentWindow::getItem(int x, int y) const
+Item *EquipmentWindow::getItem(int x, int y) const
 {
     for (int i = 0; i < EQUIP_VECTOREND; i++)
     {
@@ -224,7 +228,7 @@ void EquipmentWindow::mousePressed(gcn::MouseEvent& mouseEvent)
                                  BOX_WIDTH, BOX_HEIGHT);
 
             if (tRect.isPointInRect(x, y) && item)
-                mSelected = i;
+                setSelected(i);
         }
     }
     else if (mouseEvent.getButton() == gcn::MouseEvent::RIGHT)
@@ -267,4 +271,10 @@ void EquipmentWindow::mouseMoved(gcn::MouseEvent &event)
 void EquipmentWindow::mouseExited(gcn::MouseEvent &event)
 {
     mItemPopup->setVisible(false);
+}
+
+void EquipmentWindow::setSelected(int index)
+{
+    mSelected = index;
+    mUnequip->setEnabled(mSelected != -1);
 }

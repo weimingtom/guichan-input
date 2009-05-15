@@ -54,6 +54,8 @@ class NpcDialog : public Window, public gcn::ActionListener,
          */
         NpcDialog();
 
+        ~NpcDialog();
+
         /**
          * Called when receiving actions from the widgets.
          */
@@ -138,6 +140,8 @@ class NpcDialog : public Window, public gcn::ActionListener,
          * Requests a interger from the user.
          */
         void integerRequest(int defaultValue = 0, int min = 0, int max = 2000);
+
+        void move(int amount);
 
         /**
          * Called when resizing the window.

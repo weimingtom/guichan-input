@@ -65,6 +65,8 @@ StorageWindow::StorageWindow(int invSize):
     mStoreButton = new Button(_("Store"), "store", this);
     mRetrieveButton = new Button(_("Retrieve"), "retrieve", this);
 
+    mCloseButton = new Button(_("Close"), "close", this);
+
     mItems = new ItemContainer(player_node->getStorage(), true);
     mItems->addSelectionListener(this);
 
@@ -75,7 +77,7 @@ StorageWindow::StorageWindow(int invSize):
 
     mSlotsLabel = new Label(_("Slots: "));
 
-    mSlotsBar = new ProgressBar(1.0f, 100, 20, gcn::Color(225, 200, 25));
+    mSlotsBar = new ProgressBar(0.0f, 100, 20, gcn::Color(225, 200, 25));
     mSlotsBar->setText(strprintf("%d/%d", mUsedSlots, mMaxSlots));
     mSlotsBar->setProgress((float) mUsedSlots / mMaxSlots);
 
@@ -85,8 +87,9 @@ StorageWindow::StorageWindow(int invSize):
     place(0, 0, mSlotsLabel).setPadding(3);
     place(1, 0, mSlotsBar, 3);
     place(0, 1, invenScroll, 4, 4);
-    place(2, 5, mStoreButton);
-    place(3, 5, mRetrieveButton);
+    place(0, 5, mStoreButton);
+    place(1, 5, mRetrieveButton);
+    place(3, 5, mCloseButton);
 
     Layout &layout = getLayout();
     layout.setRowHeight(0, mStoreButton->getHeight());
@@ -139,6 +142,10 @@ void StorageWindow::action(const gcn::ActionEvent &event)
 
         ItemAmountWindow::showWindow(ItemAmountWindow::StoreRemove, this,
                                      item);
+    }
+    else if (event.getId() == "close")
+    {
+        close();
     }
 }
 

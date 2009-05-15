@@ -22,12 +22,12 @@
 #include "gui/npcdialog.h"
 
 #include "gui/widgets/button.h"
+#include "gui/widgets/inttextfield.h"
 #include "gui/widgets/layout.h"
+#include "gui/widgets/listbox.h"
 #include "gui/widgets/scrollarea.h"
 #include "gui/widgets/textbox.h"
-#include "gui/widgets/listbox.h"
 #include "gui/widgets/textfield.h"
-#include "gui/widgets/inttextfield.h"
 
 #include "npc.h"
 
@@ -91,8 +91,8 @@ NpcDialog::NpcDialog()
     mButton = new Button("", "ok", this);
 
     //Setup more and less buttons (int input)
-    mPlusButton = new Button(_("+"), "plus", this);
-    mMinusButton = new Button(_("-"), "minus", this);
+    mPlusButton = new Button("+", "plus", this);
+    mMinusButton = new Button("-", "minus", this);
 
     int width = std::max(mButton->getFont()->getWidth(CAPTION_WAITING),
                          mButton->getFont()->getWidth(CAPTION_NEXT));
@@ -110,6 +110,16 @@ NpcDialog::NpcDialog()
     loadWindowState();
 }
 
+NpcDialog::~NpcDialog()
+{
+    // These might not actually be in the layout, so lets be safe
+    delete mItemList;
+    delete mTextField;
+    delete mIntField;
+    delete mResetButton;
+    delete mPlusButton;
+    delete mMinusButton;
+}
 
 void NpcDialog::setText(const std::string &text)
 {
@@ -269,6 +279,25 @@ void NpcDialog::integerRequest(int defaultValue, int min, int max)
     mIntField->setRange(min, max);
     mIntField->setValue(defaultValue);
     buildLayout();
+}
+
+void NpcDialog::move(int amount)
+{
+    if (mActionState != NPC_ACTION_INPUT)
+        return;
+
+    switch (mInputState)
+    {
+        case NPC_INPUT_INTEGER:
+            mIntField->setValue(mIntField->getValue() + amount);
+            break;
+        case NPC_INPUT_LIST:
+            mItemList->setSelected(mItemList->getSelected() - amount);
+            break;
+        case NPC_INPUT_NONE:
+        case NPC_INPUT_STRING:
+            break;
+    }
 }
 
 void NpcDialog::widgetResized(const gcn::Event &event)

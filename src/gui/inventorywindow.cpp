@@ -79,6 +79,7 @@ InventoryWindow::InventoryWindow(int invSize):
     mUseButton = new Button(longestUseString, "use", this);
     mDropButton = new Button(_("Drop"), "drop", this);
     mSplitButton = new Button(_("Split"), "split", this);
+    mOutfitButton = new Button(_("Outfits"), "outfit", this);
     mItems = new ItemContainer(player_node->getInventory());
     mItems->addSelectionListener(this);
 
@@ -92,8 +93,8 @@ InventoryWindow::InventoryWindow(int invSize):
     mSlotsLabel = new Label(_("Slots:"));
     mWeightLabel = new Label(_("Weight:"));
 
-    mSlotsBar = new ProgressBar(1.0f, 100, 20, gcn::Color(225, 200, 25));
-    mWeightBar = new ProgressBar(1.0f, 100, 20, gcn::Color(0, 0, 255));
+    mSlotsBar = new ProgressBar(0.0f, 100, 20, gcn::Color(225, 200, 25));
+    mWeightBar = new ProgressBar(0.0f, 100, 20, gcn::Color(0, 0, 255));
 
     place(0, 0, mWeightLabel).setPadding(3);
     place(1, 0, mWeightBar, 3);
@@ -103,6 +104,7 @@ InventoryWindow::InventoryWindow(int invSize):
     place(0, 2, mUseButton);
     place(1, 2, mDropButton);
     place(2, 2, mSplitButton);
+    place(6, 2, mOutfitButton);
 
     Layout &layout = getLayout();
     layout.setRowHeight(1, Layout::AUTO_SET);
@@ -156,6 +158,16 @@ void InventoryWindow::logic()
 
 void InventoryWindow::action(const gcn::ActionEvent &event)
 {
+    if (event.getId() == "outfit")
+    {
+        extern Window *outfitWindow;
+        outfitWindow->setVisible(!outfitWindow->isVisible());
+        if (outfitWindow->isVisible())
+        {
+            outfitWindow->requestMoveToTop();
+        }
+    }
+
     Item *item = mItems->getSelectedItem();
 
     if (!item)
@@ -163,15 +175,15 @@ void InventoryWindow::action(const gcn::ActionEvent &event)
 
     if (event.getId() == "use")
     {
-        if (item->isEquipment()) 
+        if (item->isEquipment())
         {
             if (item->isEquipped())
-                player_node->unequipItem(item);
+                Net::getInventoryHandler()->unequipItem(item);
             else
-                player_node->equipItem(item);
+                Net::getInventoryHandler()->equipItem(item);
         }
         else
-            player_node->useItem(item);
+            Net::getInventoryHandler()->useItem(item);
     }
     else if (event.getId() == "drop")
     {
@@ -184,7 +196,7 @@ void InventoryWindow::action(const gcn::ActionEvent &event)
     }
 }
 
-Item* InventoryWindow::getSelectedItem() const
+Item *InventoryWindow::getSelectedItem() const
 {
     return mItems->getSelectedItem();
 }
@@ -258,10 +270,10 @@ void InventoryWindow::updateButtons()
         mDropButton->setEnabled(false);
         return;
     }
-    
+
     mUseButton->setEnabled(true);
     mDropButton->setEnabled(true);
-        
+
     if (selectedItem->isEquipment())
     {
         if (selectedItem->isEquipped())

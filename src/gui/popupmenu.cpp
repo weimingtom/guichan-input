@@ -40,6 +40,8 @@
 #include "net/adminhandler.h"
 #include "net/inventoryhandler.h"
 #include "net/net.h"
+#include "net/partyhandler.h"
+#include "net/tradehandler.h"
 
 #include "resources/itemdb.h"
 #include "resources/iteminfo.h"
@@ -110,12 +112,17 @@ void PopupMenu::showPopup(int x, int y, Being *being)
 
                 //mBrowserBox->addRow(_(strprintf("@@follow|Follow %s@@"), name.c_str()));
                 //mBrowserBox->addRow(_("@@buddy|Add ") + name + " to Buddy List@@");
+#ifdef TMWSERV_SUPPORT
                 mBrowserBox->addRow(strprintf(_("@@guild|Invite %s to join your guild@@"), name.c_str()));
-                mBrowserBox->addRow(strprintf(_("@@party|Invite %s to join your party@@"), name.c_str()));
+#endif
+                if (player_node->isInParty())
+                    mBrowserBox->addRow(strprintf(_("@@party|Invite %s to join your party@@"), name.c_str()));
 
-                /*
-                mBrowserBox->addRow("##3---");
-                mBrowserBox->addRow(_("@@admin-kick|Kick player@@"));*/
+                if (player_node->isGM())
+                {
+                    mBrowserBox->addRow("##3---");
+                    mBrowserBox->addRow(_("@@admin-kick|Kick player@@"));
+                }
             }
             break;
 
@@ -126,13 +133,14 @@ void PopupMenu::showPopup(int x, int y, Being *being)
             break;
 
         case Being::MONSTER:
-            // Monsters can be attacked
-            mBrowserBox->addRow(strprintf(_("@@attack|Attack %s@@"), name.c_str()));
-            break;
+            {
+                // Monsters can be attacked
+                mBrowserBox->addRow(strprintf(_("@@attack|Attack %s@@"), name.c_str()));
 
-        /*case Being::MONSTER:
-            mBrowserBox->addRow(_("@@admin-kick|Kick monster@@"));
-            break;*/
+                if (player_node->isGM())
+                    mBrowserBox->addRow(_("@@admin-kick|Kick monster@@"));
+            }
+            break;
 
         default:
             /* Other beings aren't interesting... */
@@ -182,7 +190,7 @@ void PopupMenu::handleLink(const std::string &link)
              being &&
              being->getType() == Being::PLAYER)
     {
-        player_node->trade(being);
+        Net::getTradeHandler()->request(being);
         tradePartnerName = being->getName();
     }
 #ifdef EATHENA_SUPPORT
@@ -261,13 +269,13 @@ void PopupMenu::handleLink(const std::string &link)
         if (mItem->isEquipment())
         {
             if (mItem->isEquipped())
-                player_node->unequipItem(mItem);
+                Net::getInventoryHandler()->unequipItem(mItem);
             else
-                player_node->equipItem(mItem);
+                Net::getInventoryHandler()->equipItem(mItem);
         }
         else
         {
-            player_node->useItem(mItem);
+            Net::getInventoryHandler()->useItem(mItem);
         }
     }
 
@@ -302,7 +310,7 @@ void PopupMenu::handleLink(const std::string &link)
 
     else if (link == "party" && being && being->getType() == Being::PLAYER)
     {
-        player_node->inviteToParty(dynamic_cast<Player*>(being));
+        Net::getPartyHandler()->invite(dynamic_cast<Player*>(being));
     }
 
     else if (link == "name" && being)

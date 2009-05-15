@@ -56,15 +56,15 @@ extern Window *emoteShortcutWindow;
 #ifdef TMWSERV_SUPPORT
 extern Window *magicDialog;
 extern Window *guildWindow;
-#else
-extern Window *storageWindow;
 #endif
+extern Window *storageWindow;
+extern Window *outfitWindow;
 
 Setup::Setup():
     Window(_("Setup"))
 {
     setCloseButton(true);
-    int width = 340;
+    int width = 380;
     int height = 360;
     setContentSize(width, height);
 
@@ -104,7 +104,7 @@ Setup::Setup():
     add(panel);
 
     Label *version = new Label(FULL_VERSION);
-    version->setPosition(5, height - version->getHeight() - 5);
+    version->setPosition(9, height - version->getHeight() - 9);
     add(version);
 
     center();
@@ -155,9 +155,9 @@ void Setup::action(const gcn::ActionEvent &event)
 #ifdef TMWSERV_SUPPORT
         magicDialog->resetToDefaultSize();
         guildWindow->resetToDefaultSize();
-#else
-        storageWindow->resetToDefaultSize();
 #endif
+        storageWindow->resetToDefaultSize();
+        outfitWindow->resetToDefaultSize();
     }
 }
 

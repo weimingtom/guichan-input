@@ -216,6 +216,7 @@ class KeyboardConfig : public gcn::KeyListener
             KEY_WINDOW_DEBUG,
             KEY_WINDOW_PARTY,
             KEY_WINDOW_EMOTE_SHORTCUT,
+            KEY_WINDOW_OUTFIT,
             KEY_EMOTE_1,
             KEY_EMOTE_2,
             KEY_EMOTE_3,

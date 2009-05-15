@@ -21,11 +21,15 @@
 
 #include "gui/widgets/avatar.h"
 
+#include "localplayer.h"
+
 #include "gui/widgets/icon.h"
 #include "gui/widgets/label.h"
 
 #include "resources/image.h"
 #include "resources/resourcemanager.h"
+
+#include <sstream>
 
 namespace {
     Image *avatarStatusOffline;
@@ -33,11 +37,11 @@ namespace {
     int avatarCount = 0;
 }
 
-Avatar::Avatar(const std::string &name):
-    mName(name)
+Avatar::Avatar():
+    mHp(0),
+    mMaxHp(0)
 {
     setOpaque(false);
-    setSize(110, 12);
 
     if (avatarCount == 0)
     {
@@ -49,13 +53,17 @@ Avatar::Avatar(const std::string &name):
     avatarStatusOffline->incRef();
     avatarStatusOnline->incRef();
 
+    mLabel = new Label;
+    mLabel->adjustSize();
+
     mStatus = new Icon(avatarStatusOffline);
     mStatus->setSize(12, 12);
-    add(mStatus, 1, 0);
 
-    mLabel = new Label(name);
-    mLabel->setSize(85, 12);
-    add(mLabel, 14, 0);
+    add(mStatus, 1, (mLabel->getHeight() - 12) / 2);
+    add(mLabel, 16, 0);
+
+    setSize(250, mLabel->getHeight());
+
 }
 
 Avatar::~Avatar()
@@ -69,10 +77,40 @@ Avatar::~Avatar()
 void Avatar::setName(const std::string &name)
 {
     mName = name;
-    mLabel->setCaption(name);
+    updateAvatarLabel();
 }
 
 void Avatar::setOnline(bool online)
 {
     mStatus->setImage(online ? avatarStatusOnline : avatarStatusOffline);
+}
+
+void Avatar::setHp(int hp)
+{
+    if (hp == mHp)
+        return;
+
+    mHp = hp;
+    updateAvatarLabel();
+}
+
+void Avatar::setMaxHp(int maxHp)
+{
+    if (maxHp == mMaxHp)
+        return;
+
+    mMaxHp = maxHp;
+    updateAvatarLabel();
+}
+
+void Avatar::updateAvatarLabel()
+{
+    std::ostringstream ss;
+    ss << mName;
+
+    if (mName != player_node->getName() && mMaxHp != 0)
+        ss << "  (" << mHp << "/" << mMaxHp << ")";
+
+    mLabel->setCaption(ss.str());
+    mLabel->adjustSize();
 }

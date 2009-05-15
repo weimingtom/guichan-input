@@ -295,7 +295,8 @@ class Window : public gcn::Window, gcn::WidgetListener
         Layout &getLayout();
 
         /**
-         * Clears the Window's layout (useful for redesigning the window)
+         * Clears the window's layout (useful for redesigning the window). Does
+         * not delete the widgets!
          */
         void clearLayout();
 
@@ -378,7 +379,7 @@ class Window : public gcn::Window, gcn::WidgetListener
         static int mouseResize;       /**< Active resize handles */
         static int instances;         /**< Number of Window instances */
 
-        Skin* mSkin;                  /**< Skin in use by this window */
+        Skin *mSkin;                  /**< Skin in use by this window */
 
         /**
          * The width of the resize border. Is independent of the actual window
