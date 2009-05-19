@@ -22,9 +22,12 @@
 
 #include "gui/setup_keyboard.h"
 
+#include "gui/gui.h"
 #include "gui/okdialog.h"
+#include "gui/setup.h"
 
 #include "gui/widgets/button.h"
+#include "gui/widgets/label.h"
 #include "gui/widgets/layouthelper.h"
 #include "gui/widgets/listbox.h"
 #include "gui/widgets/scrollarea.h"
@@ -71,6 +74,8 @@ Setup_Keyboard::Setup_Keyboard():
 {
     keyboard.setSetupKeyboard(this);
     setName(_("Keyboard"));
+    setFocusable(true);
+    addKeyListener(this);
 
     refreshKeys();
 
@@ -86,12 +91,15 @@ Setup_Keyboard::Setup_Keyboard():
     mMakeDefaultButton = new Button(_("Default"), "makeDefault", this);
     mMakeDefaultButton->addActionListener(this);
 
+    mCurrentKeyLabel = new Label();
+
     // Do the layout
     LayoutHelper h(this);
     ContainerPlacer place = h.getPlacer(0, 0);
 
     place(0, 0, scrollArea, 4, 6).setPadding(2);
     place(0, 6, mMakeDefaultButton);
+    place(1, 6, mCurrentKeyLabel, 2);
     place(3, 6, mAssignKeyButton);
 
     setDimension(gcn::Rectangle(0, 0, 365, 280));
@@ -140,6 +148,8 @@ void Setup_Keyboard::action(const gcn::ActionEvent &event)
     else if (event.getId() == "assign")
     {
         mKeySetting = true;
+        //setupWindow->addKeyListener(this);
+        requestFocus();
         mAssignKeyButton->setEnabled(false);
         keyboard.setEnabled(false);
         int i(mKeyList->getSelected());
@@ -155,8 +165,9 @@ void Setup_Keyboard::action(const gcn::ActionEvent &event)
 
 void Setup_Keyboard::refreshAssignedKey(KeyboardConfig::KeyAction index)
 {
-    std::string caption;
-    caption = keyboard.getKeyCaption(index) + ": " + keyboard.keyString(index);
+    if (index < 0)
+        return;
+    std::string caption = keyboard.getKeyCaption(index) + ": " + keyboard.keyString(index);
     mKeyListModel->setElementAt(index, caption);
 }
 
@@ -186,10 +197,23 @@ void Setup_Keyboard::keyUnresolved()
 
 void Setup_Keyboard::keyPressed(gcn::KeyEvent &event)
 {
-    // TODO
+    if (mKeySetting)
+    {
+        mCurrentKey = keyboard.keyConvert(event);
+        mCurrentKeyLabel->setCaption(keyboard.keyString(mCurrentKey));
+        event.consume();
+    }
 }
 
 void Setup_Keyboard::keyReleased(gcn::KeyEvent &event)
 {
-    // TODO
+    if (mKeySetting)
+    {
+        int i = mKeyList->getSelected();
+        keyboard.setKeyData(i, mCurrentKey);
+        mCurrentKey = KeyboardConfig::NULL_KEY;
+        mCurrentKeyLabel->setCaption("");
+        refreshAssignedKey((KeyboardConfig::KeyAction) i);
+        event.consume();
+    }
 }

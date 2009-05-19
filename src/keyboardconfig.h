@@ -239,6 +239,8 @@ class KeyboardConfig : public gcn::KeyListener
             KEY_TOTAL
         };
 
+        static KeyData NULL_KEY;
+
     private:
         KeyboardConfig::KeyAction mNewKeyIndex; /**< Index of new key to be assigned */
         bool mEnabled;                 /**< Flag to respond to key input */

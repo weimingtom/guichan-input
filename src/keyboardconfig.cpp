@@ -54,6 +54,8 @@
 #include "utils/gettext.h"
 #include "utils/stringutils.h"
 
+KeyData KeyboardConfig::NULL_KEY = {0, 0};
+
 struct KeyDefault
 {
     const char *configField;
@@ -68,7 +70,7 @@ enum
     KEY_META_LEFT = -992,
     KEY_CTRL_RIGHT = -995,
     KEY_CTRL_LEFT = -996,
-    KEY_SHIFT_RIGHT = -996,
+    KEY_SHIFT_RIGHT = -997,
     KEY_SHIFT_LEFT = -998,
     KEY_ALT_RIGHT = -999,
     KEY_ALT_LEFT = -1000
@@ -175,6 +177,14 @@ KeyboardConfig::KeyboardConfig()
     mDescs[Key::SPACE] = "Space";
     mDescs[Key::TAB] = "Tab";
     mDescs[Key::UP] = "Up";
+    mDescs[KEY_META_RIGHT] = "Right Meta";
+    mDescs[KEY_META_LEFT] = "Left Meta";
+    mDescs[KEY_CTRL_RIGHT] = "Right Ctrl";
+    mDescs[KEY_CTRL_LEFT] = "Left Ctrl";
+    mDescs[KEY_SHIFT_RIGHT] = "Right Shift";
+    mDescs[KEY_SHIFT_LEFT] = "Left Shift";
+    mDescs[KEY_ALT_RIGHT] = "Right Alt";
+    mDescs[KEY_ALT_LEFT] = "Left Alt";
 }
 
 void KeyboardConfig::init()
@@ -277,6 +287,8 @@ int KeyboardConfig::getKeyEmoteOffset(int keyValue) const
 
 KeyData KeyboardConfig::getKeyData(int index)
 {
+    if (index < 0)
+        return NULL_KEY;
     return mKey[index];
 }
 
@@ -297,7 +309,6 @@ bool KeyboardConfig::keyMatch(int index, KeyData ev)
 
 bool KeyboardConfig::keyMatch(KeyData data, KeyData ev)
 {
-    printf("(%d, %d) == (%d, %d)\n", data.key, data.mask, ev.key, ev.mask);
     return (ev.key == data.key || data.key == 0) && (ev.mask == data.mask);
 }
 
@@ -336,9 +347,7 @@ std::string KeyboardConfig::keyString(KeyData data)
 
 KeyData KeyboardConfig::keyParse(std::string *keyString)
 {
-    // TODO
-    KeyData ret = {0, 0};
-    return ret;
+    return NULL_KEY;
 }
 
 KeyData KeyboardConfig::keyConvert(gcn::KeyEvent &event)
@@ -358,6 +367,17 @@ KeyData KeyboardConfig::keyConvert(gcn::KeyEvent &event)
 
     if (event.isMetaPressed())
         ret.mask |= KEY_MASK_META;
+
+    // Make sure to always have lowercase letters
+    if (event.isShiftPressed() && ret.key >= 65 && ret.key <= 90)
+        ret.key += 32;
+
+    // Convert the ctrl codes back to letters
+    if (event.isControlPressed() && ret.key >= 1 && ret.key <= 26)
+    {
+        printf("%d\n", ret.key);
+        ret.key += 96;
+    }
 
     return ret;
 }
