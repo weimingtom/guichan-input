@@ -77,66 +77,66 @@ enum
 };
 
 static KeyDefault const keyData[KeyboardConfig::KEY_TOTAL] = {
-    {"keyMoveUp", Key::UP, 0 , _("Move Up")},
-    {"keyMoveDown", Key::DOWN, 0, _("Move Down")},
-    {"keyMoveLeft", Key::LEFT, 0, _("Move Left")},
-    {"keyMoveRight", Key::RIGHT, 0, _("Move Right")},
-    {"keyAttack", KEY_CTRL_LEFT, 0, _("Attack")},
-    {"keyTalk", 't', 0, _("Talk")},
-    {"keyTarget", KEY_SHIFT_LEFT, 0, _("Stop Attack")},
-    {"keyTargetMonster", 'a', 0, _("Target MONSTER")},
-    {"keyTargetNPC", 'n', 0, _("Target NPC")},
-    {"keyTargetPlayer", 'q', 0, _("Target Player")},
-    {"keyPickup", 'z', 0, _("Pickup")},
-    {"keyHideWindows", 'h', 0, _("Hide Windows")},
-    {"keyBeingSit", 's', 0, _("Sit")},
-    {"keyScreenshot", 'p', 0, _("Screenshot")},
-    {"keyTrade", 'r', 0, _("Enable/Disable Trading")},
-    {"keyPathfind", 'f', 0, _("Find Path to Mouse")},
-    {"keyShortcut1", '1', 0, strprintf(_("Item Shortcut %d"), 1)},
-    {"keyShortcut2", '2', 0, strprintf(_("Item Shortcut %d"), 2)},
-    {"keyShortcut3", '3', 0, strprintf(_("Item Shortcut %d"), 3)},
-    {"keyShortcut4", '4', 0, strprintf(_("Item Shortcut %d"), 4)},
-    {"keyShortcut5", '5', 0, strprintf(_("Item Shortcut %d"), 5)},
-    {"keyShortcut6", '6', 0, strprintf(_("Item Shortcut %d"), 6)},
-    {"keyShortcut7", '7', 0, strprintf(_("Item Shortcut %d"), 7)},
-    {"keyShortcut8", '8', 0, strprintf(_("Item Shortcut %d"), 8)},
-    {"keyShortcut9", '9', 0, strprintf(_("Item Shortcut %d"), 9)},
-    {"keyShortcut10", '0', 0, strprintf(_("Item Shortcut %d"), 10)},
-    {"keyShortcut11", '-', 0, strprintf(_("Item Shortcut %d"), 11)},
-    {"keyShortcut12", '=', 0, strprintf(_("Item Shortcut %d"), 12)},
-    {"keyWindowHelp", Key::F1, 0, _("Help Window")},
-    {"keyWindowStatus", Key::F2, 0, _("Status Window")},
-    {"keyWindowInventory", Key::F3, 0, _("Inventory Window")},
-    {"keyWindowEquipment", Key::F4, 0, _("Equipment WIndow")},
-    {"keyWindowSkill", Key::F5, 0, _("Skill Window")},
-    {"keyWindowMinimap", Key::F6, 0, _("Minimap Window")},
-    {"keyWindowChat", Key::F7, 0, _("Chat Window")},
-    {"keyWindowShortcut", Key::F8, 0, _("Item Shortcut Window")},
-    {"keyWindowSetup", Key::F9, 0, _("Setup Window")},
-    {"keyWindowDebug", Key::F10, 0, _("Debug Window")},
-    {"keyWindowParty", Key::F11, 0, _("Party Window")},
-    {"keyWindowEmoteBar", Key::F12, 0, _("Emote Shortcut Window")},
-    {"keyWindowOutfit", 'o', 0, _("Outfit Shortcut Window")},
-    {"keyEmoteShortcut1", '1', KEY_MASK_ALT, strprintf(_("Emote Shortcut %d"), 1)},
-    {"keyEmoteShortcut2", '2', KEY_MASK_ALT, strprintf(_("Emote Shortcut %d"), 2)},
-    {"keyEmoteShortcut3", '3', KEY_MASK_ALT, strprintf(_("Emote Shortcut %d"), 3)},
-    {"keyEmoteShortcut4", '4', KEY_MASK_ALT, strprintf(_("Emote Shortcut %d"), 4)},
-    {"keyEmoteShortcut5", '5', KEY_MASK_ALT, strprintf(_("Emote Shortcut %d"), 5)},
-    {"keyEmoteShortcut6", '6', KEY_MASK_ALT, strprintf(_("Emote Shortcut %d"), 6)},
-    {"keyEmoteShortcut7", '7', KEY_MASK_ALT, strprintf(_("Emote Shortcut %d"), 7)},
-    {"keyEmoteShortcut8", '8', KEY_MASK_ALT, strprintf(_("Emote Shortcut %d"), 8)},
-    {"keyEmoteShortcut9", '9', KEY_MASK_ALT, strprintf(_("Emote Shortcut %d"), 9)},
-    {"keyEmoteShortcut10", '0', KEY_MASK_ALT, strprintf(_("Emote Shortcut %d"), 10)},
-    {"keyEmoteShortcut11", '-', KEY_MASK_ALT, strprintf(_("Emote Shortcut %d"), 11)},
-    {"keyEmoteShortcut12", '=', KEY_MASK_ALT, strprintf(_("Emote Shortcut %d"), 12)},
-    {"keyChat", Key::ENTER, 0, _("Toggle Chat")},
-    {"keyChatScrollUp", Key::PAGE_UP, 0, _("Scroll Chat Up")},
-    {"keyChatScrollDown", Key::PAGE_DOWN, 0, _("Scroll Chat Down")},
-    {"keyChatPrevTab", '[', 0, _("Previous Chat Tab")},
-    {"keyChatNextTab", ']', 0, _("Next Chat Tab")},
-    {"keyOK", Key::ENTER, 0, _("Select OK")},
-    {"keyQuit", Key::ESCAPE, 0, _("Quit")},
+    {"key_MoveUp", Key::UP, 0 , _("Move Up")},
+    {"key_MoveDown", Key::DOWN, 0, _("Move Down")},
+    {"key_MoveLeft", Key::LEFT, 0, _("Move Left")},
+    {"key_MoveRight", Key::RIGHT, 0, _("Move Right")},
+    {"key_Attack", KEY_CTRL_LEFT, 0, _("Attack")},
+    {"key_Talk", 't', 0, _("Talk")},
+    {"key_Target", KEY_SHIFT_LEFT, 0, _("Stop Attack")},
+    {"key_TargetMonster", 'a', 0, _("Target MONSTER")},
+    {"key_TargetNPC", 'n', 0, _("Target NPC")},
+    {"key_TargetPlayer", 'q', 0, _("Target Player")},
+    {"key_Pickup", 'z', 0, _("Pickup")},
+    {"key_HideWindows", 'h', 0, _("Hide Windows")},
+    {"key_BeingSit", 's', 0, _("Sit")},
+    {"key_Screenshot", 'p', 0, _("Screenshot")},
+    {"key_Trade", 'r', 0, _("Enable/Disable Trading")},
+    {"key_Pathfind", 'f', 0, _("Find Path to Mouse")},
+    {"key_Shortcut1", '1', 0, strprintf(_("Item Shortcut %d"), 1)},
+    {"key_Shortcut2", '2', 0, strprintf(_("Item Shortcut %d"), 2)},
+    {"key_Shortcut3", '3', 0, strprintf(_("Item Shortcut %d"), 3)},
+    {"key_Shortcut4", '4', 0, strprintf(_("Item Shortcut %d"), 4)},
+    {"key_Shortcut5", '5', 0, strprintf(_("Item Shortcut %d"), 5)},
+    {"key_Shortcut6", '6', 0, strprintf(_("Item Shortcut %d"), 6)},
+    {"key_Shortcut7", '7', 0, strprintf(_("Item Shortcut %d"), 7)},
+    {"key_Shortcut8", '8', 0, strprintf(_("Item Shortcut %d"), 8)},
+    {"key_Shortcut9", '9', 0, strprintf(_("Item Shortcut %d"), 9)},
+    {"key_Shortcut10", '0', 0, strprintf(_("Item Shortcut %d"), 10)},
+    {"key_Shortcut11", '-', 0, strprintf(_("Item Shortcut %d"), 11)},
+    {"key_Shortcut12", '=', 0, strprintf(_("Item Shortcut %d"), 12)},
+    {"key_WindowHelp", Key::F1, 0, _("Help Window")},
+    {"key_WindowStatus", Key::F2, 0, _("Status Window")},
+    {"key_WindowInventory", Key::F3, 0, _("Inventory Window")},
+    {"key_WindowEquipment", Key::F4, 0, _("Equipment WIndow")},
+    {"key_WindowSkill", Key::F5, 0, _("Skill Window")},
+    {"key_WindowMinimap", Key::F6, 0, _("Minimap Window")},
+    {"key_WindowChat", Key::F7, 0, _("Chat Window")},
+    {"key_WindowShortcut", Key::F8, 0, _("Item Shortcut Window")},
+    {"key_WindowSetup", Key::F9, 0, _("Setup Window")},
+    {"key_WindowDebug", Key::F10, 0, _("Debug Window")},
+    {"key_WindowParty", Key::F11, 0, _("Party Window")},
+    {"key_WindowEmoteBar", Key::F12, 0, _("Emote Shortcut Window")},
+    {"key_WindowOutfit", 'o', 0, _("Outfit Shortcut Window")},
+    {"key_EmoteShortcut1", '1', KEY_MASK_ALT, strprintf(_("Emote Shortcut %d"), 1)},
+    {"key_EmoteShortcut2", '2', KEY_MASK_ALT, strprintf(_("Emote Shortcut %d"), 2)},
+    {"key_EmoteShortcut3", '3', KEY_MASK_ALT, strprintf(_("Emote Shortcut %d"), 3)},
+    {"key_EmoteShortcut4", '4', KEY_MASK_ALT, strprintf(_("Emote Shortcut %d"), 4)},
+    {"key_EmoteShortcut5", '5', KEY_MASK_ALT, strprintf(_("Emote Shortcut %d"), 5)},
+    {"key_EmoteShortcut6", '6', KEY_MASK_ALT, strprintf(_("Emote Shortcut %d"), 6)},
+    {"key_EmoteShortcut7", '7', KEY_MASK_ALT, strprintf(_("Emote Shortcut %d"), 7)},
+    {"key_EmoteShortcut8", '8', KEY_MASK_ALT, strprintf(_("Emote Shortcut %d"), 8)},
+    {"key_EmoteShortcut9", '9', KEY_MASK_ALT, strprintf(_("Emote Shortcut %d"), 9)},
+    {"key_EmoteShortcut10", '0', KEY_MASK_ALT, strprintf(_("Emote Shortcut %d"), 10)},
+    {"key_EmoteShortcut11", '-', KEY_MASK_ALT, strprintf(_("Emote Shortcut %d"), 11)},
+    {"key_EmoteShortcut12", '=', KEY_MASK_ALT, strprintf(_("Emote Shortcut %d"), 12)},
+    {"key_Chat", Key::ENTER, 0, _("Toggle Chat")},
+    {"key_ChatScrollUp", Key::PAGE_UP, 0, _("Scroll Chat Up")},
+    {"key_ChatScrollDown", Key::PAGE_DOWN, 0, _("Scroll Chat Down")},
+    {"key_ChatPrevTab", '[', 0, _("Previous Chat Tab")},
+    {"key_ChatNextTab", ']', 0, _("Next Chat Tab")},
+    {"key_OK", Key::ENTER, 0, _("Select OK")},
+    {"key_Quit", Key::ESCAPE, 0, _("Quit")},
 };
 
 KeyboardConfig::KeyboardConfig()
@@ -204,11 +204,9 @@ void KeyboardConfig::retrieve()
 {
     for (int i = 0; i < KEY_TOTAL; i++)
     {
-        //mKey[i] = keyParse(config.getValue(keyData[i].configField));
-        KeyData kd = {keyData[i].key, keyData[i].mask};
-        mKey[i] = kd;
-        //std::string str = keyString(kd);
-        //printf("%s\n", str.c_str());
+        KeyData conf = keyParse(config.getValue(keyData[i].configField, ""));
+        if (conf.key)
+            mKey[i] = conf;
     }
 }
 
@@ -216,6 +214,7 @@ void KeyboardConfig::store()
 {
     for (int i = 0; i < KEY_TOTAL; i++)
     {
+        printf("Storing key %s\n", keyData[i].configField);
         config.setValue(keyData[i].configField, keyString(mKey[i]));
     }
 }
@@ -345,9 +344,77 @@ std::string KeyboardConfig::keyString(KeyData data)
     return out.str();
 }
 
-KeyData KeyboardConfig::keyParse(std::string *keyString)
+KeyData KeyboardConfig::keyParse(std::string keyS)
 {
-    return NULL_KEY;
+    KeyData kd = {0, 0};
+
+    keyS = toLower(keyS);
+
+    while (keyS.length())
+    {
+        printf("Parsing key string: %s\n", keyS.c_str());
+        if (strncasecmp(keyS.c_str(), "Shift+", 6) == 0)
+        {
+            printf("\tFound Shift\n");
+            kd.mask |= KEY_MASK_SHIFT;
+            keyS.erase(0, 6);
+        }
+        else if (strncasecmp(keyS.c_str(), "Ctrl+", 5) == 0)
+        {
+            printf("\tFound Ctrl");
+            kd.mask |= KEY_MASK_CTRL;
+            keyS.erase(0, 5);
+        }
+        else if (strncasecmp(keyS.c_str(), "Alt+", 4) == 0)
+        {
+            printf("\tFound Alt\n");
+            kd.mask |= KEY_MASK_ALT;
+            keyS.erase(0, 4);
+        }
+        else if (strncasecmp(keyS.c_str(), "Meta+", 5) == 0)
+        {
+            printf("\tFound Meta\n");
+            kd.mask |= KEY_MASK_META;
+            keyS.erase(0, 5);
+        }
+        else
+        {
+            int temp;
+            if (keyS.length() == 1)
+                kd.key = keyS.at(0);
+            else if (sscanf(keyS.c_str(), "'%d'", &temp) == 1)
+                kd.key = temp;
+            else
+            {
+                KeyDescMap::const_iterator it;
+
+                for (it = mDescs.begin(); it != mDescs.end(); it++)
+                {
+                    temp = (*it).second.length();
+                    if (temp != keyS.length())
+                        continue;
+
+                    if (strncasecmp(keyS.c_str(), (*it).second.c_str(), temp) == 0)
+                    {
+                        kd.key = (*it).first;
+                        break;
+                    }
+                }
+            }
+
+            if (!kd.key)
+                printf("\tNo base found\n");
+
+            keyS.erase();
+        }
+    }
+
+    if (kd.key)
+        printf("Key found: %s\n", keyString(kd).c_str());
+    else
+        printf("No key found\n");
+
+    return kd;
 }
 
 KeyData KeyboardConfig::keyConvert(gcn::KeyEvent &event)

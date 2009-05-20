@@ -151,7 +151,7 @@ class KeyboardConfig : public gcn::KeyListener
         /**
          * Tries to parse the given string as a key data.
          */
-        KeyData keyParse(std::string *keyString);
+        KeyData keyParse(std::string keyString);
 
         /**
          * Turns the given event into key data.
