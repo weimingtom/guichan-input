@@ -214,7 +214,6 @@ void KeyboardConfig::store()
 {
     for (int i = 0; i < KEY_TOTAL; i++)
     {
-        printf("Storing key %s\n", keyData[i].configField);
         config.setValue(keyData[i].configField, keyString(mKey[i]));
     }
 }
@@ -352,28 +351,23 @@ KeyData KeyboardConfig::keyParse(std::string keyS)
 
     while (keyS.length())
     {
-        printf("Parsing key string: %s\n", keyS.c_str());
         if (strncasecmp(keyS.c_str(), "Shift+", 6) == 0)
         {
-            printf("\tFound Shift\n");
             kd.mask |= KEY_MASK_SHIFT;
             keyS.erase(0, 6);
         }
         else if (strncasecmp(keyS.c_str(), "Ctrl+", 5) == 0)
         {
-            printf("\tFound Ctrl");
             kd.mask |= KEY_MASK_CTRL;
             keyS.erase(0, 5);
         }
         else if (strncasecmp(keyS.c_str(), "Alt+", 4) == 0)
         {
-            printf("\tFound Alt\n");
             kd.mask |= KEY_MASK_ALT;
             keyS.erase(0, 4);
         }
         else if (strncasecmp(keyS.c_str(), "Meta+", 5) == 0)
         {
-            printf("\tFound Meta\n");
             kd.mask |= KEY_MASK_META;
             keyS.erase(0, 5);
         }
@@ -402,17 +396,9 @@ KeyData KeyboardConfig::keyParse(std::string keyS)
                 }
             }
 
-            if (!kd.key)
-                printf("\tNo base found\n");
-
             keyS.erase();
         }
     }
-
-    if (kd.key)
-        printf("Key found: %s\n", keyString(kd).c_str());
-    else
-        printf("No key found\n");
 
     return kd;
 }
@@ -442,7 +428,6 @@ KeyData KeyboardConfig::keyConvert(gcn::KeyEvent &event)
     // Convert the ctrl codes back to letters
     if (event.isControlPressed() && ret.key >= 1 && ret.key <= 26)
     {
-        printf("%d\n", ret.key);
         ret.key += 96;
     }
 
