@@ -189,6 +189,7 @@ void Setup_Keyboard::keyReleased(gcn::KeyEvent &event)
 {
     if (mKeySetting)
     {
+        mKeySetting = false;
         int i = mKeyList->getSelected();
         keyboard.setKeyData(i, mCurrentKey);
         mCurrentKey = KeyboardConfig::NULL_KEY;
