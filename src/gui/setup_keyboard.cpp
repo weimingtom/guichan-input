@@ -214,6 +214,7 @@ void Setup_Keyboard::keyReleased(gcn::KeyEvent &event)
         mCurrentKey = KeyboardConfig::NULL_KEY;
         mCurrentKeyLabel->setCaption("");
         refreshAssignedKey((KeyboardConfig::KeyAction) i);
+        mAssignKeyButton->setEnabled(true);
         event.consume();
     }
 }

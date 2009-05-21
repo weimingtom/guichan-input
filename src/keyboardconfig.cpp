@@ -118,6 +118,16 @@ static KeyDefault const keyData[KeyboardConfig::KEY_TOTAL] = {
     {"key_WindowParty", Key::F11, 0, _("Party Window")},
     {"key_WindowEmoteBar", Key::F12, 0, _("Emote Shortcut Window")},
     {"key_WindowOutfit", 'o', 0, _("Outfit Shortcut Window")},
+    {"key_OutfitShortcut1", '1', KEY_MASK_CTRL, _("Outfit Shortcut 1")},
+    {"key_OutfitShortcut2", '2', KEY_MASK_CTRL, _("Outfit Shortcut 2")},
+    {"key_OutfitShortcut3", '3', KEY_MASK_CTRL, _("Outfit Shortcut 3")},
+    {"key_OutfitShortcut4", '4', KEY_MASK_CTRL, _("Outfit Shortcut 4")},
+    {"key_OutfitShortcut5", '5', KEY_MASK_CTRL, _("Outfit Shortcut 5")},
+    {"key_OutfitShortcut6", '6', KEY_MASK_CTRL, _("Outfit Shortcut 6")},
+    {"key_OutfitShortcut7", '7', KEY_MASK_CTRL, _("Outfit Shortcut 7")},
+    {"key_OutfitShortcut8", '8', KEY_MASK_CTRL, _("Outfit Shortcut 8")},
+    {"key_OutfitShortcut9", '9', KEY_MASK_CTRL, _("Outfit Shortcut 9")},
+    {"key_OutfitShortcut10", '0', KEY_MASK_CTRL, _("Outfit Shortcut 10")},
     {"key_EmoteShortcut1", '1', KEY_MASK_ALT, strprintf(_("Emote Shortcut %d"), 1)},
     {"key_EmoteShortcut2", '2', KEY_MASK_ALT, strprintf(_("Emote Shortcut %d"), 2)},
     {"key_EmoteShortcut3", '3', KEY_MASK_ALT, strprintf(_("Emote Shortcut %d"), 3)},
@@ -425,10 +435,25 @@ KeyData KeyboardConfig::keyConvert(gcn::KeyEvent &event)
     if (event.isShiftPressed() && ret.key >= 65 && ret.key <= 90)
         ret.key += 32;
 
-    // Convert the ctrl codes back to letters
-    if (event.isControlPressed() && ret.key >= 1 && ret.key <= 26)
+    // Convert the ctrl codes back to what the keyboard says
+    if (event.isControlPressed())
     {
-        ret.key += 96;
+        if (ret.key == 0)
+        {
+            ret.key = '2';
+        }
+        else if (ret.key >= 1 && ret.key <= 26)
+        {
+            ret.key += 96;
+        }
+        else if (ret.key >= 27 && ret.key <= 31)
+        {
+            ret.key += 24;
+        }
+        else if (ret.key == 127)
+        {
+            ret.key = '8';
+        }
     }
 
     return ret;
@@ -533,6 +558,8 @@ void KeyboardConfig::keyPressed(gcn::KeyEvent &event)
         return;
     else if (parseEmoteShortcut(kd))
         return;
+    else if (parseOutfitShortcut(kd))
+        return;
     else if (keyMatch(KEY_TOGGLE_CHAT, kd))
     {
         chatWindow->requestChatFocus();
@@ -575,7 +602,7 @@ void KeyboardConfig::keyPressed(gcn::KeyEvent &event)
     else
     {
         gcn::Key key = event.getKey();
-        printf("%d %1$c\n", key.getValue());
+        printf("%d %1$c (%s)\n", key.getValue(), keyString(kd).c_str());
     }
 }
 
@@ -806,6 +833,21 @@ inline bool KeyboardConfig::parseEmoteShortcut(KeyData kd)
         if (keyMatch(i, kd))
         {
             emoteShortcut->useEmote(1 + i - KEY_EMOTE_1);
+            return true;
+        }
+    }
+
+    return false;
+}
+
+inline bool KeyboardConfig::parseOutfitShortcut(KeyData kd)
+{
+    // Checks if any item shortcut is pressed.
+    for (int i = KEY_OUTFIT_1; i <= KEY_OUTFIT_10; i++)
+    {
+        if (keyMatch(i, kd))
+        {
+            outfitWindow->wearOutfit(i - KEY_OUTFIT_1);
             return true;
         }
     }

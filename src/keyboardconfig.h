@@ -217,6 +217,16 @@ class KeyboardConfig : public gcn::KeyListener
             KEY_WINDOW_PARTY,
             KEY_WINDOW_EMOTE_SHORTCUT,
             KEY_WINDOW_OUTFIT,
+            KEY_OUTFIT_1,
+            KEY_OUTFIT_2,
+            KEY_OUTFIT_3,
+            KEY_OUTFIT_4,
+            KEY_OUTFIT_5,
+            KEY_OUTFIT_6,
+            KEY_OUTFIT_7,
+            KEY_OUTFIT_8,
+            KEY_OUTFIT_9,
+            KEY_OUTFIT_10,
             KEY_EMOTE_1,
             KEY_EMOTE_2,
             KEY_EMOTE_3,
@@ -259,6 +269,7 @@ class KeyboardConfig : public gcn::KeyListener
         inline bool parseWindows(KeyData kd);
         inline bool parseItemShortcut(KeyData kd);
         inline bool parseEmoteShortcut(KeyData kd);
+        inline bool parseOutfitShortcut(KeyData kd);
 };
 
 extern KeyboardConfig keyboard;
