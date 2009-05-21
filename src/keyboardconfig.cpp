@@ -64,26 +64,14 @@ struct KeyDefault
     std::string caption;
 };
 
-enum
-{
-    KEY_META_RIGHT = -991,
-    KEY_META_LEFT = -992,
-    KEY_CTRL_RIGHT = -995,
-    KEY_CTRL_LEFT = -996,
-    KEY_SHIFT_RIGHT = -997,
-    KEY_SHIFT_LEFT = -998,
-    KEY_ALT_RIGHT = -999,
-    KEY_ALT_LEFT = -1000
-};
-
 static KeyDefault const keyData[KeyboardConfig::KEY_TOTAL] = {
     {"key_MoveUp", Key::UP, 0 , _("Move Up")},
     {"key_MoveDown", Key::DOWN, 0, _("Move Down")},
     {"key_MoveLeft", Key::LEFT, 0, _("Move Left")},
     {"key_MoveRight", Key::RIGHT, 0, _("Move Right")},
-    {"key_Attack", KEY_CTRL_LEFT, 0, _("Attack")},
+    {"key_Attack", Key::LEFT_CONTROL, 0, _("Attack")},
     {"key_Talk", 't', 0, _("Talk")},
-    {"key_Target", KEY_SHIFT_LEFT, 0, _("Stop Attack")},
+    {"key_Target", Key::LEFT_SHIFT, 0, _("Stop Attack")},
     {"key_TargetMonster", 'a', 0, _("Target MONSTER")},
     {"key_TargetNPC", 'n', 0, _("Target NPC")},
     {"key_TargetPlayer", 'q', 0, _("Target Player")},
@@ -152,8 +140,9 @@ static KeyDefault const keyData[KeyboardConfig::KEY_TOTAL] = {
 KeyboardConfig::KeyboardConfig()
 {
     mDescs[0] = "None";
+    mDescs[Key::ALT_GR] = "Alt GR";
     mDescs[Key::BACKSPACE] = "Backspace";
-    mDescs[Key::CAPS_LOCK] = "CapsLock";
+    mDescs[Key::CAPS_LOCK] = "Caps Lock";
     mDescs[Key::DELETE] = "Delete";
     mDescs[Key::DOWN] = "Down";
     mDescs[Key::END] = "End";
@@ -177,24 +166,26 @@ KeyboardConfig::KeyboardConfig()
     mDescs[Key::HOME] = "Home";
     mDescs[Key::INSERT] = "Insert";
     mDescs[Key::LEFT] = "Left";
-    mDescs[Key::NUM_LOCK] = "NumLock";
-    mDescs[Key::PAGE_DOWN] = "PageDown";
-    mDescs[Key::PAGE_UP] = "PageUp";
+    mDescs[Key::LEFT_ALT] = "Left Alt";
+    mDescs[Key::LEFT_CONTROL] = "Left Ctrl";
+    mDescs[Key::LEFT_META] = "Left Meta";
+    mDescs[Key::LEFT_SHIFT] = "Left Shift";
+    mDescs[Key::LEFT_SUPER] = "Left Super";
+    mDescs[Key::NUM_LOCK] = "Num Lock";
+    mDescs[Key::PAGE_DOWN] = "Page Down";
+    mDescs[Key::PAGE_UP] = "Page Up";
     mDescs[Key::PAUSE] = "Pause";
-    mDescs[Key::PRINT_SCREEN] = "PrintScreen";
+    mDescs[Key::PRINT_SCREEN] = "Print Screen";
     mDescs[Key::RIGHT] = "Right";
-    mDescs[Key::SCROLL_LOCK] = "ScrollLock";
+    mDescs[Key::RIGHT_ALT] = "Right Alt";
+    mDescs[Key::RIGHT_CONTROL] = "Right Ctrl";
+    mDescs[Key::RIGHT_META] = "Right Meta";
+    mDescs[Key::RIGHT_SHIFT] = "Right Shift";
+    mDescs[Key::RIGHT_SUPER] = "Right Super";
+    mDescs[Key::SCROLL_LOCK] = "Scroll Lock";
     mDescs[Key::SPACE] = "Space";
     mDescs[Key::TAB] = "Tab";
     mDescs[Key::UP] = "Up";
-    mDescs[KEY_META_RIGHT] = "Right Meta";
-    mDescs[KEY_META_LEFT] = "Left Meta";
-    mDescs[KEY_CTRL_RIGHT] = "Right Ctrl";
-    mDescs[KEY_CTRL_LEFT] = "Left Ctrl";
-    mDescs[KEY_SHIFT_RIGHT] = "Right Shift";
-    mDescs[KEY_SHIFT_LEFT] = "Left Shift";
-    mDescs[KEY_ALT_RIGHT] = "Right Alt";
-    mDescs[KEY_ALT_LEFT] = "Left Alt";
 }
 
 void KeyboardConfig::init()
@@ -263,11 +254,6 @@ bool KeyboardConfig::hasConflicts()
     return false;
 }
 
-void KeyboardConfig::callbackNewKey()
-{
-    mSetupKey->newKeyCallback(mNewKeyIndex);
-}
-
 int KeyboardConfig::getKeyIndex(int keyValue) const
 {
     for (int i = 0; i < KEY_TOTAL; i++)
@@ -278,19 +264,6 @@ int KeyboardConfig::getKeyIndex(int keyValue) const
         }
     }
     return KEY_NO_VALUE;
-}
-
-
-int KeyboardConfig::getKeyEmoteOffset(int keyValue) const
-{
-    for (int i = KEY_EMOTE_1; i <= KEY_EMOTE_12; i++)
-    {
-        if (keyValue == mKey[i].key)
-        {
-            return 1 + i - KEY_EMOTE_1;
-        }
-    }
-    return 0;
 }
 
 KeyData KeyboardConfig::getKeyData(int index)
@@ -335,6 +308,9 @@ std::string KeyboardConfig::keyString(KeyData data)
 
     if (data.mask & KEY_MASK_META)
         out << "Meta+";
+
+    /*if (data.mask & KEY_MASK_SUPER)
+        out << "Super+";*/
 
     // If it's printable, then do so
     if (data.key > 32 && data.key < 256)
@@ -381,6 +357,11 @@ KeyData KeyboardConfig::keyParse(std::string keyS)
             kd.mask |= KEY_MASK_META;
             keyS.erase(0, 5);
         }
+        /*else if (strncasecmp(keyS.c_str(), "Super+", 6) == 0)
+        {
+            kd.mask |= KEY_MASK_SUPER;
+            keyS.erase(0, 6);
+        }*/
         else
         {
             int temp;
@@ -430,6 +411,9 @@ KeyData KeyboardConfig::keyConvert(gcn::KeyEvent &event)
 
     if (event.isMetaPressed())
         ret.mask |= KEY_MASK_META;
+
+    /*if (event.isSuperPressed())
+        ret.mask |= KEY_MASK_SUPER;*/
 
     // Make sure to always have lowercase letters
     if (event.isShiftPressed() && ret.key >= 65 && ret.key <= 90)

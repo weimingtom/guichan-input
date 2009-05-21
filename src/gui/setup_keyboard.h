@@ -57,19 +57,9 @@ class Setup_Keyboard : public SetupTab, public gcn::ActionListener,
         void refreshAssignedKey(KeyboardConfig::KeyAction index);
 
         /**
-         * The callback function when a new key has been pressed.
-         */
-        void newKeyCallback(KeyboardConfig::KeyAction index);
-
-        /**
          * Shorthand method to update all the keys.
          */
         void refreshKeys();
-
-        /**
-         * If a key function is unresolved, then this reverts it.
-         */
-        void keyUnresolved();
 
         void keyPressed(gcn::KeyEvent &event);
 

@@ -116,8 +116,6 @@ Setup_Keyboard::~Setup_Keyboard()
 
 void Setup_Keyboard::apply()
 {
-    keyUnresolved();
-
     if (keyboard.hasConflicts())
     {
         new OkDialog(_("Key Conflict(s) Detected."),
@@ -130,8 +128,6 @@ void Setup_Keyboard::apply()
 
 void Setup_Keyboard::cancel()
 {
-    keyUnresolved();
-
     keyboard.retrieve();
     keyboard.setEnabled(true);
 
@@ -171,27 +167,11 @@ void Setup_Keyboard::refreshAssignedKey(KeyboardConfig::KeyAction index)
     mKeyListModel->setElementAt(index, caption);
 }
 
-void Setup_Keyboard::newKeyCallback(KeyboardConfig::KeyAction index)
-{
-    mKeySetting = false;
-    refreshAssignedKey(index);
-    mAssignKeyButton->setEnabled(true);
-}
-
 void Setup_Keyboard::refreshKeys()
 {
     for (int i = 0; i < keyboard.KEY_TOTAL; i++)
     {
         refreshAssignedKey((KeyboardConfig::KeyAction) i);
-    }
-}
-
-void Setup_Keyboard::keyUnresolved()
-{
-    if (mKeySetting)
-    {
-        newKeyCallback(keyboard.KEY_NO_VALUE);
-        //keyboard.setNewKeyIndex(keyboard.KEY_NO_VALUE);
     }
 }
 
