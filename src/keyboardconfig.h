@@ -148,9 +148,11 @@ class KeyboardConfig : public gcn::KeyListener
          */
         KeyData keyConvert(gcn::KeyEvent &event);
 
-        bool isAttacking();
+        void resetStates();
 
-        bool isTargeting();
+        void processStates();
+
+        bool isKeyActive(int key);
 
         void keyPressed(gcn::KeyEvent &event);
 
@@ -172,7 +174,7 @@ class KeyboardConfig : public gcn::KeyListener
             KEY_MOVE_RIGHT,
             KEY_ATTACK,
             KEY_TALK,
-            KEY_TARGET,
+            KEY_TARGET_ATTACK,
             KEY_TARGET_MONSTER,
             KEY_TARGET_NPC,
             KEY_TARGET_PLAYER,
@@ -242,6 +244,8 @@ class KeyboardConfig : public gcn::KeyListener
         static KeyData NULL_KEY;
 
     private:
+        int enumValue(KeyData key);
+
         KeyboardConfig::KeyAction mNewKeyIndex; /**< Index of new key to be assigned */
         bool mEnabled;                 /**< Flag to respond to key input */
 
@@ -250,16 +254,18 @@ class KeyboardConfig : public gcn::KeyListener
         typedef std::map<int, std::string> KeyDescMap;
         KeyDescMap mDescs;
 
+        bool mStates[KEY_TOTAL];
+
         KeyData mKey[KEY_TOTAL];       /**< Pointer to all the key data */
 
         Uint8 *mActiveKeys;            /**< Stores a list of all the keys */
 
-        inline bool parseMovement(KeyData kd, bool press);
-        inline bool parseTarget(KeyData kd, bool press);
-        inline bool parseWindows(KeyData kd);
-        inline bool parseItemShortcut(KeyData kd);
-        inline bool parseEmoteShortcut(KeyData kd);
-        inline bool parseOutfitShortcut(KeyData kd);
+        inline void parseMovement();
+        inline void parseTarget();
+        inline void parseWindows();
+        inline void parseItemShortcut();
+        inline void parseEmoteShortcut();
+        inline void parseOutfitShortcut();
 };
 
 extern KeyboardConfig keyboard;

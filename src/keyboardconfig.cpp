@@ -71,7 +71,7 @@ static KeyDefault const keyData[KeyboardConfig::KEY_TOTAL] = {
     {"key_MoveRight", Key::RIGHT, 0, _("Move Right")},
     {"key_Attack", Key::LEFT_CONTROL, 0, _("Attack")},
     {"key_Talk", 't', 0, _("Talk")},
-    {"key_Target", Key::LEFT_SHIFT, 0, _("Stop Attack")},
+    {"key_Target", Key::LEFT_SHIFT, 0, _("Target & Attack")},
     {"key_TargetMonster", 'a', 0, _("Target MONSTER")},
     {"key_TargetNPC", 'n', 0, _("Target NPC")},
     {"key_TargetPlayer", 'q', 0, _("Target Player")},
@@ -186,6 +186,9 @@ KeyboardConfig::KeyboardConfig()
     mDescs[Key::SPACE] = "Space";
     mDescs[Key::TAB] = "Tab";
     mDescs[Key::UP] = "Up";
+
+    // Initialize state map
+    resetStates();
 }
 
 void KeyboardConfig::init()
@@ -443,43 +446,37 @@ KeyData KeyboardConfig::keyConvert(gcn::KeyEvent &event)
     return ret;
 }
 
-static short key_state = 0;
-
-enum {
-    KS_UP = 0x1,
-    KS_DOWN = 0x2,
-    KS_LEFT = 0x4,
-    KS_RIGHT = 0x8,
-    KS_TARGET = 0x10,
-    KS_TARGET_MONSTER = 0x20,
-    KS_TARGET_PLAYER = 0x40,
-    KS_TARGET_NPC = 0x80,
-    KS_ATTACK = 0x100,
-};
-
 static Being::Type lastTarget = Being::UNKNOWN;
 
-bool KeyboardConfig::isAttacking()
+void KeyboardConfig::resetStates()
 {
-    return key_state & KS_ATTACK;
+    for (int i = 0; i < KEY_TOTAL; i++)
+    {
+        mStates[i] = false;
+    }
 }
 
-bool KeyboardConfig::isTargeting()
+bool KeyboardConfig::isKeyActive(int key)
 {
-    return key_state & KS_TARGET;
+    return mStates[key];
 }
 
-void KeyboardConfig::keyPressed(gcn::KeyEvent &event)
+int KeyboardConfig::enumValue(KeyData key)
 {
-    // Ignore consumed events
-    if (event.isConsumed() || state != STATE_GAME)
-        return;
+    for (int i = 0; i < KEY_TOTAL; i++)
+    {
+        if (keyMatch(key, mKey[i]))
+            return i;
+    }
 
-    KeyData kd = keyConvert(event);
+    return -1;
+}
 
-    if (parseWindows(kd))
-        return;
-    else if (keyMatch(KEY_HIDE_WINDOWS, kd))
+void KeyboardConfig::processStates()
+{
+    parseWindows();
+
+    if (isKeyActive(KEY_HIDE_WINDOWS))
     {
         statusWindow->setVisible(false);
         inventoryWindow->setVisible(false);
@@ -494,32 +491,31 @@ void KeyboardConfig::keyPressed(gcn::KeyEvent &event)
 #endif
         outfitWindow->setVisible(false);
     }
-    else if (parseMovement(kd, true))
-        return;
-    else if (keyMatch(KEY_TARGET, kd))
-    {
-        key_state |= KS_TARGET;
-        player_node->stopAttack();
-    }
-    else if (parseTarget(kd, true))
-        return;
-    else if (keyMatch(KEY_ATTACK, kd))
-    {
-        key_state |= KS_ATTACK;
-    }
-    else if (keyMatch(KEY_PICKUP, kd))
+
+    parseMovement();
+
+    parseTarget();
+
+    if (isKeyActive(KEY_ATTACK))
+        if (player_node->getTarget())
+            player_node->attack(player_node->getTarget(), true);
+
+    if (isKeyActive(KEY_PICKUP))
     {
         player_node->pickUp();
     }
-    else if (keyMatch(KEY_SCREENSHOT, kd))
+
+    if (isKeyActive(KEY_SCREENSHOT))
     {
         Game::saveScreenshot();
     }
-    else if (keyMatch(KEY_PATHFIND, kd))
+
+    if (isKeyActive(KEY_PATHFIND))
     {
         viewport->toggleDebugPath();
     }
-    else if (keyMatch(KEY_TRADE, kd))
+
+    if (isKeyActive(KEY_TRADE))
     {
         // Toggle accepting of incoming trade requests
         unsigned int deflt = player_relations.getDefault();
@@ -538,37 +534,42 @@ void KeyboardConfig::keyPressed(gcn::KeyEvent &event)
 
         player_relations.setDefault(deflt);
     }
-    else if (parseItemShortcut(kd))
-        return;
-    else if (parseEmoteShortcut(kd))
-        return;
-    else if (parseOutfitShortcut(kd))
-        return;
-    else if (keyMatch(KEY_TOGGLE_CHAT, kd))
+
+    parseItemShortcut();
+    parseEmoteShortcut();
+    parseOutfitShortcut();
+
+    if (isKeyActive(KEY_TOGGLE_CHAT))
     {
         chatWindow->requestChatFocus();
     }
-    else if (keyMatch(KEY_SCROLL_CHAT_UP, kd))
+
+    if (isKeyActive(KEY_SCROLL_CHAT_UP))
     {
         chatWindow->scroll(-DEFAULT_CHAT_WINDOW_SCROLL);
     }
-    else if (keyMatch(KEY_SCROLL_CHAT_DOWN, kd))
+
+    if (isKeyActive(KEY_SCROLL_CHAT_DOWN))
     {
         chatWindow->scroll(DEFAULT_CHAT_WINDOW_SCROLL);
     }
-    else if (keyMatch(KEY_PREV_CHAT_TAB, kd))
+
+    if (isKeyActive(KEY_PREV_CHAT_TAB))
     {
         chatWindow->prevTab();
     }
-    else if (keyMatch(KEY_NEXT_CHAT_TAB, kd))
+
+    if (isKeyActive(KEY_NEXT_CHAT_TAB))
     {
         chatWindow->nextTab();
     }
-    else if (keyMatch(KEY_SIT, kd))
+
+    if (isKeyActive(KEY_SIT))
     {
         player_node->toggleSit();
     }
-    else if (keyMatch(KEY_TALK, kd))
+
+    if (isKeyActive(KEY_TALK))
     {
         if (!NPC::isTalking)
         {
@@ -578,16 +579,25 @@ void KeyboardConfig::keyPressed(gcn::KeyEvent &event)
                 dynamic_cast<NPC*>(target)->talk();
         }
     }
-    else if (keyMatch(KEY_QUIT, kd))
+
+    if (isKeyActive(KEY_QUIT))
     {
         Game::quit();
     }
-    // Otherwise, just print the key for now
-    else
-    {
-        gcn::Key key = event.getKey();
-        printf("%d %1$c (%s)\n", key.getValue(), keyString(kd).c_str());
-    }
+}
+
+void KeyboardConfig::keyPressed(gcn::KeyEvent &event)
+{
+    // Ignore consumed events
+    if (event.isConsumed() || state != STATE_GAME)
+        return;
+
+    KeyData kd = keyConvert(event);
+
+    int key = enumValue(kd);
+
+    if (key > -1)
+        mStates[key] = true;
 }
 
 void KeyboardConfig::keyReleased(gcn::KeyEvent &event)
@@ -598,59 +608,28 @@ void KeyboardConfig::keyReleased(gcn::KeyEvent &event)
 
     KeyData kd = keyConvert(event);
 
-    if (parseMovement(kd, false))
-        return;
-    else if (keyMatch(KEY_TARGET, kd))
-    {
-        key_state &= ~KS_TARGET;
-    }
-    else if (parseTarget(kd, false))
-        return;
-    else if (keyMatch(KEY_ATTACK, kd))
-    {
-        key_state &= ~KS_ATTACK;
-    }
+    int key = enumValue(kd);
+
+    if (key > -1)
+        mStates[key] = false;
 }
 
-inline bool KeyboardConfig::parseMovement(KeyData kd, bool press)
+inline void KeyboardConfig::parseMovement()
 {
-    // Adjust the stored direction
-    if (keyMatch(KEY_MOVE_UP, kd))
-        if (press)
-            key_state |= KS_UP;
-        else
-            key_state &= ~KS_UP;
-    else if (keyMatch(KEY_MOVE_DOWN, kd))
-        if (press)
-            key_state |= KS_DOWN;
-        else
-            key_state &= ~KS_DOWN;
-    else if (keyMatch(KEY_MOVE_LEFT, kd))
-        if (press)
-            key_state |= KS_LEFT;
-        else
-            key_state &= ~KS_LEFT;
-    else if (keyMatch(KEY_MOVE_RIGHT, kd))
-        if (press)
-            key_state |= KS_RIGHT;
-        else
-            key_state &= ~KS_RIGHT;
-    else return false; // If it's not a direction, we ignore it for now
-
     if (player_node->mAction == Being::DEAD && current_npc != 0)
-        return true;
+        return;
 
     // Now get the adjusted direction (remove conflicting directions)
     int direction = 0;
 
-    if (key_state & KS_UP)
+    if (isKeyActive(KEY_MOVE_UP))
         direction |= Being::UP;
-    else if (key_state & KS_DOWN)
+    else if (isKeyActive(KEY_MOVE_DOWN))
         direction |= Being::DOWN;
 
-    if (key_state & KS_LEFT)
+    if (isKeyActive(KEY_MOVE_LEFT))
         direction |= Being::LEFT;
-    else if (key_state & KS_RIGHT)
+    else if (isKeyActive(KEY_MOVE_RIGHT))
         direction |= Being::RIGHT;
 
     // If the direction is different, then stop first (this makes things weird
@@ -664,11 +643,11 @@ inline bool KeyboardConfig::parseMovement(KeyData kd, bool press)
     player_node->setWalkingDir(direction);
 
 #ifdef EATHENA_SUPPORT
-    if (key_state & KS_ATTACK && lastTarget != Being::UNKNOWN)
+    if (isKeyActive(KEY_ATTACK) && lastTarget != Being::UNKNOWN)
     {
         Being *target = NULL;
 
-        bool newTarget = !(key_state & KS_TARGET);
+        bool newTarget = isKeyActive(KEY_ATTACK);
         // A set target has highest priority
         if (newTarget || !player_node->getTarget())
         {
@@ -691,44 +670,47 @@ inline bool KeyboardConfig::parseMovement(KeyData kd, bool press)
         player_node->attack(target, newTarget);
     }
 #endif
-
-    return true;
 }
 
-inline bool KeyboardConfig::parseTarget(KeyData kd, bool press)
+inline void KeyboardConfig::parseTarget()
 {
+#ifdef TMWSERV_SUPPORT
+    const Vector &pos = player_node->getPosition();
+    const Uint16 x = (int) pos.x / 32;
+    const Uint16 y = (int) pos.y / 32;
+#else
+    const Uint16 x = player_node->mX;
+    const Uint16 y = player_node->mY;
+#endif
+
+    if (keyboard.isKeyActive(keyboard.KEY_TARGET_ATTACK))
+    {
+        Being *target = NULL;
+
+        bool newTarget = !keyboard.isKeyActive(keyboard.KEY_TARGET_ATTACK);
+        // A set target has highest priority
+        if (!player_node->getTarget())
+        {
+            Uint16 targetX = x, targetY = y;
+            // Only auto target Monsters
+            target = beingManager->findNearestLivingBeing(targetX, targetY,
+                     20, Being::MONSTER);
+        }
+        player_node->attack(target, newTarget);
+    }
+
     Being::Type currentTarget = Being::UNKNOWN;
 
-    if (keyMatch(KEY_TARGET_MONSTER, kd))
-        if (press)
-            key_state |= KS_TARGET_MONSTER;
-        else
-            key_state &= ~KS_TARGET_MONSTER;
-    else if (keyMatch(KEY_TARGET_NPC, kd))
-        if (press)
-            key_state |= KS_TARGET_NPC;
-        else
-            key_state &= ~KS_TARGET_NPC;
-    else if (keyMatch(KEY_TARGET_PLAYER, kd))
-        if (press)
-            key_state |= KS_TARGET_PLAYER;
-        else
-            key_state &= ~KS_TARGET_PLAYER;
-    else return false;
-
-    if (key_state & KS_TARGET_MONSTER)
+    if (isKeyActive(KEY_TARGET_MONSTER))
         currentTarget = Being::MONSTER;
-    else if (key_state = KS_TARGET_NPC)
+    else if (isKeyActive(KEY_TARGET_NPC))
         currentTarget = Being::NPC;
-    else if (key_state & KS_TARGET_PLAYER)
+    else if (isKeyActive(KEY_TARGET_PLAYER))
         currentTarget = Being::PLAYER;
     else lastTarget = Being::UNKNOWN; // Reset last target
 
     if (currentTarget == Being::UNKNOWN)
-        return true;
-
-    if (key_state & KS_TARGET) // We still want to consume the events,
-        return true;             // but not process them
+        return;
 
     Being *target = beingManager->findNearestLivingBeing(player_node, 20,
                                                          currentTarget);
@@ -741,46 +723,56 @@ inline bool KeyboardConfig::parseTarget(KeyData kd, bool press)
     }
 }
 
-inline bool KeyboardConfig::parseWindows(KeyData kd)
+inline void KeyboardConfig::parseWindows()
 {
     gcn::Window *requestedWindow = NULL;
 
-    if (keyMatch(KEY_WINDOW_HELP, kd))
-        // Needs special handling
+    if (isKeyActive(KEY_WINDOW_HELP))
+    // Needs special handling
+    {
+        if (helpWindow->isVisible())
+            helpWindow->setVisible(false);
+        else
         {
-            if (helpWindow->isVisible())
-                helpWindow->setVisible(false);
-            else
-            {
-                helpWindow->loadHelp("index");
-                helpWindow->requestMoveToTop();
-            }
-
-            return true;
+            helpWindow->loadHelp("index");
+            helpWindow->requestMoveToTop();
         }
-    else if (keyMatch(KEY_WINDOW_STATUS, kd))
+    }
+
+    if (isKeyActive(KEY_WINDOW_STATUS))
         requestedWindow = statusWindow;
-    else if (keyMatch(KEY_WINDOW_INVENTORY, kd))
+
+    if (isKeyActive(KEY_WINDOW_INVENTORY))
         requestedWindow = inventoryWindow;
-    else if (keyMatch(KEY_WINDOW_EQUIPMENT, kd))
+
+    if (isKeyActive(KEY_WINDOW_EQUIPMENT))
         requestedWindow = equipmentWindow;
-    else if (keyMatch(KEY_WINDOW_SKILL, kd))
+
+    if (isKeyActive(KEY_WINDOW_SKILL))
         requestedWindow = skillDialog;
-    else if (keyMatch(KEY_WINDOW_MINIMAP, kd))
+
+    if (isKeyActive(KEY_WINDOW_MINIMAP))
         requestedWindow = minimap;
-    else if (keyMatch(KEY_WINDOW_CHAT, kd))
+
+    if (isKeyActive(KEY_WINDOW_CHAT))
         requestedWindow = chatWindow;
-    else if (keyMatch(KEY_WINDOW_SHORTCUT, kd))
+
+    if (isKeyActive(KEY_WINDOW_SHORTCUT))
         requestedWindow = itemShortcutWindow;
-    else if (keyMatch(KEY_WINDOW_SETUP, kd))
+
+    if (isKeyActive(KEY_WINDOW_SETUP))
         requestedWindow = setupWindow;
-    else if (keyMatch(KEY_WINDOW_DEBUG, kd))
+
+    if (isKeyActive(KEY_WINDOW_DEBUG))
         requestedWindow = debugWindow;
-    else if (keyMatch(KEY_WINDOW_PARTY, kd))
+
+    if (isKeyActive(KEY_WINDOW_PARTY))
         requestedWindow = partyWindow;
-    else if (keyMatch(KEY_WINDOW_EMOTE_SHORTCUT, kd))
+
+    if (isKeyActive(KEY_WINDOW_EMOTE_SHORTCUT))
         requestedWindow = emoteShortcutWindow;
-    else if (keyMatch(KEY_WINDOW_OUTFIT, kd))
+
+    if (isKeyActive(KEY_WINDOW_OUTFIT))
         requestedWindow = outfitWindow;
 
     if (requestedWindow)
@@ -788,53 +780,35 @@ inline bool KeyboardConfig::parseWindows(KeyData kd)
         requestedWindow->setVisible(!requestedWindow->isVisible());
         if (requestedWindow->isVisible())
             requestedWindow->requestMoveToTop();
-        return true;
     }
-
-    return false;
 }
 
-inline bool KeyboardConfig::parseItemShortcut(KeyData kd)
+inline void KeyboardConfig::parseItemShortcut()
 {
     // Checks if any item shortcut is pressed.
     for (int i = KEY_SHORTCUT_1; i <= KEY_SHORTCUT_12; i++)
     {
-        if (keyMatch(i, kd))
-        {
+        if (isKeyActive(i))
             itemShortcut->useItem(i - KEY_SHORTCUT_1);
-            return true;
-        }
     }
-
-    return false;
 }
 
-inline bool KeyboardConfig::parseEmoteShortcut(KeyData kd)
+inline void KeyboardConfig::parseEmoteShortcut()
 {
     // Checks if any item shortcut is pressed.
     for (int i = KEY_EMOTE_1; i <= KEY_EMOTE_12; i++)
     {
-        if (keyMatch(i, kd))
-        {
+        if (isKeyActive(i))
             emoteShortcut->useEmote(1 + i - KEY_EMOTE_1);
-            return true;
-        }
     }
-
-    return false;
 }
 
-inline bool KeyboardConfig::parseOutfitShortcut(KeyData kd)
+inline void KeyboardConfig::parseOutfitShortcut()
 {
     // Checks if any item shortcut is pressed.
     for (int i = KEY_OUTFIT_1; i <= KEY_OUTFIT_10; i++)
     {
-        if (keyMatch(i, kd))
-        {
+        if (isKeyActive(i))
             outfitWindow->wearOutfit(i - KEY_OUTFIT_1);
-            return true;
-        }
     }
-
-    return false;
 }

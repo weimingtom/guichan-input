@@ -516,6 +516,8 @@ void Game::handleInput()
             guiInput->pushInput(event);
         }
     }
+
+    keyboard.processStates();
 }
 
 void Game::quit()
