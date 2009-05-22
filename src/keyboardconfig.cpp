@@ -233,26 +233,15 @@ void KeyboardConfig::resetToDefaults()
 
 bool KeyboardConfig::hasConflicts()
 {
-    int i, j;
-    /**
-     * No need to parse the square matrix: only check one triangle
-     * that's enough to detect conflicts
-     */
-    for (i = 0; i < KEY_TOTAL; i++)
+    bool used[KEY_TOTAL];
+    memset(used, 0, sizeof(used));
+
+    for (int i = 0; i < KEY_TOTAL; i++)
     {
-        for (j = i, j++; j < KEY_TOTAL; j++)
-        {
-            // Allow for item shortcut and emote keys to overlap, but no other keys
-            // TODO: remove that
-            if (!((((i >= KEY_SHORTCUT_1) && (i <= KEY_SHORTCUT_12)) &&
-                   ((j >= KEY_EMOTE_1) && (j <= KEY_EMOTE_12))) ||
-                   ((i == KEY_TOGGLE_CHAT) && (j == KEY_OK))) &&
-                   (mKey[i].key == mKey[j].key)
-               )
-            {
-                return true;
-            }
-        }
+        int key = enumValue(mKey[i]);
+        if (used[key])
+            return true;
+        used[key] = 1;
     }
     return false;
 }
