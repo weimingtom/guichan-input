@@ -439,10 +439,7 @@ static Being::Type lastTarget = Being::UNKNOWN;
 
 void KeyboardConfig::resetStates()
 {
-    for (int i = 0; i < KEY_TOTAL; i++)
-    {
-        mStates[i] = false;
-    }
+    memset(mStates, 0, sizeof(mStates));
 }
 
 bool KeyboardConfig::isKeyActive(int key)
