@@ -29,6 +29,7 @@
 #include "gui/widgets/textbox.h"
 #include "gui/widgets/textfield.h"
 
+#include "keyboardconfig.h"
 #include "npc.h"
 
 #include "net/net.h"
@@ -47,6 +48,7 @@
 NpcDialog::NpcDialog()
     : Window(_("NPC")),
       mNpcId(0),
+      mOkDone(false),
       mDefaultInt(0),
       mInputState(NPC_INPUT_NONE),
       mActionState(NPC_ACTION_WAIT)
@@ -54,6 +56,9 @@ NpcDialog::NpcDialog()
     // Basic Window Setup
     setWindowName("NpcText");
     setResizable(true);
+    setFocusable(true);
+
+    addKeyListener(this);
 
     setMinWidth(200);
     setMinHeight(150);
@@ -363,4 +368,33 @@ void NpcDialog::buildLayout()
     redraw();
 
     mScrollArea->setVerticalScrollAmount(mScrollArea->getVerticalMaxScroll());
+}
+
+void NpcDialog::keyPressed(gcn::KeyEvent &event)
+{
+    if (keyboard.keyMatch(KeyboardConfig::KEY_OK, event) && !mOkDone)
+    {
+        mOkDone = true;
+        action(gcn::ActionEvent(NULL, "ok"));
+        event.consume();
+    }
+    else if (keyboard.keyMatch(KeyboardConfig::KEY_MOVE_UP, event))
+    {
+        npcDialog->move(1);
+        event.consume();
+    }
+    else if (keyboard.keyMatch(KeyboardConfig::KEY_MOVE_DOWN, event))
+    {
+        npcDialog->move(-1);
+        event.consume();
+    }
+}
+
+void NpcDialog::keyReleased(gcn::KeyEvent &event)
+{
+    if (keyboard.keyMatch(KeyboardConfig::KEY_OK, event))
+    {
+        mOkDone = false;
+        event.consume();
+    }
 }

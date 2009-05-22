@@ -300,11 +300,6 @@ const std::string &KeyboardConfig::getKeyCaption(int index) const
     return keyData[index].caption;
 }
 
-bool KeyboardConfig::keyMatch(int index, KeyData ev) const
-{
-    return keyMatch(getKeyData(index), ev);
-}
-
 bool KeyboardConfig::keyMatch(KeyData data, KeyData ev) const
 {
     return (ev.key == data.key || data.key == 0) && (ev.mask == data.mask);

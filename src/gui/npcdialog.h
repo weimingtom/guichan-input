@@ -27,6 +27,7 @@
 #include "npc.h"
 
 #include <guichan/actionlistener.hpp>
+#include <guichan/keylistener.hpp>
 #include <guichan/listmodel.hpp>
 
 #include <string>
@@ -44,7 +45,7 @@ class Button;
  * \ingroup Interface
  */
 class NpcDialog : public Window, public gcn::ActionListener,
-                  public gcn::ListModel
+                  public gcn::KeyListener, public gcn::ListModel
 {
     public:
         /**
@@ -150,10 +151,15 @@ class NpcDialog : public Window, public gcn::ActionListener,
          */
         void widgetResized(const gcn::Event &event);
 
+        void keyPressed(gcn::KeyEvent &event);
+
+        void keyReleased(gcn::KeyEvent &event);
+
     private:
         void buildLayout();
 
         int mNpcId;
+        bool mOkDone;
 
         int mDefaultInt;
         std::string mDefaultString;

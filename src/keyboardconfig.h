@@ -22,7 +22,6 @@
 #ifndef KEYBOARDCONFIG_H
 #define KEYBOARDCONFIG_H
 
-
 #include <guichan/keylistener.hpp>
 
 #include <SDL_types.h>
@@ -103,15 +102,32 @@ class KeyboardConfig : public gcn::KeyListener
         const std::string &getKeyCaption(int index) const;
 
         /**
-         * Returns whether the given action and event match. This is a
-         * convinience for the KeyData form.
+         * Turns the given event into key data.
          */
-        bool keyMatch(int index, KeyData ev) const;
+        KeyData keyConvert(gcn::KeyEvent &event) const;
 
         /**
          * Returns whether the given action and key data match.
          */
         bool keyMatch(KeyData data, KeyData ev) const;
+
+        /**
+         * Returns whether the given action and event match.
+         */
+        bool keyMatch(int index, KeyData ev) const
+        { return keyMatch(getKeyData(index), ev); }
+
+        /**
+         * Returns whether the given action and event match.
+         */
+        bool keyMatch(KeyData data, gcn::KeyEvent &event) const
+        { return keyMatch(data, keyConvert(event)); }
+
+        /**
+         * Returns whether the given action and event match.
+         */
+        bool keyMatch(int index, gcn::KeyEvent &event) const
+        { return keyMatch(getKeyData(index), keyConvert(event)); }
 
         /**
          * Returns a string represnetation of the given key data.
@@ -128,11 +144,6 @@ class KeyboardConfig : public gcn::KeyListener
          * Tries to parse the given string as a key data.
          */
         KeyData keyParse(std::string keyString) const;
-
-        /**
-         * Turns the given event into key data.
-         */
-        KeyData keyConvert(gcn::KeyEvent &event) const;
 
         void resetStates();
 

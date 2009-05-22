@@ -357,6 +357,9 @@ void Window::mousePressed(gcn::MouseEvent &event)
             }
         }
 
+        if (event.getSource() == this)
+            requestFocus();
+
         // Handle window resizing
         mouseResize = getResizeHandles(event);
     }
