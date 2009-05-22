@@ -96,7 +96,7 @@ static KeyDefault const keyData[KeyboardConfig::KEY_TOTAL] = {
     {"key_WindowHelp", Key::F1, 0, _("Help Window")},
     {"key_WindowStatus", Key::F2, 0, _("Status Window")},
     {"key_WindowInventory", Key::F3, 0, _("Inventory Window")},
-    {"key_WindowEquipment", Key::F4, 0, _("Equipment WIndow")},
+    {"key_WindowEquipment", Key::F4, 0, _("Equipment Window")},
     {"key_WindowSkill", Key::F5, 0, _("Skill Window")},
     {"key_WindowMinimap", Key::F6, 0, _("Minimap Window")},
     {"key_WindowChat", Key::F7, 0, _("Chat Window")},

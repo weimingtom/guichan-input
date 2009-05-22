@@ -194,6 +194,8 @@ void LocalPlayer::logic()
         mLastTarget = -1;
     }
 
+#endif
+
     if (mTarget)
     {
         if (mTarget->getType() == Being::NPC)
@@ -204,13 +206,18 @@ void LocalPlayer::logic()
         }
         else
         {
+#ifdef TMWSERV_SUPPORT
+            // Find whether target is in range
+            const int rangeX = abs(mTarget->getPosition().x - getPosition().x);
+            const int rangeY = abs(mTarget->getPosition().y - getPosition().y);
+#else
             // Find whether target is in range
             const int rangeX = abs(mTarget->mX - mX);
             const int rangeY = abs(mTarget->mY - mY);
+#endif
             const int attackRange = getAttackRange();
             const int inRange = rangeX > attackRange || rangeY > attackRange
                                                                     ? 1 : 0;
-
             mTarget->setTargetAnimation(
                 mTargetCursor[inRange][mTarget->getTargetCursorSize()]);
 
@@ -221,7 +228,6 @@ void LocalPlayer::logic()
                 attack(mTarget, true);
         }
     }
-#endif
 
     Player::logic();
 }
@@ -281,9 +287,7 @@ void LocalPlayer::nextStep()
     if (mGoingToTarget && mTarget && withinAttackRange(mTarget))
     {
         mAction = Being::STAND;
-#ifdef EATHENA_SUPPORT
         attack(mTarget, true);
-#endif
         mGoingToTarget = false;
         mPath.clear();
         return;
@@ -642,7 +646,7 @@ void LocalPlayer::emote(Uint8 emotion)
 }
 
 #ifdef TMWSERV_SUPPORT
-
+/*
 void LocalPlayer::attack()
 {
     if (mLastAction != -1)
@@ -692,16 +696,25 @@ void LocalPlayer::attack()
     }
     Net::GameServer::Player::attack(getSpriteDirection());
 }
-
+*/
 void LocalPlayer::useSpecial(int special)
 {
     Net::GameServer::Player::useSpecial(special);
 }
 
-#else 
+#endif
 
 void LocalPlayer::attack(Being *target, bool keep)
 {
+#ifdef TMWSERV_SUPPORT
+    if (mLastAction != -1)
+        return;
+
+    // Can only attack when standing still
+    if (mAction != STAND && mAction != ATTACK)
+        return;
+#endif
+
     mKeepAttacking = keep;
 
     if (!target || target->getType() == Being::NPC)
@@ -712,13 +725,19 @@ void LocalPlayer::attack(Being *target, bool keep)
         mLastTarget = -1;
         setTarget(target);
     }
-
+#ifdef TMWSERV_SUPPORT
+    Vector plaPos = this->getPosition();
+    Vector tarPos = mTarget->getPosition();
+    int dist_x = plaPos.x - tarPos.x;
+    int dist_y = plaPos.y - tarPos.y;
+#else
     int dist_x = target->mX - mX;
     int dist_y = target->mY - mY;
 
     // Must be standing to attack
     if (mAction != STAND)
         return;
+#endif
 
     if (abs(dist_y) >= abs(dist_x))
     {
@@ -735,8 +754,12 @@ void LocalPlayer::attack(Being *target, bool keep)
             setDirection(LEFT);
     }
 
+#ifdef TMWSERV_SUPPORT
+    mLastAction = tick_time;
+#else
     mWalkTime = tick_time;
     mTargetTime = tick_time;
+#endif
 
     setAction(ATTACK);
 
@@ -751,22 +774,24 @@ void LocalPlayer::attack(Being *target, bool keep)
         sound.playSfx("sfx/fist-swish.ogg");
     }
 
-    Net::getPlayerHandler()->attack(target);
-
+#ifdef TMWSERV_SUPPORT
+    if (mLastAction == STAND)
+#endif
+    Net::getPlayerHandler()->attack(target->getId());
+#ifdef EATHENA_SUPPORT
     if (!keep)
         stopAttack();
+#endif
 }
-
-#endif // no TMWSERV_SUPPORT
 
 void LocalPlayer::stopAttack()
 {
     if (mTarget)
     {
-        setAction(STAND);
-        mLastTarget = -1;
+        if (mAction == ATTACK)
+            setAction(STAND);
+        setTarget(NULL);
     }
-    setTarget(NULL);
     mLastTarget = -1;
 }
 
@@ -848,8 +873,8 @@ void LocalPlayer::setXp(int xp)
         // Show XP number
         particleEngine->addTextRiseFadeOutEffect(
                 text,
-                getPixelX() + 16,
-                getPixelY() - 16,
+                getPixelX(),
+                getPixelY() - 48,
                 &guiPalette->getColor(Palette::EXP_INFO),
                 gui->getInfoParticleFont(), true);
     }
@@ -865,8 +890,8 @@ void LocalPlayer::pickedUp(const std::string &item)
         // Show pickup notification
         particleEngine->addTextRiseFadeOutEffect(
                 item,
-                getPixelX() + 16,
-                getPixelY() - 16,
+                getPixelX(),
+                getPixelY() - 48,
                 &guiPalette->getColor(Palette::PICKUP_INFO),
                 gui->getInfoParticleFont(), true);
     }
@@ -881,7 +906,7 @@ int LocalPlayer::getAttackRange()
         const ItemInfo info = weapon->getInfo();
         return info.getAttackRange();
     }
-    return 32; // unarmed range
+    return 48; // unarmed range
 #else
     return mAttackRange;
 #endif
