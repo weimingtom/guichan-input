@@ -198,8 +198,6 @@ void KeyboardConfig::init()
         mKey[i].key = keyData[i].key;
         mKey[i].mask = keyData[i].mask;
     }
-    mNewKeyIndex = KEY_NO_VALUE;
-    mEnabled = true;
 
     retrieve();
 }
@@ -231,14 +229,14 @@ void KeyboardConfig::resetToDefaults()
     }
 }
 
-bool KeyboardConfig::hasConflicts()
+bool KeyboardConfig::hasConflicts() const
 {
     bool used[KEY_TOTAL];
     memset(used, 0, sizeof(used));
 
     for (int i = 0; i < KEY_TOTAL; i++)
     {
-        int key = enumValue(mKey[i]);
+        int key = getKeyIndex(mKey[i]);
         if (used[key])
             return true;
         used[key] = 1;
@@ -246,19 +244,46 @@ bool KeyboardConfig::hasConflicts()
     return false;
 }
 
-int KeyboardConfig::getKeyIndex(int keyValue) const
+void KeyboardConfig::keyPressed(gcn::KeyEvent &event)
+{
+    // Ignore consumed events
+    if (event.isConsumed() || state != STATE_GAME)
+        return;
+
+    KeyData kd = keyConvert(event);
+
+    int key = getKeyIndex(kd);
+
+    if (key > -1)
+        mStates[key] = true;
+}
+
+void KeyboardConfig::keyReleased(gcn::KeyEvent &event)
+{
+    // Ignore consumed events
+    if (event.isConsumed() || state != STATE_GAME)
+        return;
+
+    KeyData kd = keyConvert(event);
+
+    int key = getKeyIndex(kd);
+
+    if (key > -1)
+        mStates[key] = false;
+}
+
+int KeyboardConfig::getKeyIndex(KeyData key) const
 {
     for (int i = 0; i < KEY_TOTAL; i++)
     {
-        if (keyValue == mKey[i].key)
-        {
+        if (keyMatch(key, mKey[i]))
             return i;
-        }
     }
+
     return KEY_NO_VALUE;
 }
 
-KeyData KeyboardConfig::getKeyData(int index)
+KeyData KeyboardConfig::getKeyData(int index) const
 {
     if (index < 0)
         return NULL_KEY;
@@ -275,17 +300,17 @@ const std::string &KeyboardConfig::getKeyCaption(int index) const
     return keyData[index].caption;
 }
 
-bool KeyboardConfig::keyMatch(int index, KeyData ev)
+bool KeyboardConfig::keyMatch(int index, KeyData ev) const
 {
     return keyMatch(getKeyData(index), ev);
 }
 
-bool KeyboardConfig::keyMatch(KeyData data, KeyData ev)
+bool KeyboardConfig::keyMatch(KeyData data, KeyData ev) const
 {
     return (ev.key == data.key || data.key == 0) && (ev.mask == data.mask);
 }
 
-std::string KeyboardConfig::keyString(KeyData data)
+std::string KeyboardConfig::keyString(KeyData data) const
 {
     std::stringstream out;
 
@@ -310,7 +335,7 @@ std::string KeyboardConfig::keyString(KeyData data)
     // Otherwise, check our map
     else
     {
-        KeyDescMap::iterator it = mDescs.find(data.key);
+        KeyDescMap::const_iterator it = mDescs.find(data.key);
         if (it != mDescs.end())
             out << it->second;
         // Anything else, just quote the numeric value
@@ -321,7 +346,7 @@ std::string KeyboardConfig::keyString(KeyData data)
     return out.str();
 }
 
-KeyData KeyboardConfig::keyParse(std::string keyS)
+KeyData KeyboardConfig::keyParse(std::string keyS) const
 {
     KeyData kd = {0, 0};
 
@@ -386,7 +411,7 @@ KeyData KeyboardConfig::keyParse(std::string keyS)
     return kd;
 }
 
-KeyData KeyboardConfig::keyConvert(gcn::KeyEvent &event)
+KeyData KeyboardConfig::keyConvert(gcn::KeyEvent &event) const
 {
     KeyData ret;
     ret.key = event.getKey().getValue();
@@ -442,20 +467,9 @@ void KeyboardConfig::resetStates()
     memset(mStates, 0, sizeof(mStates));
 }
 
-bool KeyboardConfig::isKeyActive(int key)
+bool KeyboardConfig::isKeyActive(int key) const
 {
     return mStates[key];
-}
-
-int KeyboardConfig::enumValue(KeyData key)
-{
-    for (int i = 0; i < KEY_TOTAL; i++)
-    {
-        if (keyMatch(key, mKey[i]))
-            return i;
-    }
-
-    return -1;
 }
 
 void KeyboardConfig::processStates()
@@ -570,34 +584,6 @@ void KeyboardConfig::processStates()
     {
         Game::quit();
     }
-}
-
-void KeyboardConfig::keyPressed(gcn::KeyEvent &event)
-{
-    // Ignore consumed events
-    if (event.isConsumed() || state != STATE_GAME)
-        return;
-
-    KeyData kd = keyConvert(event);
-
-    int key = enumValue(kd);
-
-    if (key > -1)
-        mStates[key] = true;
-}
-
-void KeyboardConfig::keyReleased(gcn::KeyEvent &event)
-{
-    // Ignore consumed events
-    if (event.isConsumed() || state != STATE_GAME)
-        return;
-
-    KeyData kd = keyConvert(event);
-
-    int key = enumValue(kd);
-
-    if (key > -1)
-        mStates[key] = false;
 }
 
 inline void KeyboardConfig::parseMovement()

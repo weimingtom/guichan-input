@@ -72,7 +72,6 @@ Setup_Keyboard::Setup_Keyboard():
     mKeyList(new ListBox(mKeyListModel)),
     mKeySetting(false)
 {
-    keyboard.setSetupKeyboard(this);
     setName(_("Keyboard"));
     setFocusable(true);
     addKeyListener(this);
@@ -122,14 +121,12 @@ void Setup_Keyboard::apply()
                      _("Resolve them, or gameplay may result in strange "
                        "behaviour."));
     }
-    keyboard.setEnabled(true);
     keyboard.store();
 }
 
 void Setup_Keyboard::cancel()
 {
     keyboard.retrieve();
-    keyboard.setEnabled(true);
 
     refreshKeys();
 }
@@ -147,7 +144,6 @@ void Setup_Keyboard::action(const gcn::ActionEvent &event)
         //setupWindow->addKeyListener(this);
         requestFocus();
         mAssignKeyButton->setEnabled(false);
-        keyboard.setEnabled(false);
         int i(mKeyList->getSelected());
         //keyboard.setNewKeyIndex(i);
         mKeyListModel->setElementAt(i, keyboard.getKeyCaption(i) + ": ?");

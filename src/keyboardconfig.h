@@ -76,12 +76,21 @@ class KeyboardConfig : public gcn::KeyListener
         /**
          * Determines if any key assignments are the same as each other.
          */
-        bool hasConflicts();
+        bool hasConflicts() const;
+
+        void keyPressed(gcn::KeyEvent &event);
+
+        void keyReleased(gcn::KeyEvent &event);
+
+        /**
+         * Get the key function index by providing the keys value.
+         */
+        int getKeyIndex(KeyData key) const;
 
         /**
          * Returns the key data for the given key.
          */
-        KeyData getKeyData(int index);
+        KeyData getKeyData(int index) const;
 
         /**
          * Changes the given key to match the given key data.
@@ -89,74 +98,47 @@ class KeyboardConfig : public gcn::KeyListener
         void setKeyData(int index, KeyData data);
 
         /**
-         * Get the enable flag, which will stop the user from doing actions.
-         */
-        bool isEnabled() const
-        { return mEnabled; }
-
-        /**
          * Get the key's caption, providing more meaning to the user.
          */
         const std::string &getKeyCaption(int index) const;
 
         /**
-         * Get the key function index by providing the keys value.
-         */
-        int getKeyIndex(int keyValue) const;
-
-        /**
-         * Set the enable flag, which will stop the user from doing actions.
-         */
-        void setEnabled(bool flag)
-        { mEnabled = flag; }
-
-        /**
-         * Set a reference to the key setup window.
-         */
-        void setSetupKeyboard(Setup_Keyboard *setupKey)
-        { mSetupKey = setupKey; }
-
-        /**
          * Returns whether the given action and event match. This is a
          * convinience for the KeyData form.
          */
-        bool keyMatch(int index, KeyData ret);
+        bool keyMatch(int index, KeyData ev) const;
 
         /**
          * Returns whether the given action and key data match.
          */
-        bool keyMatch(KeyData data, KeyData ret);
+        bool keyMatch(KeyData data, KeyData ev) const;
 
         /**
          * Returns a string represnetation of the given key data.
          */
-        std::string keyString(KeyData data);
+        std::string keyString(KeyData data) const;
 
         /**
          * Returns a string represnetation of the given key data.
          */
-        std::string keyString(int index)
+        std::string keyString(int index) const
         { return keyString(getKeyData(index));  }
 
         /**
          * Tries to parse the given string as a key data.
          */
-        KeyData keyParse(std::string keyString);
+        KeyData keyParse(std::string keyString) const;
 
         /**
          * Turns the given event into key data.
          */
-        KeyData keyConvert(gcn::KeyEvent &event);
+        KeyData keyConvert(gcn::KeyEvent &event) const;
 
         void resetStates();
 
         void processStates();
 
-        bool isKeyActive(int key);
-
-        void keyPressed(gcn::KeyEvent &event);
-
-        void keyReleased(gcn::KeyEvent &event);
+        bool isKeyActive(int key) const;
 
         /**
          * All the key functions.
@@ -244,21 +226,12 @@ class KeyboardConfig : public gcn::KeyListener
         static KeyData NULL_KEY;
 
     private:
-        int enumValue(KeyData key);
-
-        KeyboardConfig::KeyAction mNewKeyIndex; /**< Index of new key to be assigned */
-        bool mEnabled;                 /**< Flag to respond to key input */
-
-        Setup_Keyboard *mSetupKey;     /**< Reference to setup window */
-
         typedef std::map<int, std::string> KeyDescMap;
         KeyDescMap mDescs;
 
         bool mStates[KEY_TOTAL];
 
         KeyData mKey[KEY_TOTAL];       /**< Pointer to all the key data */
-
-        Uint8 *mActiveKeys;            /**< Stores a list of all the keys */
 
         inline void parseMovement();
         inline void parseTarget();
