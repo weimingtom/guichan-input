@@ -510,11 +510,19 @@ void Game::handleInput()
         if (event.type == SDL_QUIT)
         {
             done = true;
+
+            // We can safely skip everything else in here
+            return;
         }
-        else
+        else if (event.type == SDL_KEYUP)
         {
-            guiInput->pushInput(event);
+            // Make sure guichan can recognize character keys
+            if (!event.key.keysym.unicode)
+                event.key.keysym.unicode = event.key.keysym.sym;
         }
+
+
+        guiInput->pushInput(event);
     }
 
     keyboard.processStates();
