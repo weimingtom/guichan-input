@@ -84,6 +84,8 @@ Window::Window(const std::string &caption, bool modal, Window *parent,
 
     // Windows are invisible by default
     setVisible(false);
+    setTabInEnabled(true);
+    setTabOutEnabled(true);
 
     addWidgetListener(this);
 }
@@ -121,7 +123,10 @@ void Window::draw(gcn::Graphics *graphics)
     if (mShowTitle)
     {
         g->setColor(guiPalette->getColor(Palette::TEXT));
-        g->setFont(getFont());
+        if (isFocused())
+            g->setFont(boldFont);
+        else
+            g->setFont(getFont());
         g->drawText(getCaption(), 7, 5, gcn::Graphics::LEFT);
     }
 

@@ -87,10 +87,14 @@ NpcDialog::NpcDialog()
     // Setup string input box
     mTextField = new TextField("");
     mTextField->setVisible(true);
+    mTextField->setActionEventId("ok");
+    mTextField->addActionListener(this);
 
     // Setup int input box
     mIntField = new IntTextField;
     mIntField->setVisible(true);
+    mIntField->setActionEventId("ok");
+    mIntField->addActionListener(this);
 
     // Setup button
     mButton = new Button("", "ok", this);
@@ -299,8 +303,8 @@ void NpcDialog::move(int amount)
         case NPC_INPUT_LIST:
             mItemList->setSelected(mItemList->getSelected() - amount);
             break;
-        case NPC_INPUT_NONE:
         case NPC_INPUT_STRING:
+        case NPC_INPUT_NONE:
             break;
     }
 }
@@ -368,11 +372,15 @@ void NpcDialog::buildLayout()
     redraw();
 
     mScrollArea->setVerticalScrollAmount(mScrollArea->getVerticalMaxScroll());
+
+    if (isVisible())
+        requestFocus();
 }
 
 void NpcDialog::keyPressed(gcn::KeyEvent &event)
 {
-    if (keyboard.keyMatch(KeyboardConfig::KEY_OK, event) && !mOkDone)
+    if (keyboard.keyMatch(KeyboardConfig::KEY_OK, event) && !mOkDone &&
+        this->isFocused())
     {
         mOkDone = true;
         action(gcn::ActionEvent(NULL, "ok"));
@@ -388,6 +396,11 @@ void NpcDialog::keyPressed(gcn::KeyEvent &event)
         npcDialog->move(-1);
         event.consume();
     }
+    else if (event.getKey().getValue() == gcn::Key::TAB)
+    {
+        this->focusNext();
+        event.consume();
+    }
 }
 
 void NpcDialog::keyReleased(gcn::KeyEvent &event)
@@ -395,6 +408,14 @@ void NpcDialog::keyReleased(gcn::KeyEvent &event)
     if (keyboard.keyMatch(KeyboardConfig::KEY_OK, event))
     {
         mOkDone = false;
+        event.consume();
+    }
+    else if (keyboard.keyMatch(KeyboardConfig::KEY_MOVE_UP, event))
+    {
+        event.consume();
+    }
+    else if (keyboard.keyMatch(KeyboardConfig::KEY_MOVE_DOWN, event))
+    {
         event.consume();
     }
 }
