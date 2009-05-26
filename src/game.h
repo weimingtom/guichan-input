@@ -41,8 +41,6 @@ class Game : public ConfigListener
 
         void logic();
 
-        void handleInput();
-
         void optionChanged(const std::string &name);
 
         static bool saveScreenshot();

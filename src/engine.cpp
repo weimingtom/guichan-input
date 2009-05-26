@@ -109,10 +109,3 @@ bool Engine::changeMap(const std::string &mapPath)
     Net::getMapHandler()->mapLoaded(mapPath);
     return true;
 }
-
-void Engine::logic()
-{
-    beingManager->logic();
-    particleEngine->update();
-    gui->logic();
-}

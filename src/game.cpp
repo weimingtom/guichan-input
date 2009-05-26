@@ -431,20 +431,51 @@ void Game::logic()
     // work with minimum frame durations in milliseconds.
     int gameTime = tick_time;
     mDrawTime = tick_time * 10;
+    SDL_Event event;
 
     while (!done)
     {
         if (Map *map = engine->getCurrentMap())
             map->update(get_elapsed_time(gameTime));
 
+        gui->focusTop(false);
+
+        if (joystick)
+            joystick->update();
+
+        // Events
+        while (SDL_PollEvent(&event))
+        {
+            // Quit event
+            if (event.type == SDL_QUIT)
+            {
+                done = true;
+
+                // We can safely skip everything else in here
+                return;
+            }
+            else if (event.type == SDL_KEYUP)
+            {
+                // Make sure guichan can recognize character keys
+                if (!event.key.keysym.unicode)
+                    event.key.keysym.unicode = event.key.keysym.sym;
+            }
+
+            guiInput->pushInput(event);
+        }
+
+        keyboard.processStates();
+
+
         // Handle all necessary game logic
         while (get_elapsed_time(gameTime) > 0)
         {
-            gui->focusTop(false);
-            handleInput();
-            engine->logic();
+            beingManager->logic();
+            particleEngine->update();
             gameTime++;
         }
+
+        gui->logic();
 
         // This is done because at some point tick_time will wrap.
         gameTime = tick_time;
@@ -495,37 +526,6 @@ void Game::logic()
             }
         }
     }
-}
-
-void Game::handleInput()
-{
-    if (joystick)
-        joystick->update();
-
-    // Events
-    SDL_Event event;
-    while (SDL_PollEvent(&event))
-    {
-        // Quit event
-        if (event.type == SDL_QUIT)
-        {
-            done = true;
-
-            // We can safely skip everything else in here
-            return;
-        }
-        else if (event.type == SDL_KEYUP)
-        {
-            // Make sure guichan can recognize character keys
-            if (!event.key.keysym.unicode)
-                event.key.keysym.unicode = event.key.keysym.sym;
-        }
-
-
-        guiInput->pushInput(event);
-    }
-
-    keyboard.processStates();
 }
 
 void Game::quit()

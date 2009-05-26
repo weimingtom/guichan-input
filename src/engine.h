@@ -49,11 +49,6 @@ class Engine
          */
         bool changeMap(const std::string &mapName);
 
-        /**
-         * Performs engine logic. This method is called 100 times per second.
-         */
-        void logic();
-
     private:
         Map *mCurrentMap;
         std::string mMapName;
