@@ -27,6 +27,7 @@
 #include "inventory.h"
 #include "equipment.h"
 #include "item.h"
+#include "keyboardconfig.h"
 
 #include "gui/widgets/button.h"
 #include "gui/widgets/checkbox.h"
@@ -60,7 +61,7 @@ OutfitWindow::OutfitWindow():
 
     mPreviousButton = new Button("<", "previous", this);
     mNextButton = new Button(">", "next", this);
-    mCurrentLabel = new Label("Outfit: 1");
+    mCurrentLabel = new Label(keyboard.keyString(keyboard.KEY_OUTFIT_1));
     mCurrentLabel->setAlignment(gcn::Graphics::CENTER);
     mUnequipCheck = new CheckBox(_("Unequip first"),
                                  config.getValue("OutfitUnequip", true));
@@ -140,7 +141,8 @@ void OutfitWindow::action(const gcn::ActionEvent &event)
             mCurrentOutfit = 9;
         }
     }
-    mCurrentLabel->setCaption("Outfit: " + toString(mCurrentOutfit + 1));
+    mCurrentLabel->setCaption(keyboard.keyString(keyboard.KEY_OUTFIT_1 +
+                                                 mCurrentOutfit));
 }
 
 void OutfitWindow::wearOutfit(int outfit)
