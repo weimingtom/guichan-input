@@ -96,6 +96,12 @@ static WeaponType weaponTypeFromString(const std::string &name, int id = 0)
     else return WPNTYPE_NONE;
 }
 
+static std::string normalized(const std::string &name)
+{
+    std::string normalized = name;
+    return toLower(trim(normalized));;
+}
+
 void ItemDB::load()
 {
     if (mLoaded)
@@ -196,8 +202,7 @@ void ItemDB::load()
         mItemInfos[id] = itemInfo;
         if (!name.empty())
         {
-            std::string temp = name;
-            toLower(trim(temp));
+            std::string temp = normalized(name);
 
             NamedItemInfos::const_iterator itr = mNamedItemInfos.find(temp);
             if (itr == mNamedItemInfos.end())
@@ -247,7 +252,7 @@ void ItemDB::unload()
     mLoaded = false;
 }
 
-const ItemInfo& ItemDB::get(int id)
+const ItemInfo &ItemDB::get(int id)
 {
     assert(mLoaded);
 
@@ -255,30 +260,30 @@ const ItemInfo& ItemDB::get(int id)
 
     if (i == mItemInfos.end())
     {
-        logger->log("ItemDB: Error, unknown item ID# %d", id);
+        logger->log("ItemDB: Warning, unknown item ID# %d", id);
         return *mUnknown;
     }
-    else
-    {
-        return *(i->second);
-    }
+
+    return *(i->second);
 }
 
-const ItemInfo& ItemDB::get(const std::string &name)
+const ItemInfo &ItemDB::get(const std::string &name)
 {
-    assert(mLoaded && !name.empty());
+    assert(mLoaded);
 
-    NamedItemInfos::const_iterator i = mNamedItemInfos.find(name);
+    NamedItemInfos::const_iterator i = mNamedItemInfos.find(normalized(name));
 
     if (i == mNamedItemInfos.end())
     {
-        logger->log("ItemDB: Error, unknown item name %s", name.c_str());
+        if (!name.empty())
+        {
+            logger->log("ItemDB: Warning, unknown item name \"%s\"",
+                        name.c_str());
+        }
         return *mUnknown;
     }
-    else
-    {
-        return *(i->second);
-    }
+
+    return *(i->second);
 }
 
 void loadSpriteRef(ItemInfo *itemInfo, xmlNodePtr node)

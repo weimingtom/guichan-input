@@ -3,6 +3,7 @@
 
 src/commandhandler.cpp
 src/commandhandler.h
+src/engine.cpp
 src/game.cpp
 src/gui/buddywindow.cpp
 src/gui/buy.cpp
@@ -14,7 +15,6 @@ src/gui/charselectdialog.cpp
 src/gui/chat.cpp
 src/gui/confirmdialog.cpp
 src/gui/connection.cpp
-src/gui/emotepopup.cpp
 src/gui/equipmentwindow.cpp
 src/gui/guildwindow.cpp
 src/gui/help.cpp
@@ -79,9 +79,12 @@ src/net/tmwserv/beinghandler.cpp
 src/net/tmwserv/charserverhandler.cpp
 src/net/tmwserv/chathandler.cpp
 src/net/tmwserv/generalhandler.cpp
+src/net/tmwserv/guildhandler.cpp
 src/net/tmwserv/loginhandler.cpp
+src/net/tmwserv/partyhandler.cpp
+src/net/tmwserv/playerhandler.cpp
+src/net/tmwserv/tradehandler.cpp
 src/resources/itemdb.cpp
 src/resources/monsterdb.cpp
-src/resources/npcdb.cpp
 src/utils/gettext.h
 src/utils/stringutils.h

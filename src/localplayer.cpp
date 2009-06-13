@@ -72,7 +72,10 @@
 #include <cassert>
 
 #ifdef TMWSERV_SUPPORT
-const short walkingKeyboardDelay = 100;
+// This is shorter then it really needs to be for normal use
+// But if we ever wanted to increase player speed, having this lower
+// Won't hurt
+const short walkingKeyboardDelay = 40;
 #endif
 
 LocalPlayer *player_node = NULL;
@@ -471,9 +474,9 @@ void LocalPlayer::walk(unsigned char dir)
 
     int dScaler; // Distance to walk
 
-    // Checks our path up to 5 tiles, if a blocking tile is found
+    // Checks our path up to 2 tiles, if a blocking tile is found
     // We go to the last good tile, and break out of the loop
-    for (dScaler = 1; dScaler <= 10; dScaler++)
+    for (dScaler = 1; dScaler <= 2; dScaler++)
     {
         if ( (dx || dy) &&
              !mMap->getWalk( ((int) pos.x + (dx * dScaler)) / 32,
@@ -739,6 +742,22 @@ void LocalPlayer::attack(Being *target, bool keep)
         return;
 #endif
 
+#ifdef TMWSERV_SUPPORT
+    if (abs(dist_y) >= abs(dist_x))
+    {
+        if (dist_y < 0)
+            setDirection(DOWN);
+        else
+            setDirection(UP);
+    }
+    else
+    {
+        if (dist_x < 0)
+            setDirection(RIGHT);
+        else
+            setDirection(LEFT);
+    }
+#else
     if (abs(dist_y) >= abs(dist_x))
     {
         if (dist_y > 0)
@@ -753,6 +772,7 @@ void LocalPlayer::attack(Being *target, bool keep)
         else
             setDirection(LEFT);
     }
+#endif
 
 #ifdef TMWSERV_SUPPORT
     mLastAction = tick_time;
@@ -774,9 +794,6 @@ void LocalPlayer::attack(Being *target, bool keep)
         sound.playSfx("sfx/fist-swish.ogg");
     }
 
-#ifdef TMWSERV_SUPPORT
-    if (mLastAction == STAND)
-#endif
     Net::getPlayerHandler()->attack(target->getId());
 #ifdef EATHENA_SUPPORT
     if (!keep)

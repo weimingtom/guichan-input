@@ -69,6 +69,8 @@ tmw_SOURCES = gui/widgets/avatar.cpp \
 	      gui/buy.h \
 	      gui/buysell.cpp \
 	      gui/buysell.h \
+	      gui/changepassworddialog.cpp \
+	      gui/changepassworddialog.h \
 	      gui/charselectdialog.cpp \
 	      gui/charselectdialog.h \
 	      gui/charcreatedialog.cpp \
@@ -368,10 +370,8 @@ tmw_SOURCES += \
 	      gui/buddywindow.h \
 	      gui/changeemaildialog.cpp \
 	      gui/changeemaildialog.h \
-	      gui/changepassworddialog.cpp \
-	      gui/changepassworddialog.h \
-	      gui/connection.cpp \
-	      gui/connection.h \
+	      gui/connectiondialog.cpp \
+	      gui/connectiondialog.h \
 	      gui/guildlistbox.cpp \
 	      gui/guildlistbox.h \
 	      gui/guildwindow.cpp \

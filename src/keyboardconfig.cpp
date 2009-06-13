@@ -133,7 +133,7 @@ static KeyDefault const keyData[KeyboardConfig::KEY_TOTAL] = {
     {"key_ChatScrollDown", Key::PAGE_DOWN, 0, _("Scroll Chat Down")},
     {"key_ChatPrevTab", '[', 0, _("Previous Chat Tab")},
     {"key_ChatNextTab", ']', 0, _("Next Chat Tab")},
-    {"key_OK", Key::ENTER, 0, _("Select OK")},
+    {"key_OK", Key::SPACE, 0, _("Select OK")},
     {"key_Quit", Key::ESCAPE, 0, _("Quit")},
 };
 

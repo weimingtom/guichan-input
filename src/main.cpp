@@ -53,7 +53,7 @@
 #include "gui/serverselectdialog.h"
 #include "gui/setup.h"
 #ifdef TMWSERV_SUPPORT
-#include "gui/connection.h"
+#include "gui/connectiondialog.h"
 #include "gui/quitdialog.h"
 #include "gui/serverdialog.h"
 #endif
@@ -316,22 +316,21 @@ static void initHomeDir(const Options &options)
 
     if (homeDir.empty())
     {
-	    homeDir = std::string(PHYSFS_getUserDir()) +
-            "/." +
-	        branding.getValue("appShort", "tmw");
+#ifdef __APPLE__
+        // Use Application Directory instead of .tmw
+        homeDir = std::string(PHYSFS_getUserDir()) +
+            "/Library/Application Support/" +
+            branding.getValue("appName", "The Mana World");
+#else
+        homeDir = std::string(PHYSFS_getUserDir()) +
+            "/." + branding.getValue("appShort", "tmw");
+#endif
     }
 #if defined WIN32
     if (!CreateDirectory(homeDir.c_str(), 0) &&
             GetLastError() != ERROR_ALREADY_EXISTS)
-#elif defined __APPLE__
-    // Use Application Directory instead of .tmw
-    homeDir = std::string(PHYSFS_getUserDir()) +
-        "/Library/Application Support/" +
-        branding.getValue("appName", "The Mana World");
-    if ((mkdir(homeDir.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) != 0) &&
-            (errno != EEXIST))
 #else
-    // Checking if /home/user/.tmw folder exists.
+    // Create home directory if it doesn't exist already
     if ((mkdir(homeDir.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) != 0) &&
             (errno != EEXIST))
 #endif
@@ -415,7 +414,8 @@ static void initEngine(const Options &options)
     SDL_EnableUNICODE(1);
     SDL_EnableKeyRepeat(SDL_DEFAULT_REPEAT_DELAY, SDL_DEFAULT_REPEAT_INTERVAL);
 
-    SDL_WM_SetCaption(branding.getValue("appName", "The Mana World").c_str(), NULL);
+    SDL_WM_SetCaption(branding.getValue("appName", "The Mana World").c_str(),
+                      NULL);
 
     ResourceManager *resman = ResourceManager::getInstance();
 
@@ -596,7 +596,7 @@ static void printHelp()
 
 static void printVersion()
 {
-    std::cout << strprintf(_("The Mana World %s"), FULL_VERSION) << std::endl;
+    std::cout << strprintf("The Mana World %s", FULL_VERSION) << std::endl;
 }
 
 static void parseOptions(int argc, char *argv[], Options &options)
@@ -711,7 +711,6 @@ struct ErrorListener : public gcn::ActionListener
     }
 } errorListener;
 
-#ifdef TMWSERV_SUPPORT
 struct AccountListener : public gcn::ActionListener
 {
     void action(const gcn::ActionEvent &event)
@@ -720,6 +719,7 @@ struct AccountListener : public gcn::ActionListener
     }
 } accountListener;
 
+#ifdef TMWSERV_SUPPORT
 struct LoginListener : public gcn::ActionListener
 {
     void action(const gcn::ActionEvent &event)
@@ -1347,8 +1347,16 @@ int main(int argc, char *argv[])
                     loadUpdates();
                     break;
 
-                    // Those states don't cause a network disconnect
+                // Those states don't cause a network disconnect
                 case STATE_LOADDATA:
+                case STATE_CHANGEPASSWORD_ATTEMPT:
+                case STATE_CHANGEPASSWORD:
+                case STATE_ACCOUNTCHANGE_ERROR:
+                    break;
+
+                case STATE_CHAR_SELECT:
+                	if (state == STATE_CONNECTING)
+                		network->disconnect();
                     break;
 
                 case STATE_ACCOUNT:
@@ -1450,7 +1458,7 @@ int main(int argc, char *argv[])
                 case STATE_CHAR_SELECT:
                     logger->log("State: CHAR_SELECT");
                     currentDialog = new CharSelectDialog(&charInfo,
-                                                         loginData.sex);
+                                                         &loginData);
                     positionDialog(currentDialog, screenWidth, screenHeight);
 
                     if (((CharSelectDialog*) currentDialog)->
@@ -1467,8 +1475,6 @@ int main(int argc, char *argv[])
                     break;
 
                 case STATE_GAME:
-                    sound.fadeOutMusic(1000);
-
                     delete progressBar;
                     delete progressLabel;
                     delete setupButton;
@@ -1542,6 +1548,30 @@ int main(int argc, char *argv[])
                             _("Connecting to account server..."));
                     progressLabel->adjustSize();
                     accountLogin(network, &loginData);
+                    break;
+
+                case STATE_CHANGEPASSWORD_ATTEMPT:
+                    logger->log("State: CHANGE PASSWORD ATTEMPT");
+                    Net::getLoginHandler()->changePassword(loginData.username,
+                                                loginData.password,
+                                                loginData.newPassword);
+                    break;
+
+                case STATE_CHANGEPASSWORD:
+                    logger->log("State: CHANGE PASSWORD");
+                    currentDialog = new OkDialog("Password change",
+                            "Password changed successfully!");
+                    currentDialog->addActionListener(&accountListener);
+                    currentDialog = NULL; // OkDialog deletes itself
+                    loginData.password = loginData.newPassword;
+                    loginData.newPassword = "";
+                    break;
+
+                case STATE_ACCOUNTCHANGE_ERROR:
+                    logger->log("State: ACCOUNT CHANGE ERROR");
+                    currentDialog = new OkDialog("Error ", errorMessage);
+                    currentDialog->addActionListener(&accountListener);
+                    currentDialog = NULL; // OkDialog deletes itself
                     break;
 
                 default:
