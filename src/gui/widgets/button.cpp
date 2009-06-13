@@ -34,6 +34,8 @@
 #include <guichan/exception.hpp>
 #include <guichan/font.hpp>
 
+extern gcn::Font *boldFont;
+
 int Button::mInstances = 0;
 float Button::mAlpha = 1.0;
 
@@ -172,7 +174,10 @@ void Button::draw(gcn::Graphics *graphics)
             throw GCN_EXCEPTION("Button::draw. Unknown alignment.");
     }
 
-    graphics->setFont(getFont());
+    if (isFocused())
+        graphics->setFont(boldFont);
+    else
+        graphics->setFont(getFont());
 
     if (isPressed())
         graphics->drawText(getCaption(), textX + 1, textY + 1, getAlignment());
