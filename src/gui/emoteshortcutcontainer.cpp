@@ -95,7 +95,7 @@ void EmoteShortcutContainer::draw(gcn::Graphics *graphics)
         g->drawImage(mBackgroundImg, emoteX, emoteY);
 
         // Draw emote keyboard shortcut.
-        const std::string key = keyboard.keyString(keyboard.KEY_SHORTCUT_1 + i);
+        const std::string key = keyboard.keyString(keyboard.KEY_EMOTE_1 + i);
         graphics->setColor(guiPalette->getColor(Palette::TEXT));
         g->drawText(key, emoteX + 2, emoteY + 2, gcn::Graphics::LEFT);
 
