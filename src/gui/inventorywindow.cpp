@@ -57,6 +57,7 @@ InventoryWindow::InventoryWindow(int invSize):
     mItemDesc(false)
 {
     setWindowName("Inventory");
+    setFocusable(true);
     setResizable(true);
     setCloseButton(true);
     setSaveVisible(true);
@@ -229,7 +230,11 @@ void InventoryWindow::keyPressed(gcn::KeyEvent &event)
         case Key::RIGHT_SHIFT:
             mSplit = true;
             break;
+        default:
+            return;
     }
+
+    event.consume();
 }
 
 void InventoryWindow::keyReleased(gcn::KeyEvent &event)
@@ -240,7 +245,11 @@ void InventoryWindow::keyReleased(gcn::KeyEvent &event)
         case Key::RIGHT_SHIFT:
             mSplit = false;
             break;
+        default:
+            return;
     }
+
+    event.consume();
 }
 
 void InventoryWindow::valueChanged(const gcn::SelectionEvent &event)
