@@ -230,6 +230,8 @@ class KeyboardConfig : public gcn::KeyListener
             KEY_PREV_CHAT_TAB,
             KEY_NEXT_CHAT_TAB,
             KEY_OK,
+            KEY_PREV_WINDOW,
+            KEY_NEXT_WINDOW,
             KEY_QUIT,
             KEY_TOTAL
         };

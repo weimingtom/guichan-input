@@ -37,6 +37,7 @@
 #include "gui/chat.h"
 #include "gui/debugwindow.h"
 #include "gui/equipmentwindow.h"
+#include "gui/gui.h"
 #include "gui/help.h"
 #include "gui/inventorywindow.h"
 #include "gui/minimap.h"
@@ -134,6 +135,8 @@ static KeyDefault const keyData[KeyboardConfig::KEY_TOTAL] = {
     {"key_ChatPrevTab", '[', 0, _("Previous Chat Tab")},
     {"key_ChatNextTab", ']', 0, _("Next Chat Tab")},
     {"key_OK", Key::SPACE, 0, _("Select OK")},
+    {"key_PrevWin", Key::TAB, KEY_MASK_SHIFT || KEY_MASK_CTRL, _("Previous window")},
+    {"key_NextWin", Key::TAB, KEY_MASK_CTRL, _("Next window")},
     {"key_Quit", Key::ESCAPE, 0, _("Quit")},
 };
 
@@ -255,7 +258,10 @@ void KeyboardConfig::keyPressed(gcn::KeyEvent &event)
     int key = getKeyIndex(kd);
 
     if (key > -1)
+    {
         mStates[key] = true;
+        event.consume();
+    }
 }
 
 void KeyboardConfig::keyReleased(gcn::KeyEvent &event)
@@ -269,7 +275,10 @@ void KeyboardConfig::keyReleased(gcn::KeyEvent &event)
     int key = getKeyIndex(kd);
 
     if (key > -1)
+    {
         mStates[key] = false;
+        event.consume();
+    }
 }
 
 int KeyboardConfig::getKeyIndex(KeyData key) const
@@ -575,6 +584,15 @@ void KeyboardConfig::processStates()
         }
     }
 
+    if (isKeyActive(KEY_NEXT_WINDOW))
+    {
+        windowContainer->nextWindow();
+    }
+    else if (isKeyActive(KEY_PREV_WINDOW))
+    {
+        windowContainer->previousWindow();
+    }
+
     if (isKeyActive(KEY_QUIT))
     {
         Game::quit();
@@ -746,7 +764,15 @@ inline void KeyboardConfig::parseWindows()
     {
         requestedWindow->setVisible(!requestedWindow->isVisible());
         if (requestedWindow->isVisible())
+        {
             requestedWindow->requestMoveToTop();
+            //if (requestedWindow->isFocusable())
+            //    requestedWindow->requestFocus();
+        }
+        else if (requestedWindow->isFocused())
+        {
+            gui->focusTop(true);
+        }
     }
 }
 
