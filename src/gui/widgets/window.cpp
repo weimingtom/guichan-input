@@ -119,11 +119,17 @@ void Window::draw(gcn::Graphics *graphics)
 
     g->drawImageRect(0, 0, getWidth(), getHeight(), mSkin->getBorder());
 
+    if (this == gui->getFocusedWindow())
+    {
+        g->setColor(guiPalette->getColor(Palette::HIGHLIGHT));
+        g->fillRectangle(gcn::Rectangle(3, 3, getWidth() - 6, getTitleBarHeight()));
+    }
+
     // Draw title
     if (mShowTitle)
     {
         g->setColor(guiPalette->getColor(Palette::TEXT));
-        if (isFocused())
+        if (this == gui->getFocusedWindow())
             g->setFont(boldFont);
         else
             g->setFont(getFont());

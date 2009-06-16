@@ -43,6 +43,7 @@
 
 #include <guichan/exception.hpp>
 #include <guichan/image.hpp>
+#include <guichan/widget.hpp>
 
 // Guichan stuff
 Gui *gui = 0;
@@ -76,7 +77,8 @@ Gui::Gui(Graphics *graphics):
     mMouseCursors(NULL),
     mMouseCursorAlpha(1.0f),
     mMouseInactivityTimer(0),
-    mCursorType(CURSOR_POINTER)
+    mCursorType(CURSOR_POINTER),
+    mFocusedWindow(NULL)
 {
     logger->log("Initializing GUI...");
     // Set graphics
@@ -183,6 +185,7 @@ void Gui::logic()
 
 void Gui::draw()
 {
+    mFocusedWindow = getFocusedWindow();
     mGraphics->pushClipArea(getTop()->getDimension());
     getTop()->draw(mGraphics);
 
@@ -203,6 +206,7 @@ void Gui::draw()
     }
 
     mGraphics->popClipArea();
+    mFocusedWindow = NULL;
 }
 
 void Gui::setUseCustomCursor(bool customCursor)
@@ -251,4 +255,27 @@ void Gui::focusTop(bool force)
         return;
 
     mFocusHandler->requestFocus(getTop());
+}
+
+Window *Gui::getFocusedWindow()
+{
+    // Shortcut while drawing
+    if (mFocusedWindow)
+        return mFocusedWindow;
+
+    Window *ret;
+    gcn::Widget *w = mFocusHandler->getFocused();
+
+    while (w != getTop())
+    {
+        if (ret = dynamic_cast<Window*>(w))
+            return ret;
+
+        if (!w)
+            break;
+
+        w = w->getParent();
+    }
+
+    return NULL;
 }

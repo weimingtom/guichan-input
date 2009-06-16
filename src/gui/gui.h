@@ -31,6 +31,7 @@ class GuiConfigListener;
 class ImageSet;
 class SDLInput;
 class Viewport;
+class Window;
 
 /**
  * \defgroup GUI Core GUI related classes (widgets)
@@ -119,6 +120,8 @@ class Gui : public gcn::Gui
 
         void focusNone() { focusTop(true); }
 
+        Window *getFocusedWindow();
+
     protected:
         void handleMouseMoved(const gcn::MouseInput &mouseInput);
 
@@ -131,6 +134,7 @@ class Gui : public gcn::Gui
         float mMouseCursorAlpha;
         int mMouseInactivityTimer;
         int mCursorType;
+        Window *mFocusedWindow;
 };
 
 extern Gui *gui;                              /**< The GUI system */
