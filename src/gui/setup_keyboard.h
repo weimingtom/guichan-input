@@ -70,6 +70,7 @@ class Setup_Keyboard : public SetupTab, public gcn::ActionListener,
         gcn::ListBox *mKeyList;
 
         gcn::Button *mAssignKeyButton;
+        gcn::Button *mClearKeyButton;
         gcn::Button *mMakeDefaultButton;
 
         gcn::Label *mCurrentKeyLabel;

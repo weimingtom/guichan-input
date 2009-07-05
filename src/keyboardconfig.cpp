@@ -240,7 +240,7 @@ bool KeyboardConfig::hasConflicts() const
     for (int i = 0; i < KEY_TOTAL; i++)
     {
         int key = getKeyIndex(mKey[i]);
-        if (used[key])
+        if (key != KEY_NO_VALUE && used[key])
             return true;
         used[key] = 1;
     }
@@ -283,6 +283,9 @@ void KeyboardConfig::keyReleased(gcn::KeyEvent &event)
 
 int KeyboardConfig::getKeyIndex(KeyData key) const
 {
+    if (keyMatch(key, NULL_KEY))
+        return KEY_NO_VALUE;
+
     for (int i = 0; i < KEY_TOTAL; i++)
     {
         if (keyMatch(key, mKey[i]))

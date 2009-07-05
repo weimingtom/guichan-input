@@ -87,6 +87,10 @@ Setup_Keyboard::Setup_Keyboard():
     mAssignKeyButton->addActionListener(this);
     mAssignKeyButton->setEnabled(false);
 
+    mClearKeyButton = new Button(_("Clear"), "clear", this);
+    mClearKeyButton->addActionListener(this);
+    mClearKeyButton->setEnabled(false);
+
     mMakeDefaultButton = new Button(_("Default"), "makeDefault", this);
     mMakeDefaultButton->addActionListener(this);
 
@@ -96,10 +100,11 @@ Setup_Keyboard::Setup_Keyboard():
     LayoutHelper h(this);
     ContainerPlacer place = h.getPlacer(0, 0);
 
-    place(0, 0, scrollArea, 4, 6).setPadding(2);
+    place(0, 0, scrollArea, 5, 6).setPadding(2);
     place(0, 6, mMakeDefaultButton);
     place(1, 6, mCurrentKeyLabel, 2);
-    place(3, 6, mAssignKeyButton);
+    place(3, 6, mClearKeyButton);
+    place(4, 6, mAssignKeyButton);
 
     setDimension(gcn::Rectangle(0, 0, 365, 280));
 }
@@ -133,20 +138,31 @@ void Setup_Keyboard::cancel()
 
 void Setup_Keyboard::action(const gcn::ActionEvent &event)
 {
+    int i = mKeyList->getSelected();
     if (event.getSource() == mKeyList)
     {
         if (!mKeySetting)
+        {
             mAssignKeyButton->setEnabled(true);
+        }
+        if (!keyboard.keyMatch(i, KeyboardConfig::NULL_KEY))
+        {
+            mClearKeyButton->setEnabled(true);
+        }
     }
     else if (event.getId() == "assign")
     {
         mKeySetting = true;
-        //setupWindow->addKeyListener(this);
         requestFocus();
         mAssignKeyButton->setEnabled(false);
-        int i(mKeyList->getSelected());
-        //keyboard.setNewKeyIndex(i);
+        mClearKeyButton->setEnabled(false);
         mKeyListModel->setElementAt(i, keyboard.getKeyCaption(i) + ": ?");
+    }
+    else if (event.getId() == "clear")
+    {
+        keyboard.setKeyData(i, KeyboardConfig::NULL_KEY);
+        refreshAssignedKey((KeyboardConfig::KeyAction) i);
+        mClearKeyButton->setEnabled(false);
     }
     else if (event.getId() == "makeDefault")
     {
