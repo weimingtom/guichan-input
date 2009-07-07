@@ -59,9 +59,7 @@
 #define BEING_EFFECTS_FILE "effects.xml"
 #define HAIR_FILE "hair.xml"
 
-int Being::mNumberOfHairColors = 1;
 int Being::mNumberOfHairstyles = 1;
-std::vector<std::string> Being::hairColors;
 
 static const int DEFAULT_WIDTH = 32;
 static const int DEFAULT_HEIGHT = 32;
@@ -78,9 +76,7 @@ Being::Being(int id, int job, Map *map):
     mJob(job),
     mId(id),
     mDirection(DOWN),
-#ifdef TMWSERV_SUPPORT
     mSpriteDirection(DIRECTION_DOWN),
-#endif
     mMap(NULL),
     mParticleEffects(config.getValue("particleeffects", 1)),
     mEquippedWeapon(NULL),
@@ -163,18 +159,26 @@ void Being::setDestination(int dstX, int dstY)
     setDestination(mPos.x, mPos.y, dstX, dstY);
 }
 
+Path Being::findPath()
+{
+    Path path;
+
+    if (mMap)
+    {
+        path = mMap->findPath(mPos.x / 32, mPos.y / 32,
+                              mDest.x / 32, mDest.y / 32, getWalkMask());
+    }
+
+    return path;
+}
+
 void Being::setDestination(int srcX, int srcY, int dstX, int dstY)
 {
     mDest.x = dstX;
     mDest.y = dstY;
 
-    Path thisPath;
+    Path thisPath = findPath();
 
-    if (mMap) 
-    {
-         thisPath = mMap->findPath((int) srcX / 32, (int) srcY / 32,
-                               dstX / 32, dstY / 32, getWalkMask());
-    } 
     if (thisPath.empty())
     {
         setPath(Path());
@@ -356,15 +360,10 @@ void Being::takeDamage(Being *attacker, int amount, AttackType type)
     }
 }
 
-#ifdef TMWSERV_SUPPORT
-void Being::handleAttack()
-#else
 void Being::handleAttack(Being *victim, int damage, AttackType type)
-#endif
 {
     if (this != player_node)
-        setAction(Being::ATTACK);
-#ifdef EATHENA_SUPPORT
+        setAction(Being::ATTACK, 1);
     if (getType() == PLAYER && victim)
     {
         if (mEquippedWeapon && mEquippedWeapon->getAttackType() == ACTION_ATTACK_BOW)
@@ -383,6 +382,7 @@ void Being::handleAttack(Being *victim, int damage, AttackType type)
             }
         }
     }
+#ifdef EATHENA_SUPPORT
     mFrame = 0;
     mWalkTime = tick_time;
 #endif
@@ -463,12 +463,12 @@ void Being::setDirection(Uint8 direction)
     if (mDirection == direction)
         return;
 
-#ifdef TMWSERV_SUPPORT
+    mDirection = direction;
+
     // if the direction does not change much, keep the common component
     int mFaceDirection = mDirection & direction;
     if (!mFaceDirection)
         mFaceDirection = direction;
-    mDirection = direction;
 
     SpriteDirection dir;
     if (mFaceDirection & UP)
@@ -480,10 +480,6 @@ void Being::setDirection(Uint8 direction)
     else
         dir = DIRECTION_LEFT;
     mSpriteDirection = dir;
-#else
-    mDirection = direction;
-    SpriteDirection dir = getSpriteDirection();
-#endif
 
     for (int i = 0; i < VECTOREND_SPRITE; i++)
     {
@@ -493,22 +489,6 @@ void Being::setDirection(Uint8 direction)
 }
 
 #ifdef EATHENA_SUPPORT
-SpriteDirection Being::getSpriteDirection() const
-{
-    SpriteDirection dir;
-
-    if (mDirection & UP)
-        dir = DIRECTION_UP;
-    else if (mDirection & DOWN)
-        dir = DIRECTION_DOWN;
-    else if (mDirection & RIGHT)
-        dir = DIRECTION_RIGHT;
-    else
-        dir = DIRECTION_LEFT;
-
-    return dir;
-}
-
 void Being::nextStep()
 {
     if (mPath.empty())
@@ -559,39 +539,42 @@ void Being::logic()
     }
 
 #ifdef TMWSERV_SUPPORT
-    const Vector dest = (mPath.empty()) ?
-        mDest : Vector(mPath.front().x,
-                       mPath.front().y);
+    if (mAction != DEAD)
+    {
+        const Vector dest = (mPath.empty()) ?
+            mDest : Vector(mPath.front().x,
+                           mPath.front().y);
 
-    Vector dir = dest - mPos;
-    const float length = dir.length();
+        Vector dir = dest - mPos;
+        const float length = dir.length();
 
-    // When we're over 2 pixels from our destination, move to it
-    // TODO: Should be possible to make it even pixel exact, but this solves
-    //       the jigger caused by moving too far.
-    if (length > 2.0f) {
-        const float speed = mWalkSpeed / 100.0f;
-        setPosition(mPos + (dir / (length / speed)));
+        // When we're over 2 pixels from our destination, move to it
+        // TODO: Should be possible to make it even pixel exact, but this solves
+        //       the jigger caused by moving too far.
+        if (length > 2.0f) {
+            const float speed = mWalkSpeed / 100.0f;
+            setPosition(mPos + (dir / (length / speed)));
 
-        if (mAction != WALK)
-            setAction(WALK);
+            if (mAction != WALK)
+                setAction(WALK);
 
-        // Update the player sprite direction
-        int direction = 0;
-        const float dx = std::abs(dir.x);
-        const float dy = std::abs(dir.y);
-        if (dx > dy)
-            direction |= (dir.x > 0) ? RIGHT : LEFT;
-        else
-            direction |= (dir.y > 0) ? DOWN : UP;
-        setDirection(direction);
-    }
-    else if (!mPath.empty()) {
-        // TODO: Pop as soon as there is a direct unblocked line to the next
-        //       point on the path.
-        mPath.pop_front();
-    } else if (mAction == WALK) {
-        setAction(STAND);
+            // Update the player sprite direction
+            int direction = 0;
+            const float dx = std::abs(dir.x);
+            const float dy = std::abs(dir.y);
+            if (dx > dy)
+                 direction |= (dir.x > 0) ? RIGHT : LEFT;
+            else
+                 direction |= (dir.y > 0) ? DOWN : UP;
+            setDirection(direction);
+        }
+        else if (!mPath.empty()) {
+            // TODO: Pop as soon as there is a direct unblocked line to the next
+            //       point on the path.
+            mPath.pop_front();
+        } else if (mAction == WALK) {
+            setAction(STAND);
+        }
     }
 #else
     // Update pixel coordinates
@@ -917,19 +900,6 @@ int Being::getHairStyleCount()
     return mNumberOfHairstyles;
 }
 
-int Being::getHairColorCount()
-{
-    return mNumberOfHairColors;
-}
-
-std::string Being::getHairColor(int index)
-{
-    if (index < 0 || index >= mNumberOfHairColors)
-        return "#000000";
-
-    return hairColors[index];
-}
-
 void Being::load()
 {
     // Hairstyles are encoded as negative numbers. Count how far negative
@@ -940,32 +910,4 @@ void Being::load()
         hairstyles++;
 
     mNumberOfHairstyles = hairstyles;
-
-    XML::Document doc(HAIR_FILE);
-    xmlNodePtr root = doc.rootNode();
-
-    // Add an initial hair color
-    hairColors.resize(1, "#000000");
-
-    if (!root || !xmlStrEqual(root->name, BAD_CAST "colors"))
-    {
-        logger->log("Error loading being hair configuration file");
-    } else {
-        for_each_xml_child_node(node, root)
-        {
-            if (xmlStrEqual(node->name, BAD_CAST "color"))
-            {
-                int index = atoi(XML::getProperty(node, "id", "-1").c_str());
-                std::string value = XML::getProperty(node, "value", "");
-
-                if (index >= 0 && !value.empty()) {
-                    if (index >= mNumberOfHairColors) {
-                        mNumberOfHairColors = index + 1;
-                        hairColors.resize(mNumberOfHairColors, "#000000");
-                    }
-                    hairColors[index] = value;
-                }
-            }
-        }
-    }
 }

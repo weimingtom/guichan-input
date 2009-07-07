@@ -943,7 +943,7 @@ int main(int argc, char *argv[])
     setupButton->setPosition(top->getWidth() - setupButton->getWidth() - 3, 3);
     top->add(setupButton);
 
-    sound.playMusic(branding.getValue("loginMusic", "Login.ogg"));
+    sound.playMusic(branding.getValue("loginMusic", "Magick - Real.ogg"));
 
     // Initialize login data
     loginData.hostname = options.serverName;
@@ -1146,6 +1146,7 @@ int main(int argc, char *argv[])
                     // Load XML databases
                     ColorDB::load();
                     ItemDB::load();
+                    Being::load(); // Hairstyles
                     MonsterDB::load();
                     NPCDB::load();
                     EmoteDB::load();

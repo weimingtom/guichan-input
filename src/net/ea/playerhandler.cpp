@@ -223,15 +223,13 @@ void PlayerHandler::handleMessage(MessageIn &msg)
 
                 switch (type)
                 {
-                    //case 0x0000:
-                    //    player_node->setWalkSpeed(msg.readInt32());
-                    //    break;
+                    case 0x0000: player_node->setWalkSpeed(value); break;
                     case 0x0005: player_node->setHp(value); break;
                     case 0x0006: player_node->setMaxHp(value); break;
                     case 0x0007: player_node->mMp = value; break;
                     case 0x0008: player_node->mMaxMp = value; break;
                     case 0x0009:
-                                 player_node->mStatsPointsToAttribute = value;
+                                 player_node->setCharacterPoints(value);
                                  break;
                     case 0x000b: player_node->setLevel(value); break;
                     case 0x000c:
@@ -278,7 +276,7 @@ void PlayerHandler::handleMessage(MessageIn &msg)
         case SMSG_PLAYER_STAT_UPDATE_2:
             switch (msg.readInt16()) {
                 case 0x0001:
-                    player_node->setXp(msg.readInt32());
+                    player_node->setLevelProgress(msg.readInt32());
                     break;
                 case 0x0002:
                     player_node->mJobXp = msg.readInt32();
@@ -353,7 +351,7 @@ void PlayerHandler::handleMessage(MessageIn &msg)
 
         // Updates stats and status points
         case SMSG_PLAYER_STAT_UPDATE_5:
-            player_node->mStatsPointsToAttribute = msg.readInt16();
+            player_node->setCharacterPoints(msg.readInt16());
             player_node->mAttr[LocalPlayer::STR] = msg.readInt8();
             player_node->mAttrUp[LocalPlayer::STR] = msg.readInt8();
             player_node->mAttr[LocalPlayer::AGI] = msg.readInt8();

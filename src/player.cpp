@@ -256,6 +256,20 @@ void Player::updateCoords()
 
 #ifdef TMWSERV_SUPPORT
 
+Path Player::findPath()
+{
+    Path path;
+
+    if (mMap)
+    {
+        path = mMap->findSimplePath(getPosition().x / 32, getPosition().y / 32,
+                                    getDestination().x / 32, getDestination().y / 32,
+                                    getWalkMask());
+    }
+
+    return path;
+}
+
 Guild* Player::addGuild(short guildId, short rights)
 {
     Guild *guild = new Guild(guildId, rights);

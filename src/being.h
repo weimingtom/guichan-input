@@ -184,12 +184,17 @@ class Being : public Sprite, public ConfigListener
         virtual void setDestination(Uint16 destX, Uint16 destY);
 #else
         /**
+         * Returns the path to the being's current destination
+         */
+        virtual Path findPath();
+
+        /**
          * Creates a path for the being from sx,sy to ex,ey
          */
         void setDestination(int sx, int sy, int ex, int ey);
 
         /**
-         * Creates a path for the being from currect position to ex and ey
+         * Creates a path for the being from current position to ex and ey
          */
         void setDestination(int ex, int ey);
 
@@ -229,11 +234,7 @@ class Being : public Sprite, public ConfigListener
          * @param damage the amount of damage dealt (0 means miss)
          * @param type the attack type
          */
-#ifdef TMWSERV_SUPPORT
-        virtual void handleAttack();
-#else
         virtual void handleAttack(Being *victim, int damage, AttackType type);
-#endif
 
         /**
          * Returns the name of the being.
@@ -358,12 +359,8 @@ class Being : public Sprite, public ConfigListener
         /**
          * Returns the direction the being is facing.
          */
-#ifdef TMWSERV_SUPPORT
         SpriteDirection getSpriteDirection() const
         { return SpriteDirection(mSpriteDirection); }
-#else
-        SpriteDirection getSpriteDirection() const;
-#endif
 
         /**
          * Draws this being to the given graphics context.
@@ -417,7 +414,6 @@ class Being : public Sprite, public ConfigListener
          * Returns the position of this being.
          */
         const Vector &getPosition() const { return mPos; }
-
 
         /**
          * Returns the horizontal size of the current base sprite of the being.
@@ -501,11 +497,7 @@ class Being : public Sprite, public ConfigListener
             internalTriggerEffect(effectId, false, true);
         }
 
-        static int getHairColorCount();
-
         static int getHairStyleCount();
-
-        static std::string getHairColor(int index);
 
         virtual AnimatedSprite *getSprite(int index) const
         { return mSprites[index]; }
@@ -562,9 +554,7 @@ class Being : public Sprite, public ConfigListener
 
         int mId;                        /**< Unique sprite id */
         Uint8 mDirection;               /**< Facing direction */
-#ifdef TMWSERV_SUPPORT
         Uint8 mSpriteDirection;         /**< Facing direction */
-#endif
         Map *mMap;                      /**< Map on which this being resides */
         std::string mName;              /**< Name of character */
         SpriteIterator mSpriteIterator;
@@ -573,8 +563,6 @@ class Being : public Sprite, public ConfigListener
         /** Engine-related infos about weapon. */
         const ItemInfo *mEquippedWeapon;
 
-        static std::vector<std::string> hairColors;
-        static int mNumberOfHairColors;          /** Number of hair colors in use */
         static int mNumberOfHairstyles;          /** Number of hair styles in use */
 
         Path mPath;

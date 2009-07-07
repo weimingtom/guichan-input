@@ -93,6 +93,11 @@ class Player : public Being
 
 #ifdef TMWSERV_SUPPORT
         /**
+         * Returns the path to the player's current destination
+         */
+        Path findPath();
+
+        /**
          * Adds a guild to the player.
          */
         Guild *addGuild(short guildId, short rights);
@@ -132,7 +137,7 @@ class Player : public Being
          * Gets the way the character is blocked by other objects.
          */
         virtual unsigned char getWalkMask() const
-        { return 0x82; } // blocked by walls and monsters (bin 1000 0010)
+        { return Map::BLOCKMASK_WALL | Map::BLOCKMASK_MONSTER; }
 
         /**
          * Called when a option (set with config.addListener()) is changed

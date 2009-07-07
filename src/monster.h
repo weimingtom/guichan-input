@@ -53,11 +53,7 @@ class Monster : public Being
          * @param damage the amount of damage dealt (0 means miss)
          * @param type the attack type
          */
-#ifdef TMWSERV_SUPPORT
-        virtual void handleAttack();
-#else
         virtual void handleAttack(Being *victim, int damage, AttackType type);
-#endif
 
         /**
          * Puts a damage bubble above this monster and plays the hurt sound
@@ -82,7 +78,11 @@ class Monster : public Being
          * Gets the way the monster is blocked by other objects
          */
         virtual unsigned char getWalkMask() const
-        { return 0x83; } // blocked by walls, other monsters and players ( bin 1000 0011)
+        {
+            return Map::BLOCKMASK_WALL
+                    | Map::BLOCKMASK_CHARACTER
+                    | Map::BLOCKMASK_MONSTER;
+        }
 
     protected:
         /**
