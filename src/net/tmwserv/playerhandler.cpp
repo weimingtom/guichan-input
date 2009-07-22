@@ -43,7 +43,6 @@
 #include "gui/gui.h"
 #include "gui/okdialog.h"
 #include "gui/sell.h"
-#include "gui/skill.h"
 #include "gui/viewport.h"
 
 // TODO Move somewhere else
@@ -177,7 +176,7 @@ void PlayerHandler::handleMessage(MessageIn &msg)
         case GPMSG_LEVEL_PROGRESS:
         {
             logger->log("Level Progress Update");
-            player_node->setLevelProgress(msg.readInt8());
+            player_node->setExp(msg.readInt8());
         } break;
 
 
@@ -323,20 +322,32 @@ void PlayerHandler::emote(int emoteId)
     // TODO
 }
 
-void PlayerHandler::increaseStat(LocalPlayer::Attribute attr)
+void PlayerHandler::increaseAttribute(size_t attr)
 {
-    // TODO
+    MessageOut msg(PGMSG_RAISE_ATTRIBUTE);
+    msg.writeInt8(attr);
+    Net::GameServer::connection->send(msg);
 }
 
-void PlayerHandler::decreaseStat(LocalPlayer::Attribute attr)
+void PlayerHandler::decreaseAttribute(size_t attr)
 {
-    // TODO
+    MessageOut msg(PGMSG_LOWER_ATTRIBUTE);
+    msg.writeInt8(attr);
+    Net::GameServer::connection->send(msg);
+}
+
+void PlayerHandler::increaseSkill(int skillId)
+{
+    // Not used atm
 }
 
 void PlayerHandler::pickUp(FloorItem *floorItem)
 {
     int id = floorItem->getId();
-    Net::GameServer::Player::pickUp(id >> 16, id & 0xFFFF);
+    MessageOut msg(PGMSG_PICKUP);
+    msg.writeInt16(id >> 16);
+    msg.writeInt16(id & 0xFFFF);
+    Net::GameServer::connection->send(msg);
 }
 
 void PlayerHandler::setDirection(char direction)

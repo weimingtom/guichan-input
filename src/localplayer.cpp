@@ -40,27 +40,25 @@
 #include "gui/gui.h"
 #include "gui/ministatus.h"
 #include "gui/palette.h"
-#ifdef EATHENA_SUPPORT
-#include "gui/storagewindow.h"
-#else
 #include "gui/skilldialog.h"
-#endif
+#include "gui/statuswindow.h"
+#include "gui/storagewindow.h"
+
+#include "gui/widgets/chattab.h"
 
 #include "net/inventoryhandler.h"
 #include "net/net.h"
 #include "net/partyhandler.h"
 #include "net/playerhandler.h"
+#include "net/specialhandler.h"
 #include "net/tradehandler.h"
 
 #ifdef TMWSERV_SUPPORT
 #include "effectmanager.h"
 #include "guild.h"
 
-#include "net/tmwserv/gameserver/player.h"
+//#include "net/tmwserv/gameserver/player.h"
 #include "net/tmwserv/chatserver/guild.h"
-#else
-#include "net/ea/partyhandler.h"
-#include "net/ea/skillhandler.h"
 #endif
 
 #include "resources/animation.h"
@@ -82,38 +80,26 @@ const short walkingKeyboardDelay = 40;
 
 LocalPlayer *player_node = NULL;
 
-#ifdef TMWSERV_SUPPORT
-LocalPlayer::LocalPlayer():
-    Player(65535, 0, NULL),
-    mEquipment(new Equipment),
-#else
 LocalPlayer::LocalPlayer(int id, int job, Map *map):
     Player(id, job, map),
-    mCharId(0),
-    mJobXp(0),
-    mJobLevel(0),
-    mXpForNextLevel(0), mJobXpForNextLevel(0),
-    mMp(0), mMaxMp(0),
+#ifdef EATHENA_SUPPORT
     mAttackRange(0),
-    ATK(0), MATK(0), DEF(0), MDEF(0), HIT(0), FLEE(0),
-    ATK_BONUS(0), MATK_BONUS(0), DEF_BONUS(0), MDEF_BONUS(0), FLEE_BONUS(0),
-    mSkillPoint(0),
-    mEquipment(new Equipment),
 #endif
+    mEquipment(new Equipment),
     mInStorage(false),
 #ifdef EATHENA_SUPPORT
     mTargetTime(-1),
 #endif
     mLastTarget(-1),
-#ifdef TMWSERV_SUPPORT
-    mCharacterPoints(-1),
-    mCorrectionPoints(-1),
-    mLevelProgress(0),
-#endif
+    mCharacterPoints(0),
+    mCorrectionPoints(0),
     mLevel(1),
+    mExp(0), mExpNeeded(0),
+    mMp(0), mMaxMp(0),
     mMoney(0),
     mTotalWeight(1), mMaxWeight(1),
     mHp(1), mMaxHp(1),
+    mSkillPoints(0),
     mTarget(NULL), mPickUpTarget(NULL),
     mTrading(false), mGoingToTarget(false), mKeepAttacking(false),
     mLastAction(-1),
@@ -123,10 +109,8 @@ LocalPlayer::LocalPlayer(int id, int job, Map *map):
 #ifdef TMWSERV_SUPPORT
     mLocalWalkTime(-1),
 #endif
-    mStorage(new Inventory(STORAGE_SIZE))
-#ifdef TMWSERV_SUPPORT
-    , mExpMessageTime(0)
-#endif
+    mStorage(new Inventory(STORAGE_SIZE)),
+    mMessageTime(0)
 {
     // Variable to keep the local player from doing certain actions before a map
     // is initialized. e.g. drawing a player's name using the TextManager, since
@@ -160,27 +144,31 @@ void LocalPlayer::logic()
     if (get_elapsed_time(mLastAction) >= 1000)
         mLastAction = -1;
 
-#ifdef TMWSERV_SUPPORT
     // Show XP messages
-    if (!mExpMessages.empty())
+    if (!mMessages.empty())
     {
-        if (mExpMessageTime == 0)
+        if (mMessageTime == 0)
         {
-            const Vector &pos = getPosition();
+            //const Vector &pos = getPosition();
+
+            MessagePair info = mMessages.front();
 
             particleEngine->addTextRiseFadeOutEffect(
-                    mExpMessages.front(),
-                    (int) pos.x + 16,
-                    (int) pos.y - 16,
-                    &guiPalette->getColor(Palette::EXP_INFO),
+                    info.first,
+                    /*(int) pos.x,
+                    (int) pos.y - 48,*/
+                    getPixelX(),
+                    getPixelY() - 48,
+                    &guiPalette->getColor(info.second),
                     gui->getInfoParticleFont(), true);
 
-            mExpMessages.pop_front();
-            mExpMessageTime = 30;
+            mMessages.pop_front();
+            mMessageTime = 30;
         }
-        mExpMessageTime--;
+        mMessageTime--;
     }
-#else
+
+#ifdef EATHENA_SUPPORT
     // Targeting allowed 4 times a second
     if (get_elapsed_time(mLastTarget) >= 250)
         mLastTarget = -1;
@@ -192,7 +180,6 @@ void LocalPlayer::logic()
         setTarget(NULL);
         mLastTarget = -1;
     }
-
 #endif
 
     if (mTarget)
@@ -696,12 +683,12 @@ void LocalPlayer::attack()
     Net::GameServer::Player::attack(getSpriteDirection());
 }
 */
+#endif
+
 void LocalPlayer::useSpecial(int special)
 {
-    Net::GameServer::Player::useSpecial(special);
+    Net::getSpecialHandler()->use(special);
 }
-
-#endif
 
 void LocalPlayer::attack(Being *target, bool keep)
 {
@@ -808,14 +795,12 @@ void LocalPlayer::stopAttack()
     mLastTarget = -1;
 }
 
-#ifdef TMWSERV_SUPPORT
-
 void LocalPlayer::raiseAttribute(size_t attr)
 {
     // we assume that the server allows the change. When not we will undo it later.
     mCharacterPoints--;
     mAttributeBase.at(attr)++;
-    Net::GameServer::Player::raiseAttribute(attr + CHAR_ATTR_BEGIN);
+    Net::getPlayerHandler()->increaseAttribute(attr);
 }
 
 void LocalPlayer::lowerAttribute(size_t attr)
@@ -824,7 +809,7 @@ void LocalPlayer::lowerAttribute(size_t attr)
     mCorrectionPoints--;
     mCharacterPoints++;
     mAttributeBase.at(attr)--;
-    Net::GameServer::Player::lowerAttribute(attr + CHAR_ATTR_BEGIN);
+    Net::getPlayerHandler()->decreaseAttribute(attr);
 }
 
 void LocalPlayer::setAttributeBase(int num, int value)
@@ -840,6 +825,9 @@ void LocalPlayer::setAttributeBase(int num, int value)
         Particle* effect = particleEngine->addEffect("graphics/particles/skillup.particle.xml", 0, 0);
         this->controlParticle(effect);
     }
+
+    if (statusWindow)
+        statusWindow->update(num);
 }
 
 void LocalPlayer::setAttributeEffective(int num, int value)
@@ -847,6 +835,32 @@ void LocalPlayer::setAttributeEffective(int num, int value)
     mAttributeEffective[num] = value;
     if (skillDialog)
         skillDialog->update(num);
+
+    if (statusWindow)
+        statusWindow->update(num);
+}
+
+void LocalPlayer::setCharacterPoints(int n)
+{
+    mCharacterPoints = n;
+
+    if (statusWindow)
+        statusWindow->update(StatusWindow::CHAR_POINTS);
+}
+
+void LocalPlayer::setCorrectionPoints(int n)
+{
+    mCorrectionPoints = n;
+
+    if (statusWindow)
+        statusWindow->update(StatusWindow::CHAR_POINTS);
+}
+
+void LocalPlayer::setSkillPoints(int points)
+{
+    mSkillPoints = points;
+    if (skillDialog)
+        skillDialog->update();
 }
 
 void LocalPlayer::setExperience(int skill, int current, int next)
@@ -863,8 +877,7 @@ void LocalPlayer::setExperience(int skill, int current, int next)
 
     if (mMap && cur.first != -1 && diff > 0 && !name.empty())
     {
-        const std::string text = strprintf("%d %s xp", diff, name.c_str());
-        mExpMessages.push_back(text);
+        addMessageToQueue(strprintf("%d %s xp", diff, name.c_str()));
     }
 }
 
@@ -873,36 +886,102 @@ std::pair<int, int> LocalPlayer::getExperience(int skill)
     return mSkillExp[skill];
 }
 
-#endif
-
-void LocalPlayer::setLevelProgress(int percent)
+void LocalPlayer::setHp(int value)
 {
-    if (mMap && percent > percent)
-    {
-        const std::string text = toString(percent - percent) + " xp";
+    mHp = value;
 
-        // Show XP number
-        particleEngine->addTextRiseFadeOutEffect(
-                text,
-                getPixelX(),
-                getPixelY() - 48,
-                &guiPalette->getColor(Palette::EXP_INFO),
-                gui->getInfoParticleFont(), true);
-    }
-    mLevelProgress = percent;
+    if (statusWindow)
+        statusWindow->update(StatusWindow::HP);
 }
 
-void LocalPlayer::pickedUp(const std::string &item)
+void LocalPlayer::setMaxHp(int value)
 {
-    if (mMap)
+    mMaxHp = value;
+
+    if (statusWindow)
+        statusWindow->update(StatusWindow::HP);
+}
+
+void LocalPlayer::setLevel(int value)
+{
+    mLevel = value;
+
+    if (statusWindow)
+        statusWindow->update(StatusWindow::LEVEL);
+}
+
+void LocalPlayer::setExp(int value)
+{
+    if (mMap && value > mExp)
     {
-        // Show pickup notification
-        particleEngine->addTextRiseFadeOutEffect(
-                item,
-                getPixelX(),
-                getPixelY() - 48,
-                &guiPalette->getColor(Palette::PICKUP_INFO),
-                gui->getInfoParticleFont(), true);
+        addMessageToQueue(toString(value - mExp) + " xp");
+    }
+    mExp = value;
+
+    if (statusWindow)
+        statusWindow->update(StatusWindow::EXP);
+}
+
+void LocalPlayer::setExpNeeded(int value)
+{
+    mExpNeeded = value;
+
+    if (statusWindow)
+        statusWindow->update(StatusWindow::EXP);
+}
+
+void LocalPlayer::setMP(int value)
+{
+    mMp = value;
+
+    if (statusWindow)
+        statusWindow->update(StatusWindow::MP);
+}
+
+void LocalPlayer::setMaxMP(int value)
+{
+    mMaxMp = value;
+
+    if (statusWindow)
+        statusWindow->update(StatusWindow::MP);
+}
+
+void LocalPlayer::pickedUp(const ItemInfo &itemInfo, int amount)
+{
+    if (!amount)
+    {
+        if (config.getValue("showpickupchat", 1))
+        {
+            localChatTab->chatLog(_("Unable to pick up item."), BY_SERVER);
+        }
+    }
+    else
+    {
+        const std::string amountStr = (amount > 1) ? toString(amount) : _("a");
+
+        if (config.getValue("showpickupchat", 1))
+        {
+            if (amount == 1)
+            {
+                // TRANSLATORS: Used as in "You picked up a [Candy]", when
+                // picking up only one item.
+                localChatTab->chatLog(strprintf(_("You picked up a [@@%d|%s@@]."),
+                    itemInfo.getId(), itemInfo.getName().c_str()), BY_SERVER);
+            }
+            else
+            {
+                // TRANSLATORS: Used as in "You picked up 4 [Candy]", when
+                // picking up more than one item.
+                localChatTab->chatLog(strprintf(_("You picked up %d [@@%d|%s@@]."),
+                    amount, itemInfo.getId(), itemInfo.getName().c_str()), BY_SERVER);
+            }
+        }
+
+        if (mMap && config.getValue("showpickupparticle", 0))
+        {
+            // Show pickup notification
+            addMessageToQueue(itemInfo.getName(), Palette::PICKUP_INFO);
+        }
     }
 }
 
@@ -1051,3 +1130,9 @@ void LocalPlayer::setInStorage(bool inStorage)
     storageWindow->setVisible(inStorage);
 }
 #endif
+
+void LocalPlayer::addMessageToQueue(const std::string &message,
+                                    Palette::ColorType color)
+{
+    mMessages.push_back(MessagePair(message, color));
+}

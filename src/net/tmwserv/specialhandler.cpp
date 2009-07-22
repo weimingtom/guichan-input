@@ -19,33 +19,42 @@
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#include "net/tmwserv/skillhandler.h"
+#include "net/tmwserv/specialhandler.h"
 
-Net::SkillHandler *skillHandler;
+#include "net/tmwserv/gameserver/internal.h"
+
+#include "net/tmwserv/connection.h"
+#include "net/tmwserv/protocol.h"
+
+#include "net/messageout.h"
+
+Net::SpecialHandler *specialHandler;
 
 namespace TmwServ {
 
-SkillHandler::SkillHandler()
+SpecialHandler::SpecialHandler()
 {
-    skillHandler = this;
+    specialHandler = this;
 }
 
-void SkillHandler::up(int skillId)
+void SpecialHandler::use(int id)
 {
-    // TODO
+    MessageOut msg(PGMSG_USE_SPECIAL);
+    msg.writeInt8(id);
+    Net::GameServer::connection->send(msg);
 }
 
-void SkillHandler::use(int skillId, int level, int beingId)
-{
-    // TODO
-}
-
-void SkillHandler::use(int skillId, int level, int x, int y)
+void SpecialHandler::use(int id, int level, int beingId)
 {
     // TODO
 }
 
-void SkillHandler::use(int skillId, const std::string &map)
+void SpecialHandler::use(int id, int level, int x, int y)
+{
+    // TODO
+}
+
+void SpecialHandler::use(int id, const std::string &map)
 {
     // TODO
 }

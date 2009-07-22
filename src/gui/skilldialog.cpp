@@ -37,6 +37,9 @@
 #include "localplayer.h"
 #include "log.h"
 
+#include "net/net.h"
+#include "net/playerhandler.h"
+
 #include "utils/dtor.h"
 #include "utils/gettext.h"
 #include "utils/stringutils.h"
@@ -56,19 +59,25 @@ struct SkillInfo
     SkillEntry *display;
 };
 
-class SkillEntry : public Container
+class SkillEntry : public Container, gcn::WidgetListener
 {
     public:
-        SkillEntry(struct SkillInfo *info);
+        SkillEntry(SkillInfo *info);
+
+        void widgetResized(const gcn::Event &event);
 
         void update();
 
+    protected:
+        friend class SkillDialog;
+        SkillInfo *mInfo;
+
     private:
-        struct SkillInfo *mInfo;
         Icon *mIcon;
         Label *mNameLabel;
         Label *mLevelLabel;
         Label *mExpLabel;
+        Button *mIncrease;
         ProgressBar *mProgress;
 };
 
@@ -82,9 +91,10 @@ SkillDialog::SkillDialog():
     setDefaultSize(windowContainer->getWidth() - 280, 30, 275, 425);
 
     mTabs = new TabbedArea();
+    mPointsLabel = new Label("0");
 
     place(0, 0, mTabs, 5, 5);
-    place(0, 5, new Label("TODO"));
+    place(0, 5, mPointsLabel);
 
     setLocationRelativeTo(getParent());
     loadWindowState();
@@ -97,8 +107,12 @@ SkillDialog::~SkillDialog()
 
 void SkillDialog::action(const gcn::ActionEvent &event)
 {
-    if (event.getId() == "skill")
+    if (event.getId() == "inc")
     {
+        SkillEntry *disp = dynamic_cast<SkillEntry*>(event.getSource()->getParent());
+
+        if (disp)
+            Net::getPlayerHandler()->increaseSkill(disp->mInfo->id);
     }
     else if (event.getId() == "close")
     {
@@ -110,7 +124,7 @@ void SkillDialog::adjustTabSize()
 {
     gcn::Widget *content = mTabs->getCurrentWidget();
     if (content) {
-        int width = mTabs->getWidth() - 2 * content->getFrameSize();
+        int width = mTabs->getWidth() - 2 * content->getFrameSize() - 2 * mTabs->getFrameSize();
         int height = mTabs->getContainerHeight() - 2 * content->getFrameSize();
         content->setSize(width, height);
         content->setVisible(true);
@@ -138,21 +152,36 @@ void SkillDialog::logic()
 
 std::string SkillDialog::update(int id)
 {
-    SkillInfo *info = mSkills[id];
+    SkillMap::iterator i = mSkills.find(id);
 
-    if (info)
+    if (i != mSkills.end())
     {
+        SkillInfo *info = i->second;
         info->display->update();
         return info->name;
     }
-    else
-        return "";
+
+    return std::string();
 }
 
-void SkillDialog::loadSkills(const std::string &file, bool fixed)
+void SkillDialog::update()
+{
+    mPointsLabel->setCaption(strprintf(_("Skill points available: %d"),
+                                       player_node->getSkillPoints()));
+    mPointsLabel->adjustSize();
+
+    for (SkillMap::iterator it = mSkills.begin(); it != mSkills.end(); it++)
+    {
+        if ((*it).second->modifiable)
+            (*it).second->display->update();
+    }
+}
+
+void SkillDialog::loadSkills(const std::string &file)
 {
     // TODO: mTabs->clear();
     delete_all(mSkills);
+    mSkills.clear();
 
     XML::Document doc(file);
     xmlNodePtr root = doc.rootNode();
@@ -167,7 +196,6 @@ void SkillDialog::loadSkills(const std::string &file, bool fixed)
     std::string setName;
     ScrollArea *scroll;
     VertContainer *container;
-    std::string fixedDef = toString(fixed);
 
     for_each_xml_child_node(set, root)
     {
@@ -191,13 +219,12 @@ void SkillDialog::loadSkills(const std::string &file, bool fixed)
                     int id = atoi(XML::getProperty(node, "id", "-1").c_str());
                     std::string name = XML::getProperty(node, "name", strprintf(_("Skill %d"), id));
                     std::string icon = XML::getProperty(node, "icon", "");
-                    bool modifiable = !atoi(XML::getProperty(node, "fixed", fixedDef).c_str());
 
                     SkillInfo *skill = new SkillInfo;
                     skill->id = id;
                     skill->name = name;
                     skill->icon = icon;
-                    skill->modifiable = modifiable;
+                    skill->modifiable = 0;
                     skill->display = new SkillEntry(skill);
 
                     container->add(skill->display);
@@ -209,33 +236,41 @@ void SkillDialog::loadSkills(const std::string &file, bool fixed)
     }
 
     adjustTabSize();
+    update();
 }
 
-SkillEntry::SkillEntry(struct SkillInfo *info) : mInfo(info),
+void SkillDialog::setModifiable(int id, bool modifiable)
+{
+    SkillMap::iterator i = mSkills.find(id);
+
+    if (i != mSkills.end())
+    {
+        SkillInfo *info = i->second;
+        info->modifiable = modifiable;
+        info->display->update();
+    }
+}
+
+SkillEntry::SkillEntry(SkillInfo *info) :
+    mInfo(info),
     mIcon(NULL),
     mNameLabel(new Label(info->name)),
-    mProgress(new ProgressBar(0.0f, 200, 20, gcn::Color(150, 150, 150))),
-    mLevelLabel(new Label("999"))
+    mLevelLabel(new Label("999")),
+    mIncrease(new Button("+", "inc", skillDialog)),
+    mProgress(new ProgressBar(0.0f, 200, 20, gcn::Color(150, 150, 150)))
 {
+    setFrameSize(1);
     setOpaque(false);
+
+    addWidgetListener(this);
 
     if (!info->icon.empty())
         mIcon = new Icon(info->icon);
+    else
+        mIcon = new Icon("graphics/gui/unknown-item.png");
 
-    /*LayoutHelper h(this);
-    ContainerPlacer place = h.getPlacer(0, 0);
-
-    if (mIcon)
-        place(0, 0, mIcon, 1, 2);
-    place(1, 0, mNameLabel, 3);
-    place(4, 0, mLevelLabel);
-    place(1, 1, mProgress, 4);*/
-
-    if (mIcon)
-    {
-        mIcon->setPosition(1, 0);
-        add(mIcon);
-    }
+    mIcon->setPosition(1, 0);
+    add(mIcon);
 
     mNameLabel->setPosition(35, 0);
     add(mNameLabel);
@@ -246,16 +281,44 @@ SkillEntry::SkillEntry(struct SkillInfo *info) : mInfo(info),
     mProgress->setPosition(35, 13);
     add(mProgress);
 
+    mIncrease->setPosition(getWidth() - mIncrease->getWidth(), 13);
+    add(mIncrease);
+
     update();
+}
+
+void SkillEntry::widgetResized(const gcn::Event &event)
+{
+    gcn::Rectangle size = getChildrenArea();
+
+    if (mProgress->isVisible() && mIncrease->isVisible())
+    {
+        mLevelLabel->setPosition(size.width - mLevelLabel->getWidth()
+                                 - mIncrease->getWidth() - 4, 0);
+        mProgress->setWidth(size.width - mIncrease->getWidth() - 39);
+        mIncrease->setPosition(getWidth() - mIncrease->getWidth() - 2, 6);
+    }
+    else if (mProgress->isVisible())
+    {
+        mLevelLabel->setPosition(size.width - mLevelLabel->getWidth(), 0);
+        mProgress->setWidth(size.width - 39);
+    }
+    else if (mIncrease->isVisible())
+    {
+        mLevelLabel->setPosition(size.width - mLevelLabel->getWidth()
+                                 - mIncrease->getWidth() - 4, 0);
+        mIncrease->setPosition(getWidth() - mIncrease->getWidth() - 2, 6);
+    }
+    else
+        mLevelLabel->setPosition(size.width - mLevelLabel->getWidth(), 0);
 }
 
 void SkillEntry::update()
 {
     int baseLevel = player_node->getAttributeBase(mInfo->id);
-
     int effLevel = player_node->getAttributeEffective(mInfo->id);
 
-    if (baseLevel <= 0)
+    if (baseLevel <= 0 && !mInfo->modifiable)
     {
         setVisible(false);
         return;
@@ -264,24 +327,38 @@ void SkillEntry::update()
     setVisible(true);
 
     std::string skillLevel("Lvl: " + toString(baseLevel));
-    if (effLevel < baseLevel)
-    {
-        skillLevel.append(" - " + toString(baseLevel - effLevel));
-    }
-    else if (effLevel > baseLevel)
-    {
-        skillLevel.append(" + " + toString(effLevel - baseLevel));
-    }
+    if (effLevel != baseLevel)
+        skillLevel += strprintf(" (%+d)", baseLevel - effLevel);
     mLevelLabel->setCaption(skillLevel);
 
     std::pair<int, int> exp = player_node->getExperience(mInfo->id);
     std::string sExp (toString(exp.first) + " / " + toString(exp.second));
 
     mLevelLabel->adjustSize();
-    mProgress->setText(sExp);
 
-    // More intense red as exp grows
-    int color = 150 - (int)(150 * ((float) exp.first / exp.second));
-    mProgress->setColor(244, color, color);
-    mProgress->setProgress((float) exp.first / exp.second);
+    if (exp.second)
+    {
+        mProgress->setVisible(true);
+        mProgress->setText(sExp);
+
+        // More intense red as exp grows
+        int color = 150 - (int)(150 * ((float) exp.first / exp.second));
+        mProgress->setColor(244, color, color);
+        mProgress->setProgress((float) exp.first / exp.second);
+    }
+    else
+        mProgress->setVisible(false);
+
+    if (mInfo->modifiable)
+    {
+        mIncrease->setVisible(true);
+        mIncrease->setEnabled(player_node->getSkillPoints());
+    }
+    else
+    {
+        mIncrease->setVisible(false);
+        mIncrease->setEnabled(false);
+    }
+
+    widgetResized(NULL);
 }

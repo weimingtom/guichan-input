@@ -62,8 +62,8 @@
 #include "gui/sdlinput.h"
 #include "gui/sell.h"
 #include "gui/setup.h"
-#include "gui/skill.h"
-#include "gui/status.h"
+#include "gui/skilldialog.h"
+#include "gui/statuswindow.h"
 #include "gui/trade.h"
 #include "gui/viewport.h"
 #include "gui/windowmenu.h"
@@ -214,17 +214,16 @@ static void createGuiWindows()
     partyWindow = new PartyWindow;
 #ifdef TMWSERV_SUPPORT
     magicDialog = new MagicDialog;
-    equipmentWindow = new EquipmentWindow(player_node->mEquipment.get());
     buddyWindow = new BuddyWindow;
     guildWindow = new GuildWindow;
 #else
     buySellDialog = new BuySellDialog;
-    equipmentWindow = new EquipmentWindow;
 #endif
+    equipmentWindow = new EquipmentWindow(player_node->mEquipment.get());
     npcDialog = new NpcDialog;
     npcPostDialog = new NpcPostDialog;
     storageWindow = new StorageWindow;
-    statusWindow = new StatusWindow();
+    statusWindow = new StatusWindow;
     miniStatusWindow = new MiniStatusWindow;
     inventoryWindow = new InventoryWindow;
     skillDialog = new SkillDialog;

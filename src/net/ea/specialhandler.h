@@ -24,24 +24,24 @@
 
 #include "net/messagehandler.h"
 #include "net/net.h"
-#include "net/skillhandler.h"
+#include "net/specialhandler.h"
 
 namespace EAthena {
 
-class SkillHandler : public MessageHandler, public Net::SkillHandler
+class SpecialHandler : public MessageHandler, public Net::SpecialHandler
 {
     public:
-        SkillHandler();
+        SpecialHandler();
 
         void handleMessage(MessageIn &msg);
 
-        void up(int skillId);
+        void use(int id);
 
-        void use(int skillId, int level, int beingId);
+        void use(int id, int level, int beingId);
 
-        void use(int skillId, int level, int x, int y);
+        void use(int id, int level, int x, int y);
 
-        void use(int skillId, const std::string &map);
+        void use(int id, const std::string &map);
 };
 
 } // namespace EAthena

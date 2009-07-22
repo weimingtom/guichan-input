@@ -268,7 +268,7 @@ Window *Gui::getFocusedWindow()
 
     while (w != getTop())
     {
-        if (ret = dynamic_cast<Window*>(w))
+        if ((ret = dynamic_cast<Window*>(w)))
             return ret;
 
         if (!w)

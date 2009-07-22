@@ -48,9 +48,13 @@
 #include "gui/setup.h"
 #include "gui/setup_keyboard.h"
 #include "gui/shortcutwindow.h"
-#include "gui/skill.h"
-#include "gui/status.h"
+#include "gui/skilldialog.h"
+#include "gui/statuswindow.h"
 #include "gui/viewport.h"
+#ifdef TMWSERV_SUPPORT
+#include "gui/buddywindow.h"
+#include "gui/guildwindow.h"
+#endif
 
 #include "utils/gettext.h"
 #include "utils/stringutils.h"
@@ -388,7 +392,7 @@ KeyData KeyboardConfig::keyParse(std::string keyS) const
         }*/
         else
         {
-            int temp;
+            unsigned int temp;
             if (keyS.length() == 1)
                 kd.key = keyS.at(0);
             else if (sscanf(keyS.c_str(), "'%d'", &temp) == 1)
@@ -623,7 +627,7 @@ inline void KeyboardConfig::parseMovement()
     // If the direction is different, then stop first (this makes things weird
     // for the eAthena build)
 #ifdef TMWSERV_SUPPORT
-    if (!real_direction || real_direction != player_node->getWalkingDir())
+    if (!direction || direction != player_node->getWalkingDir())
         player_node->stopWalking(false);
 #endif
 

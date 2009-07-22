@@ -1,6 +1,6 @@
 /*
  *  The Mana World
- *  Copyright (C) 2009  The Mana World Development Team
+ *  Copyright (C) 2004  The Mana World Development Team
  *
  *  This file is part of The Mana World.
  *
@@ -19,23 +19,27 @@
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#ifndef SKILLHANDLER_H
-#define SKILLHANDLER_H
+#ifndef NET_TMWSERV_SKILLHANDLER_H
+#define NET_TMWSERV_SKILLHANDLER_H
 
-#include <iosfwd>
+#include "net/specialhandler.h"
 
-namespace Net {
-class SkillHandler
+namespace TmwServ {
+
+class SpecialHandler : public Net::SpecialHandler
 {
     public:
-        virtual void up(int skillId) = 0;
+        SpecialHandler();
 
-        virtual void use(int skillId, int level, int beingId) = 0;
+        void use(int id);
 
-        virtual void use(int skillId, int level, int x, int y) = 0;
+        void use(int id, int level, int beingId);
 
-        virtual void use(int skillId, const std::string &map) = 0;
+        void use(int id, int level, int x, int y);
+
+        void use(int id, const std::string &map);
 };
-}
 
-#endif // SKILLHANDLER_H
+} // namespace TmwServ
+
+#endif

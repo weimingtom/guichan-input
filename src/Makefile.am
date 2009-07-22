@@ -164,10 +164,14 @@ tmw_SOURCES = gui/widgets/avatar.cpp \
 	      gui/shortcutcontainer.h \
 	      gui/shortcutwindow.cpp \
 	      gui/shortcutwindow.h \
+	      gui/skilldialog.cpp \
+	      gui/skilldialog.h \
 	      gui/skin.cpp \
 	      gui/skin.h \
 	      gui/speechbubble.cpp \
 	      gui/speechbubble.h \
+	      gui/statuswindow.cpp \
+	      gui/statuswindow.h \
 	      gui/storagewindow.cpp \
 	      gui/storagewindow.h \
 	      gui/table.cpp \
@@ -209,7 +213,7 @@ tmw_SOURCES = gui/widgets/avatar.cpp \
 	      net/partyhandler.h \
 	      net/playerhandler.h \
 	      net/serverinfo.h \
-	      net/skillhandler.h \
+	      net/specialhandler.h \
 	      net/tradehandler.h \
 	      resources/action.cpp \
 	      resources/action.h \
@@ -384,10 +388,6 @@ tmw_SOURCES += \
 	      gui/quitdialog.h \
 	      gui/serverdialog.cpp \
 	      gui/serverdialog.h \
-	      gui/skilldialog.cpp \
-	      gui/skilldialog.h \
-	      gui/statuswindow.cpp \
-	      gui/statuswindow.h \
 	      gui/unregisterdialog.cpp \
 	      gui/unregisterdialog.h \
 	      net/tmwserv/accountserver/account.cpp \
@@ -449,8 +449,8 @@ tmw_SOURCES += \
 	      net/tmwserv/playerhandler.cpp \
 	      net/tmwserv/playerhandler.h \
 	      net/tmwserv/protocol.h \
-	      net/tmwserv/skillhandler.cpp \
-	      net/tmwserv/skillhandler.h \
+	      net/tmwserv/specialhandler.cpp \
+	      net/tmwserv/specialhandler.h \
 	      net/tmwserv/tradehandler.cpp \
 	      net/tmwserv/tradehandler.h \
 	      guild.cpp \
@@ -460,10 +460,6 @@ endif
 if SERVER_EATHENA
 tmw_CXXFLAGS += -DEATHENA_SUPPORT
 tmw_SOURCES += \
-	      gui/skill.cpp \
-	      gui/skill.h \
-	      gui/status.cpp \
-	      gui/status.h \
 	      net/ea/gui/partytab.cpp \
 	      net/ea/gui/partytab.h \
 	      net/ea/adminhandler.cpp \
@@ -499,8 +495,8 @@ tmw_SOURCES += \
 	      net/ea/playerhandler.cpp \
 	      net/ea/playerhandler.h \
 	      net/ea/protocol.h \
-	      net/ea/skillhandler.cpp \
-	      net/ea/skillhandler.h \
+	      net/ea/specialhandler.cpp \
+	      net/ea/specialhandler.h \
 	      net/ea/tradehandler.cpp \
 	      net/ea/tradehandler.h
 endif

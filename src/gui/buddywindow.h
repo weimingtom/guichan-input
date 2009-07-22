@@ -57,4 +57,6 @@ class BuddyWindow : public Window, public gcn::ActionListener
         std::list<Avatar*> mBuddyList;
 };
 
+extern BuddyWindow *buddyWindow;
+
 #endif /* BUDDYWINDOW_H */
