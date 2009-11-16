@@ -19,29 +19,25 @@
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#ifndef MAPHANDLER_H
-#define MAPHANDLER_H
+#include "player.h"
 
-#include "logindata.h"
+#ifndef NET_EA_TOKEN_H
+#define NET_EA_TOKEN_H
 
-#include <iosfwd>
-
-namespace Net {
-
-class MapHandler
+struct Token
 {
-    public:
-        virtual void connect(LoginData *loginData) = 0;
+    int account_ID;
+    int session_ID1;
+    int session_ID2;
+    Gender sex;
 
-        virtual void mapLoaded(const std::string &mapName) = 0;
-
-        virtual void who() = 0;
-
-        virtual void quit() = 0;
-
-        virtual void ping(int tick) = 0;
+    void clear()
+    {
+        account_ID = 0;
+        session_ID1 = 0;
+        session_ID2 = 0;
+        sex = GENDER_UNSPECIFIED;
+    }
 };
 
-} // namespace Net
-
-#endif // MAPHANDLER_H
+#endif // NET_EA_TOKEN_H

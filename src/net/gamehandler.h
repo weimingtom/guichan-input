@@ -1,6 +1,6 @@
 /*
  *  The Mana World
- *  Copyright (C) 2004  The Mana World Development Team
+ *  Copyright (C) 2009  The Mana World Development Team
  *
  *  This file is part of The Mana World.
  *
@@ -19,32 +19,37 @@
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#ifndef NET_TMWSERV_MAPHANDLER_H
-#define NET_TMWSERV_MAPHANDLER_H
+#ifndef MAPHANDLER_H
+#define MAPHANDLER_H
 
-#include "net/maphandler.h"
-#include "net/messagehandler.h"
+#include "logindata.h"
 
-namespace TmwServ {
+#include <iosfwd>
 
-class MapHandler :  public MessageHandler, public Net::MapHandler
+namespace Net {
+
+class GameHandler
 {
     public:
-        MapHandler();
+        virtual void connect() = 0;
 
-        void handleMessage(MessageIn &msg);
+        virtual bool isConnected() = 0;
 
-        void connect(LoginData *loginData);
+        virtual void disconnect() = 0;
 
-        void mapLoaded(const std::string &mapName);
+        virtual void inGame() = 0;
 
-        void who();
+        virtual void mapLoaded(const std::string &mapName) = 0;
 
-        void quit();
+        virtual void who() = 0;
 
-        void ping(int tick);
+        virtual void quit() = 0;
+
+        virtual void ping(int tick) = 0;
+
+        virtual void clear() = 0;
 };
 
-} // namespace TmwServ
+} // namespace Net
 
-#endif
+#endif // MAPHANDLER_H

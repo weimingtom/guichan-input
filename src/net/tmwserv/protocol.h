@@ -104,11 +104,12 @@ enum {
     GPMSG_BEING_ACTION_CHANGE      = 0x0271, // W being id, B action
     PGMSG_DIRECTION_CHANGE         = 0x0272, // B Direction
     GPMSG_BEING_DIR_CHANGE         = 0x0273, // W being id, B direction
-    GPMSG_BEINGS_MOVE              = 0x0280, // { W being id, B flags [, C position, B speed] [, W*2 destination] }*
+    GPMSG_BEINGS_MOVE              = 0x0280, // { W being id, B flags [, W*2 position, B speed] }*
     GPMSG_ITEMS                    = 0x0281, // { W item id, W*2 position }*
     PGMSG_ATTACK                   = 0x0290, // W being id
-    PGMSG_USE_SPECIAL              = 0x0292, // B specialID
     GPMSG_BEING_ATTACK             = 0x0291, // W being id
+    PGMSG_USE_SPECIAL              = 0x0292, // B specialID
+    GPMSG_SPECIAL_STATUS           = 0x0293, // { B specialID, L current, L max, L recharge }
     PGMSG_SAY                      = 0x02A0, // S text
     GPMSG_SAY                      = 0x02A1, // W being id, S text
     GPMSG_NPC_CHOICE               = 0x02B0, // W being id, { S text }*
@@ -146,7 +147,8 @@ enum {
     PGMSG_USE_ITEM                 = 0x0300, // B slot
     GPMSG_USE_RESPONSE             = 0x0301, // B error
     GPMSG_BEINGS_DAMAGE            = 0x0310, // { W being id, W amount }*
-    GPMSG_CREATE_EFFECT            = 0x0320, // W effect id, W*2 position
+    GPMSG_CREATE_EFFECT_POS        = 0x0320, // W effect id, W*2 position
+    GPMSG_CREATE_EFFECT_BEING      = 0x0321, // W effect id, W BeingID
 
     // Guild
     PCMSG_GUILD_CREATE                  = 0x0350, // S name
@@ -228,6 +230,7 @@ enum {
 // Login specific return values
 enum {
     LOGIN_INVALID_VERSION = 0x40,       // the user is using an incompatible protocol
+    LOGIN_INVALID_TIME    = 0x50,       // the user tried logging in too fast
     LOGIN_SERVER_FULL                   // the server is overloaded
 };
 

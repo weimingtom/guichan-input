@@ -59,6 +59,11 @@ class Item
         Image *getImage() { return mImage; }
 
         /**
+         * Returns the item image.
+         */
+        Image *getDrawImage() { return mDrawImage; }
+
+        /**
          * Sets the number of items.
          */
         void setQuantity(int quantity) { mQuantity = quantity; }
@@ -94,6 +99,16 @@ class Item
         bool isEquipped() const { return mEquipped; }
 
         /**
+         * Sets whether this item is in equipment.
+         */
+        void setInEquipment(bool inEquipment) { mInEquipment = inEquipment; }
+
+        /**
+         * Returns whether this item is in equipment.
+         */
+        bool isInEquipment() const { return mInEquipment; }
+
+        /**
          * Sets the inventory index of this item.
          */
         void setInvIndex(int index) { mInvIndex = index; }
@@ -111,9 +126,11 @@ class Item
     protected:
         int mId;              /**< Item type id. */
         Image *mImage;        /**< Item image. */
+        Image *mDrawImage;    /**< Draw image. */
         int mQuantity;        /**< Number of items. */
         bool mEquipment;      /**< Item is equipment. */
         bool mEquipped;       /**< Item is equipped. */
+        bool mInEquipment;    /**< Item is in equipment */
         int mInvIndex;        /**< Inventory index. */
 };
 

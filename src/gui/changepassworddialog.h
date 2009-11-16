@@ -37,14 +37,15 @@ class WrongDataNoticeListener;
  *
  * \ingroup Interface
  */
-class ChangePasswordDialog : public Window, public gcn::ActionListener {
+class ChangePasswordDialog : public Window, public gcn::ActionListener
+{
     public:
         /**
          * Constructor
          *
          * @see Window::Window
          */
-        ChangePasswordDialog(Window *parent,LoginData *loginData);
+        ChangePasswordDialog(LoginData *loginData);
 
         /**
          * Destructor

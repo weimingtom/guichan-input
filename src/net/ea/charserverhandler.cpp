@@ -21,12 +21,14 @@
 
 #include "net/ea/charserverhandler.h"
 
+#include "net/ea/loginhandler.h"
 #include "net/ea/network.h"
 #include "net/ea/protocol.h"
 
 #include "net/logindata.h"
 #include "net/messagein.h"
 #include "net/messageout.h"
+#include "net/net.h"
 
 #include "game.h"
 #include "log.h"
@@ -35,6 +37,8 @@
 #include "gui/charcreatedialog.h"
 #include "gui/okdialog.h"
 
+#include "resources/colordb.h"
+
 #include "utils/gettext.h"
 #include "utils/stringutils.h"
 
@@ -42,7 +46,11 @@ Net::CharHandler *charHandler;
 
 namespace EAthena {
 
+extern ServerInfo charServer;
+extern ServerInfo mapServer;
+
 CharServerHandler::CharServerHandler():
+    mCharSelectDialog(0),
     mCharCreateDialog(0)
 {
     static const Uint16 _messages[] = {
@@ -61,23 +69,21 @@ CharServerHandler::CharServerHandler():
 
 void CharServerHandler::handleMessage(MessageIn &msg)
 {
-    int slot, flags;
+    int count, slot;
     LocalPlayer *tempPlayer;
 
     logger->log("CharServerHandler: Packet ID: %x, Length: %d",
             msg.getId(), msg.getLength());
     switch (msg.getId())
     {
-        case 0x006b:
+        case SMSG_CHAR_LOGIN:
             msg.skip(2); // Length word
-            flags = msg.readInt32(); // Aethyra extensions flags
-            logger->log("Server flags are: %x", flags);
-            msg.skip(16); // Unused
+            msg.skip(20); // Unused
 
             // Derive number of characters from message length
-            n_character = (msg.getLength() - 24) / 106;
+            count = (msg.getLength() - 24) / 106;
 
-            for (int i = 0; i < n_character; i++)
+            for (int i = 0; i < count; i++)
             {
                 tempPlayer = readPlayerData(msg, slot);
                 mCharInfo->select(slot);
@@ -92,13 +98,13 @@ void CharServerHandler::handleMessage(MessageIn &msg)
         case SMSG_CHAR_LOGIN_ERROR:
             switch (msg.readInt8()) {
                 case 0:
-                    errorMessage = _("Access denied");
+                    errorMessage = _("Access denied.");
                     break;
                 case 1:
-                    errorMessage = _("Cannot use this ID");
+                    errorMessage = _("Cannot use this ID.");
                     break;
                 default:
-                    errorMessage = _("Unknown failure to select character");
+                    errorMessage = _("Unknown failure to select character.");
                     break;
             }
             mCharInfo->unlock();
@@ -109,11 +115,11 @@ void CharServerHandler::handleMessage(MessageIn &msg)
             mCharInfo->unlock();
             mCharInfo->select(slot);
             mCharInfo->setEntry(tempPlayer);
-            n_character++;
 
             // Close the character create dialog
             if (mCharCreateDialog)
             {
+                mCharCreateDialog->success();
                 mCharCreateDialog->scheduleDelete();
                 mCharCreateDialog = 0;
             }
@@ -128,11 +134,13 @@ void CharServerHandler::handleMessage(MessageIn &msg)
             break;
 
         case SMSG_CHAR_DELETE_SUCCEEDED:
-            delete mCharInfo->getEntry();
+            tempPlayer = mCharInfo->getEntry();
             mCharInfo->setEntry(0);
             mCharInfo->unlock();
-            n_character--;
+            if (mCharSelectDialog)
+                mCharSelectDialog->update(mCharInfo->getPos());
             new OkDialog(_("Info"), _("Character deleted."));
+            delete tempPlayer;
             break;
 
         case SMSG_CHAR_DELETE_FAILED:
@@ -145,8 +153,8 @@ void CharServerHandler::handleMessage(MessageIn &msg)
             slot = mCharInfo->getPos();
             msg.skip(4); // CharID, must be the same as player_node->charID
             map_path = msg.readString(16);
-            mLoginData->hostname = ipToString(msg.readInt32());
-            mLoginData->port = msg.readInt16();
+            mapServer.hostname = ipToString(msg.readInt32());
+            mapServer.port = msg.readInt16();
             mCharInfo->unlock();
             mCharInfo->select(0);
             // Clear unselected players infos
@@ -162,24 +170,30 @@ void CharServerHandler::handleMessage(MessageIn &msg)
             } while (mCharInfo->getPos());
 
             mCharInfo->select(slot);
-            state = STATE_CONNECTING;
+            mNetwork->disconnect();
+            state = STATE_CONNECT_GAME;
             break;
     }
 }
 
 LocalPlayer *CharServerHandler::readPlayerData(MessageIn &msg, int &slot)
 {
+    const Token &token =
+            static_cast<LoginHandler*>(Net::getLoginHandler())->getToken();
+
     LocalPlayer *tempPlayer = new LocalPlayer(msg.readInt32(), 0, NULL);
-    tempPlayer->setGender(mLoginData->sex);
+    tempPlayer->setGender(token.sex);
 
     tempPlayer->setExp(msg.readInt32());
     tempPlayer->setMoney(msg.readInt32());
     tempPlayer->setExperience(JOB, msg.readInt32(), 1);
-    tempPlayer->setAttributeBase(JOB, msg.readInt32());
-    tempPlayer->setSprite(Being::SHOE_SPRITE, msg.readInt16());
-    tempPlayer->setSprite(Being::GLOVES_SPRITE, msg.readInt16());
-    tempPlayer->setSprite(Being::CAPE_SPRITE, msg.readInt16());
-    tempPlayer->setSprite(Being::MISC1_SPRITE, msg.readInt16());
+    int temp = msg.readInt32();
+    tempPlayer->setAttributeBase(JOB, temp);
+    tempPlayer->setAttributeEffective(JOB, temp);
+    tempPlayer->setSprite(Player::SHOE_SPRITE, msg.readInt16());
+    tempPlayer->setSprite(Player::GLOVES_SPRITE, msg.readInt16());
+    tempPlayer->setSprite(Player::CAPE_SPRITE, msg.readInt16());
+    tempPlayer->setSprite(Player::MISC1_SPRITE, msg.readInt16());
     msg.readInt32();                       // option
     msg.readInt32();                       // karma
     msg.readInt32();                       // manner
@@ -192,16 +206,15 @@ LocalPlayer *CharServerHandler::readPlayerData(MessageIn &msg, int &slot)
     msg.readInt16();                       // class
     int hairStyle = msg.readInt16();
     Uint16 weapon = msg.readInt16();
-    tempPlayer->setSprite(Being::WEAPON_SPRITE, weapon);
+    tempPlayer->setSprite(Player::WEAPON_SPRITE, weapon);
     tempPlayer->setLevel(msg.readInt16());
     msg.readInt16();                       // skill point
-    tempPlayer->setSprite(Being::BOTTOMCLOTHES_SPRITE, msg.readInt16()); // head bottom
-    tempPlayer->setSprite(Being::SHIELD_SPRITE, msg.readInt16());
-    tempPlayer->setSprite(Being::HAT_SPRITE, msg.readInt16()); // head option top
-    tempPlayer->setSprite(Being::TOPCLOTHES_SPRITE, msg.readInt16()); // head option mid
-    int hairColor = msg.readInt16();
-    tempPlayer->setHairStyle(hairStyle, hairColor);
-    tempPlayer->setSprite(Being::MISC2_SPRITE, msg.readInt16());
+    tempPlayer->setSprite(Player::BOTTOMCLOTHES_SPRITE, msg.readInt16()); // head bottom
+    tempPlayer->setSprite(Player::SHIELD_SPRITE, msg.readInt16());
+    tempPlayer->setSprite(Player::HAT_SPRITE, msg.readInt16()); // head option top
+    tempPlayer->setSprite(Player::TOPCLOTHES_SPRITE, msg.readInt16()); // head option mid
+    tempPlayer->setSprite(Player::HAIR_SPRITE, hairStyle * -1, ColorDB::get(msg.readInt16()));
+    tempPlayer->setSprite(Player::MISC2_SPRITE, msg.readInt16());
     tempPlayer->setName(msg.readString(24));
     for (int i = 0; i < 6; i++) {
         tempPlayer->setAttributeBase(i + STR, msg.readInt8());
@@ -210,6 +223,11 @@ LocalPlayer *CharServerHandler::readPlayerData(MessageIn &msg, int &slot)
     msg.readInt8();                        // unknown
 
     return tempPlayer;
+}
+
+void CharServerHandler::setCharSelectDialog(CharSelectDialog *window)
+{
+    mCharSelectDialog = window;
 }
 
 void CharServerHandler::setCharCreateDialog(CharCreateDialog *window)
@@ -227,25 +245,16 @@ void CharServerHandler::setCharCreateDialog(CharCreateDialog *window)
     attributes.push_back(_("Dexterity:"));
     attributes.push_back(_("Luck:"));
 
+    const Token &token =
+            static_cast<LoginHandler*>(Net::getLoginHandler())->getToken();
+
     mCharCreateDialog->setAttributes(attributes, 30, 1, 9);
-    mCharCreateDialog->setFixedGender(true, mLoginData->sex);
+    mCharCreateDialog->setFixedGender(true, token.sex);
 }
 
-void CharServerHandler::connect(LoginData *loginData)
+void CharServerHandler::getCharacters()
 {
-    mLoginData = loginData;
-    
-    MessageOut outMsg(CMSG_CHAR_SERVER_CONNECT);
-    outMsg.writeInt32(loginData->account_ID);
-    outMsg.writeInt32(loginData->session_ID1);
-    outMsg.writeInt32(loginData->session_ID2);
-    // [Fate] The next word is unused by the old char server, so we squeeze in
-    //        tmw client version information
-    outMsg.writeInt16(CLIENT_PROTOCOL_VERSION);
-    outMsg.writeInt8((loginData->sex == GENDER_MALE) ? 1 : 0);
-
-    // We get 4 useless bytes before the real answer comes in (what are these?)
-    mNetwork->skip(4);
+    connect();
 }
 
 void CharServerHandler::chooseCharacter(int slot, LocalPlayer* character)
@@ -273,6 +282,26 @@ void CharServerHandler::deleteCharacter(int slot, LocalPlayer* character)
     MessageOut outMsg(CMSG_CHAR_DELETE);
     outMsg.writeInt32(character->getId());
     outMsg.writeString("a@a.com", 40);
+}
+
+void CharServerHandler::connect()
+{
+    const Token &token =
+            static_cast<LoginHandler*>(Net::getLoginHandler())->getToken();
+
+    mNetwork->disconnect();
+    mNetwork->connect(charServer);
+    MessageOut outMsg(CMSG_CHAR_SERVER_CONNECT);
+    outMsg.writeInt32(token.account_ID);
+    outMsg.writeInt32(token.session_ID1);
+    outMsg.writeInt32(token.session_ID2);
+    // [Fate] The next word is unused by the old char server, so we squeeze in
+    //        tmw client version information
+    outMsg.writeInt16(CLIENT_PROTOCOL_VERSION);
+    outMsg.writeInt8((token.sex == GENDER_MALE) ? 1 : 0);
+
+    // We get 4 useless bytes before the real answer comes in (what are these?)
+    mNetwork->skip(4);
 }
 
 } // namespace EAthena

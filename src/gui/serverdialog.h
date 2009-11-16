@@ -24,31 +24,23 @@
 
 #include "gui/widgets/window.h"
 
-#include "guichanfwd.h"
+#include "net/download.h"
+#include "net/serverinfo.h"
 
-#include "net/tmwserv/network.h"
+#include "utils/mutex.h"
 
 #include <guichan/actionlistener.hpp>
 #include <guichan/listmodel.hpp>
+#include <guichan/selectionlistener.hpp>
 
 #include <string>
 #include <vector>
 
-class DropDown;
-class LoginData;
-
-/**
- * A server structure to keep pairs of servers and ports.
- */
-struct Server
-{
-    Server():
-        port(0)
-    {}
-
-    std::string serverName;
-    short port;
-};
+class Button;
+class Label;
+class ListBox;
+class ServerDialog;
+class TextField;
 
 /**
  * Server and Port List Model
@@ -56,6 +48,8 @@ struct Server
 class ServersListModel : public gcn::ListModel
 {
     public:
+        ServersListModel(ServerInfos *servers, ServerDialog *parent);
+
         /**
          * Used to get number of line in the list
          */
@@ -69,21 +63,12 @@ class ServersListModel : public gcn::ListModel
         /**
          * Used to get the corresponding Server struct
          */
-        Server getServer(int elementIndex) const
-        { return servers[elementIndex]; }
-
-        /**
-         * Add an Element at the end of the server list
-         */
-        void addElement(Server server);
-
-        /**
-         * Add an Element at the beginning of the server list
-         */
-        void addFirstElement(Server server);
+        ServerInfo getServer(int elementIndex) const
+        { return mServers->at(elementIndex); }
 
     private:
-        std::vector<Server> servers;
+        ServerInfos *mServers;
+        ServerDialog *mParent;
 };
 
 /**
@@ -91,7 +76,9 @@ class ServersListModel : public gcn::ListModel
  *
  * \ingroup Interface
  */
-class ServerDialog : public Window, public gcn::ActionListener
+class ServerDialog : public Window,
+                     public gcn::ActionListener,
+                     public gcn::SelectionListener
 {
     public:
         /**
@@ -99,7 +86,7 @@ class ServerDialog : public Window, public gcn::ActionListener
          *
          * @see Window::Window
          */
-        ServerDialog(LoginData *loginData);
+        ServerDialog(ServerInfo *serverInfo, const std::string &dir);
 
         /**
          * Destructor
@@ -111,16 +98,60 @@ class ServerDialog : public Window, public gcn::ActionListener
          */
         void action(const gcn::ActionEvent &event);
 
+        /**
+         * Called when the selected value changed in the servers list box.
+         */
+        void valueChanged(const gcn::SelectionEvent &event);
+
+        void logic();
+
+    protected:
+        friend class ServersListModel;
+        MutexLocker lock() { return MutexLocker(&mMutex); }
+
     private:
-        gcn::TextField *mServerNameField;
-        gcn::TextField *mPortField;
-        gcn::Button *mOkButton;
-        gcn::Button *mCancelButton;
+        /**
+         * Called to load a list of available server from an online xml file.
+         */
+        void downloadServerList();
+        void loadServers();
+        static int downloadUpdate(void *ptr, DownloadStatus status,
+                                  size_t total, size_t remaining);
 
-        DropDown *mMostUsedServersDropDown;
-        ServersListModel *mMostUsedServersListModel;
+        void setFieldsReadOnly(const bool readOnly);
 
-        LoginData *mLoginData;
+        TextField *mServerNameField;
+        TextField *mPortField;
+        Label  *mDescription;
+        Button *mQuitButton;
+        Button *mConnectButton;
+        Button *mManualEntryButton;
+
+        ListBox *mServersList;
+        ServersListModel *mServersListModel;
+
+        const std::string &mDir;
+
+        enum ServerDialogDownloadStatus
+        {
+            DOWNLOADING_ERROR,
+            DOWNLOADING_PREPARING,
+            DOWNLOADING_IDLE,
+            DOWNLOADING_IN_PROGRESS,
+            DOWNLOADING_COMPLETE,
+            DOWNLOADING_OVER
+        };
+
+        /** Status of the current download. */
+        ServerDialogDownloadStatus mDownloadStatus;
+
+        Net::Download *mDownload;
+
+        Mutex mMutex;
+        float mDownloadProgress;
+
+        ServerInfos mServers;
+        ServerInfo *mServerInfo;
 };
 
 #endif

@@ -35,6 +35,15 @@ class Inventory;
 class Item;
 class Map;
 
+
+struct Special
+{
+    int currentMana;
+    int neededMana;
+    int recharge;
+};
+
+
 /**
  * Attributes used during combat. Available to all the beings.
  */
@@ -109,8 +118,6 @@ class LocalPlayer : public Player
          */
         ~LocalPlayer();
 
-        virtual void setName(const std::string &name);
-
         virtual void logic();
 
         virtual void setAction(Action action, int attackType = 0);
@@ -119,7 +126,10 @@ class LocalPlayer : public Player
          * Adds a new step when walking before calling super. Also, when
          * specified it picks up an item at the end of a path.
          */
-        virtual void nextStep();
+        virtual void nextStep()
+        { nextStep(0); }
+
+        virtual void nextStep(unsigned char dir);
 
         /**
          * Returns the player's inventory.
@@ -175,6 +185,11 @@ class LocalPlayer : public Player
         void setTrading(bool trading) { mTrading = trading; }
 
         void useSpecial(int id);
+
+        void setSpecialStatus(int id, int current, int max, int recharge);
+
+        const std::map<int, Special> &getSpecialStatus() const
+        { return mSpecials; }
 
         void attack(Being *target = NULL, bool keep = false);
 
@@ -311,8 +326,7 @@ class LocalPlayer : public Player
         int getMoney() const
         { return mMoney; }
 
-        void setMoney(int value)
-        { mMoney = value; }
+        void setMoney(int value);
 
         int getTotalWeight() const
         { return mTotalWeight; }
@@ -355,6 +369,14 @@ class LocalPlayer : public Player
 
         std::pair<int, int> getExperience(int skill);
 
+        /** Tells that the path has been set by mouse. */
+        void pathSetByMouse()
+        { mPathSetByMouse = true; }
+
+        /** Tells if the path has been set by mouse. */
+        bool isPathSetByMouse() const
+        { return mPathSetByMouse; }
+
         bool mUpdateName;     /** Whether or not the name settings have changed */
 
         bool mMapInitialized; /** Whether or not the map is available yet */
@@ -364,23 +386,34 @@ class LocalPlayer : public Player
         void addMessageToQueue(const std::string &message,
                                Palette::ColorType color = Palette::EXP_INFO);
 
+        /**
+         * Called when a option (set with config.addListener()) is changed
+         */
+        void optionChanged(const std::string &value);
+
     protected:
         virtual void handleStatusEffect(StatusEffect *effect, int effectId);
 
-        void walk(unsigned char dir);
+        // Colors don't change for local player
+        virtual void updateColors() {}
+
+        void startWalking(unsigned char dir);
 
         bool mInStorage;      /**< Whether storage is currently accessible */
-#ifdef EATHENA_SUPPORT
+
         int mTargetTime;      /** How long the being has been targeted **/
-#endif
         int mLastTarget;      /** Time stamp of last targeting action, -1 if none. */
 
         // Character status:
-        std::map<int, int> mAttributeBase;
-        std::map<int, int> mAttributeEffective;
+        typedef std::map<int, int> IntMap;
+        IntMap mAttributeBase;
+        IntMap mAttributeEffective;
         std::map<int, std::pair<int, int> > mSkillExp;
         int mCharacterPoints;
         int mCorrectionPoints;
+        int mLevelProgress;
+        std::map<int, Special> mSpecials;
+        char mSpecialRechargeUpdateNeeded;
         int mLevel;
         int mExp, mExpNeeded;
         int mMp, mMaxMp;
@@ -401,6 +434,7 @@ class LocalPlayer : public Player
         bool mKeepAttacking;  /** Whether or not to continue to attack */
         int mLastAction;      /**< Time stamp of the last action, -1 if none. */
         int mWalkingDir;      /**< The direction the player is walking in. */
+        bool mPathSetByMouse; /**< Tells if the path was set using mouse */
         int mDestX;           /**< X coordinate of destination. */
         int mDestY;           /**< Y coordinate of destination. */
 

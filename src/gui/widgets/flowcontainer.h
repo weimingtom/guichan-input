@@ -1,6 +1,6 @@
 /*
  *  The Mana World
- *  Copyright (C) 2004  The Mana World Development Team
+ *  Copyright (C) 2009  The Mana World Development Team
  *
  *  This file is part of The Mana World.
  *
@@ -19,49 +19,50 @@
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#ifndef _CHAR_SEL_SERVER_H
-#define _CHAR_SEL_SERVER_H
+#ifndef FLOWCONTAINER_H
+#define FLOWCONTAINER_H
 
-#include "gui/widgets/window.h"
+#include "container.h"
 
-#include "main.h"
-
-#include <guichan/actionlistener.hpp>
-#include <guichan/listmodel.hpp>
-
-class LoginData;
-class ServerListModel;
+#include <guichan/widgetlistener.hpp>
 
 /**
- * The server select dialog.
+ * A container that arranges its contents like words on a page.
  *
- * \ingroup Interface
+ * \ingroup GUI
  */
-class ServerSelectDialog : public Window, public gcn::ActionListener {
+class FlowContainer : public Container,
+                      public gcn::WidgetListener
+{
     public:
         /**
-         * Constructor
-         *
-         * @see Window::Window
+         * Constructor. Initializes the shortcut container.
          */
-        ServerSelectDialog(LoginData *loginData, State nextState);
+        FlowContainer(int boxWidth, int boxHeight);
 
         /**
          * Destructor.
          */
-        ~ServerSelectDialog();
+        ~FlowContainer() {}
 
         /**
-         * Called when receiving actions from the widgets.
+         * Invoked when a widget changes its size. This is used to determine
+         * the new height of the container.
          */
-        void action(const gcn::ActionEvent &event);
+        void widgetResized(const gcn::Event &event);
+
+        int getBoxWidth() const
+        { return mBoxWidth; }
+
+        int getBoxHeight() const
+        { return mBoxHeight; }
+
+        void add(gcn::Widget *widget);
 
     private:
-        LoginData *mLoginData;
-        ServerListModel *mServerListModel;
-        gcn::ListBox *mServerList;
-        gcn::Button *mOkButton;
-        State mNextState;
+        int mBoxWidth;
+        int mBoxHeight;
+        int mGridWidth, mGridHeight;
 };
 
 #endif

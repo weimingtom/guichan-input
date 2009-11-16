@@ -105,6 +105,7 @@ PlayerHandler::PlayerHandler()
         GPMSG_LEVEL_PROGRESS,
         GPMSG_RAISE_ATTRIBUTE_RESPONSE,
         GPMSG_LOWER_ATTRIBUTE_RESPONSE,
+        GPMSG_SPECIAL_STATUS,
         0
     };
     handledMessages = _messages;
@@ -255,6 +256,19 @@ void PlayerHandler::handleMessage(MessageIn &msg)
             }
 
         } break;
+
+        case GPMSG_SPECIAL_STATUS :
+        {
+            while (msg.getUnreadLength())
+            {
+                // { B specialID, L current, L max, L recharge }
+                int id = msg.readInt8();
+                int current = msg.readInt32();
+                int max = msg.readInt32();
+                int recharge = msg.readInt32();
+                player_node->setSpecialStatus(id, current, max, recharge);
+            }
+        } break;
         /*
         case SMSG_PLAYER_ARROW_MESSAGE:
             {
@@ -367,8 +381,7 @@ void PlayerHandler::setDestination(int x, int y, int /* direction */)
 
 void PlayerHandler::changeAction(Being::Action action)
 {
-    if (action == Being::SIT)
-        player_node->setAction(action);
+    player_node->setAction(action);
 
     MessageOut msg(PGMSG_ACTION_CHANGE);
     msg.writeInt8(action);
@@ -388,6 +401,11 @@ void PlayerHandler::ignorePlayer(const std::string &player, bool ignore)
 void PlayerHandler::ignoreAll(bool ignore)
 {
     // TODO
+}
+
+bool PlayerHandler::canUseMagic()
+{
+    return true;
 }
 
 } // namespace TmwServ

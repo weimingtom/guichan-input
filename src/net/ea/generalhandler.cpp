@@ -21,7 +21,9 @@
 
 #include "net/ea/generalhandler.h"
 
+#include "gui/charselectdialog.h"
 #include "gui/inventorywindow.h"
+#include "gui/register.h"
 #include "gui/skilldialog.h"
 #include "gui/statuswindow.h"
 
@@ -34,11 +36,10 @@
 #include "net/ea/chathandler.h"
 #include "net/ea/charserverhandler.h"
 #include "net/ea/equipmenthandler.h"
+#include "net/ea/gamehandler.h"
 #include "net/ea/inventoryhandler.h"
 #include "net/ea/itemhandler.h"
 #include "net/ea/loginhandler.h"
-#include "net/ea/logouthandler.h"
-#include "net/ea/maphandler.h"
 #include "net/ea/npchandler.h"
 #include "net/ea/playerhandler.h"
 #include "net/ea/partyhandler.h"
@@ -58,11 +59,15 @@
 
 #include "utils/gettext.h"
 
+#include <assert.h>
 #include <list>
 
-Net::GeneralHandler *generalHandler;
+Net::GeneralHandler *generalHandler = NULL;
 
 namespace EAthena {
+
+ServerInfo charServer;
+ServerInfo mapServer;
 
 GeneralHandler::GeneralHandler():
     mAdminHandler(new AdminHandler),
@@ -71,17 +76,17 @@ GeneralHandler::GeneralHandler():
     mCharHandler(new CharServerHandler),
     mChatHandler(new ChatHandler),
     mEquipmentHandler(new EquipmentHandler),
+    mGameHandler(new GameHandler),
     mInventoryHandler(new InventoryHandler),
     mItemHandler(new ItemHandler),
     mLoginHandler(new LoginHandler),
-    mLogoutHandler(new LogoutHandler),
-    mMapHandler(new MapHandler),
     mNpcHandler(new NpcHandler),
     mPartyHandler(new PartyHandler),
     mPlayerHandler(new PlayerHandler),
     mSpecialHandler(new SpecialHandler),
     mTradeHandler(new TradeHandler)
 {
+    //assert(false);
     static const Uint16 _messages[] = {
         SMSG_CONNECTION_PROBLEM,
         0
@@ -117,26 +122,26 @@ void GeneralHandler::handleMessage(MessageIn &msg)
 
             switch (code) {
                 case 0:
-                    errorMessage = _("Authentication failed");
+                    errorMessage = _("Authentication failed.");
                     break;
                 case 1:
-                    errorMessage = _("No servers available");
+                    errorMessage = _("No servers available.");
                     break;
                 case 2:
                     if (state == STATE_GAME)
                         errorMessage = _("Someone else is trying to use this "
-                                         "account");
+                                         "account.");
                     else
-                        errorMessage = _("This account is already logged in");
+                        errorMessage = _("This account is already logged in.");
                     break;
                 case 3:
-                    errorMessage = _("Speed hack detected");
+                    errorMessage = _("Speed hack detected.");
                     break;
                 case 8:
-                    errorMessage = _("Duplicated login");
+                    errorMessage = _("Duplicated login.");
                     break;
                 default:
-                    errorMessage = _("Unknown connection error");
+                    errorMessage = _("Unknown connection error.");
                     break;
             }
             state = STATE_ERROR;
@@ -146,17 +151,18 @@ void GeneralHandler::handleMessage(MessageIn &msg)
 
 void GeneralHandler::load()
 {
+    (new Network)->registerHandler(this);
+
     mNetwork->registerHandler(mAdminHandler.get());
     mNetwork->registerHandler(mBeingHandler.get());
     mNetwork->registerHandler(mBuySellHandler.get());
     mNetwork->registerHandler(mChatHandler.get());
     mNetwork->registerHandler(mCharHandler.get());
     mNetwork->registerHandler(mEquipmentHandler.get());
+    mNetwork->registerHandler(mGameHandler.get());
     mNetwork->registerHandler(mInventoryHandler.get());
     mNetwork->registerHandler(mItemHandler.get());
     mNetwork->registerHandler(mLoginHandler.get());
-    mNetwork->registerHandler(mLogoutHandler.get());
-    mNetwork->registerHandler(mMapHandler.get());
     mNetwork->registerHandler(mNpcHandler.get());
     mNetwork->registerHandler(mPlayerHandler.get());
     mNetwork->registerHandler(mSpecialHandler.get());
@@ -164,9 +170,18 @@ void GeneralHandler::load()
     mNetwork->registerHandler(mPartyHandler.get());
 }
 
+void GeneralHandler::reload()
+{
+    if (mNetwork)
+        mNetwork->disconnect();
+
+    static_cast<LoginHandler*>(mLoginHandler.get())->clearWorlds();
+}
+
 void GeneralHandler::unload()
 {
-    mNetwork->clearHandlers();
+    if (mNetwork)
+        mNetwork->clearHandlers();
 }
 
 void GeneralHandler::flushNetwork()
@@ -224,6 +239,11 @@ void GeneralHandler::guiWindowsLoaded()
 void GeneralHandler::guiWindowsUnloaded()
 {
     delete partyTab;
+}
+
+void GeneralHandler::clearHandlers()
+{
+    mNetwork->clearHandlers();
 }
 
 } // namespace EAthena

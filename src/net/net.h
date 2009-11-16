@@ -22,17 +22,18 @@
 #ifndef NET_H
 #define NET_H
 
+class ServerInfo;
+
 namespace Net {
 
 class AdminHandler;
 class CharHandler;
 class ChatHandler;
+class GameHandler;
 class GeneralHandler;
 class GuildHandler;
 class InventoryHandler;
 class LoginHandler;
-class LogoutHandler;
-class MapHandler;
 class NpcHandler;
 class PartyHandler;
 class PlayerHandler;
@@ -42,17 +43,21 @@ class TradeHandler;
 AdminHandler *getAdminHandler();
 CharHandler *getCharHandler();
 ChatHandler *getChatHandler();
+GameHandler *getGameHandler();
 GeneralHandler *getGeneralHandler();
 GuildHandler *getGuildHandler();
 InventoryHandler *getInventoryHandler();
 LoginHandler *getLoginHandler();
-LogoutHandler *getLogoutHandler();
-MapHandler *getMapHandler();
 NpcHandler *getNpcHandler();
 PartyHandler *getPartyHandler();
 PlayerHandler *getPlayerHandler();
 SpecialHandler *getSpecialHandler();
 TradeHandler *getTradeHandler();
+
+/**
+ * Handles server detection and connection
+ */
+void connectToServer(const ServerInfo &server);
 
 } // namespace Net
 

@@ -32,6 +32,8 @@
 #include "gui/widgets/textfield.h"
 
 #include "net/logindata.h"
+#include "net/loginhandler.h"
+#include "net/net.h"
 
 #include "utils/gettext.h"
 #include "utils/stringutils.h"
@@ -39,14 +41,14 @@
 #include <string>
 #include <sstream>
 
-ChangeEmailDialog::ChangeEmailDialog(Window *parent, LoginData *loginData):
-    Window(_("Change Email Address"), true, parent),
+ChangeEmailDialog::ChangeEmailDialog(LoginData *loginData):
+    Window(_("Change Email Address"), true),
     mWrongDataNoticeListener(new WrongDataNoticeListener),
     mLoginData(loginData)
 {
     gcn::Label *accountLabel = new Label(strprintf(_("Account: %s"),
                                                    mLoginData->username.c_str()));
-    gcn::Label *newEmailLabel = new Label(_("Type New Email Address twice:"));
+    gcn::Label *newEmailLabel = new Label(_("Type new email address twice:"));
     mFirstEmailField = new TextField;
     mSecondEmailField = new TextField;
     mChangeEmailButton = new Button(_("Change Email Address"), "change_email", this);
@@ -85,7 +87,7 @@ ChangeEmailDialog::ChangeEmailDialog(Window *parent, LoginData *loginData):
     add(mChangeEmailButton);
     add(mCancelButton);
 
-    setLocationRelativeTo(getParent());
+    center();
     setVisible(true);
     mFirstEmailField->requestFocus();
 
@@ -98,12 +100,11 @@ ChangeEmailDialog::~ChangeEmailDialog()
     delete mWrongDataNoticeListener;
 }
 
-void
-ChangeEmailDialog::action(const gcn::ActionEvent &event)
+void ChangeEmailDialog::action(const gcn::ActionEvent &event)
 {
     if (event.getId() == "cancel")
     {
-        scheduleDelete();
+        state = STATE_CHAR_SELECT;
     }
     else if (event.getId() == "change_email")
     {
@@ -117,20 +118,21 @@ ChangeEmailDialog::action(const gcn::ActionEvent &event)
         std::stringstream errorMessage;
         int error = 0;
 
-        if (newFirstEmail.length() < LEN_MIN_PASSWORD)
+        unsigned int min = Net::getLoginHandler()->getMinPasswordLength();
+        unsigned int max = Net::getLoginHandler()->getMaxPasswordLength();
+
+        if (newFirstEmail.length() < min)
         {
             // First email address too short
             errorMessage << strprintf(_("The new email address needs to be at "
-                                        "least %d characters long."),
-                                      LEN_MIN_PASSWORD);
+                                        "least %d characters long."), min);
             error = 1;
         }
-        else if (newFirstEmail.length() > LEN_MAX_PASSWORD - 1 )
+        else if (newFirstEmail.length() > max - 1 )
         {
             // First email address too long
             errorMessage << strprintf(_("The new email address needs to be "
-                                        "less than %d characters long."),
-                                      LEN_MAX_PASSWORD);
+                                        "less than %d characters long."), max);
             error = 1;
         }
         else if (newFirstEmail != newSecondEmail)
@@ -159,10 +161,8 @@ ChangeEmailDialog::action(const gcn::ActionEvent &event)
             // No errors detected, change account password.
             mChangeEmailButton->setEnabled(false);
             // Set the new email address
-            mLoginData->newEmail = newFirstEmail;
+            mLoginData->email = newFirstEmail;
             state = STATE_CHANGEEMAIL_ATTEMPT;
-            scheduleDelete();
         }
-
     }
 }

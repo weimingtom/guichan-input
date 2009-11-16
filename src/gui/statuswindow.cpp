@@ -29,6 +29,9 @@
 #include "gui/widgets/vertcontainer.h"
 #include "gui/widgets/windowcontainer.h"
 
+#include "gui/ministatus.h"
+#include "gui/setup.h"
+
 #include "localplayer.h"
 #include "units.h"
 
@@ -78,7 +81,9 @@ class ChangeDisplay : public AttrDisplay, gcn::ActionListener
         int mNeeded;
 
         Label *mPoints;
+#ifdef TMWSERV_SUPPORT
         Button *mDec;
+#endif
         Button *mInc;
 };
 
@@ -86,6 +91,7 @@ StatusWindow::StatusWindow():
     Window(player_node->getName())
 {
     setWindowName("Status");
+    setupWindow->registerWindowForReset(this);
     setResizable(true);
     setCloseButton(true);
     setSaveVisible(true);
@@ -96,10 +102,10 @@ StatusWindow::StatusWindow():
     // Status Part
     // ----------------------
 
-    mLvlLabel = new Label("Level:");
-    mMoneyLabel = new Label("Money:");
+    mLvlLabel = new Label(strprintf(_("Level: %d"), 0));
+    mMoneyLabel = new Label(strprintf(_("Money: %s"), ""));
 
-    mHpLabel = new Label("HP:");
+    mHpLabel = new Label(_("HP:"));
     mHpBar = new ProgressBar((float) player_node->getHp()
                              / (float) player_node->getMaxHp(),
                              80, 15, gcn::Color(0, 171, 34));
@@ -156,9 +162,11 @@ StatusWindow::StatusWindow():
     getLayout().setRowHeight(3, Layout::AUTO_SET);
 
     mCharacterPointsLabel = new Label("C");
-    mCorrectionPointsLabel = new Label("C");
     place(0, 6, mCharacterPointsLabel, 5);
+#ifdef TMWSERV_SUPPORT
+    mCorrectionPointsLabel = new Label("C");
     place(0, 7, mCorrectionPointsLabel, 5);
+#endif
 
     loadWindowState();
 
@@ -175,6 +183,9 @@ StatusWindow::StatusWindow():
 
 std::string StatusWindow::update(int id)
 {
+    if (miniStatusWindow)
+        miniStatusWindow->update(id);
+
     if (id == HP)
     {
         updateHPBar(mHpBar, true);
@@ -216,13 +227,15 @@ std::string StatusWindow::update(int id)
 #endif
     else if (id == CHAR_POINTS)
     {
-        mCharacterPointsLabel->setCaption(strprintf(_("Character Points: %d"),
+        mCharacterPointsLabel->setCaption(strprintf(_("Character points: %d"),
                                         player_node->getCharacterPoints()));
         mCharacterPointsLabel->adjustSize();
 
-        mCorrectionPointsLabel->setCaption(strprintf(_("Correction Points: %d"),
+#ifdef TMWSERV_SUPPORT
+        mCorrectionPointsLabel->setCaption(strprintf(_("Correction points: %d"),
                                         player_node->getCorrectionPoints()));
         mCorrectionPointsLabel->adjustSize();
+#endif
 
         for (Attrs::iterator it = mAttrs.begin(); it != mAttrs.end(); it++)
         {
@@ -283,81 +296,91 @@ void StatusWindow::addAttribute(int id, const std::string &name,
 
 void StatusWindow::updateHPBar(ProgressBar *bar, bool showMax)
 {
+
     if (showMax)
         bar->setText(toString(player_node->getHp()) +
                     "/" + toString(player_node->getMaxHp()));
     else
         bar->setText(toString(player_node->getHp()));
 
-    // HP Bar coloration
-    float r1 = 255;
-    float g1 = 255;
-    float b1 = 255;
-
-    float r2 = 255;
-    float g2 = 255;
-    float b2 = 255;
-
-    float weight = 1.0f;
-
-    int curHP = player_node->getHp();
-    int thresholdLevel = player_node->getMaxHp() / 4;
-    int thresholdProgress = curHP % thresholdLevel;
-    if (thresholdLevel)
-        weight = 1 - ((float)thresholdProgress) / ((float)thresholdLevel);
-    else
-        weight = 0;
-
-    if (curHP < (thresholdLevel))
+    if (player_node->getMaxHp() < 4)
     {
-        gcn::Color color1 = guiPalette->getColor(Palette::HPBAR_ONE_HALF);
-        gcn::Color color2 = guiPalette->getColor(Palette::HPBAR_ONE_QUARTER);
-        r1 = color1.r; r2 = color2.r;
-        g1 = color1.g; g2 = color2.g;
-        b1 = color1.b; b2 = color2.b;
-    }
-    else if (curHP < (thresholdLevel*2))
-    {
-        gcn::Color color1 = guiPalette->getColor(Palette::HPBAR_THREE_QUARTERS);
-        gcn::Color color2 = guiPalette->getColor(Palette::HPBAR_ONE_HALF);
-        r1 = color1.r; r2 = color2.r;
-        g1 = color1.g; g2 = color2.g;
-        b1 = color1.b; b2 = color2.b;
-    }
-    else if (curHP < thresholdLevel*3)
-    {
-        gcn::Color color1 = guiPalette->getColor(Palette::HPBAR_FULL);
-        gcn::Color color2 = guiPalette->getColor(Palette::HPBAR_THREE_QUARTERS);
-        r1 = color1.r; r2 = color2.r;
-        g1 = color1.g; g2 = color2.g;
-        b1 = color1.b; b2 = color2.b;
+        bar->setColor(guiPalette->getColor(Palette::HPBAR_ONE_QUARTER));
     }
     else
     {
-        gcn::Color color1 = guiPalette->getColor(Palette::HPBAR_FULL);
-        gcn::Color color2 = guiPalette->getColor(Palette::HPBAR_FULL);
-        r1 = color1.r; r2 = color2.r;
-        g1 = color1.g; g2 = color2.g;
-        b1 = color1.b; b2 = color2.b;
+        // HP Bar coloration
+        float r1 = 255;
+        float g1 = 255;
+        float b1 = 255;
+
+        float r2 = 255;
+        float g2 = 255;
+        float b2 = 255;
+
+        float weight = 1.0f;
+
+        int curHP = player_node->getHp();
+        int thresholdLevel = player_node->getMaxHp() / 4;
+        int thresholdProgress = curHP % thresholdLevel;
+
+        if (thresholdLevel)
+            weight = 1 - ((float)thresholdProgress) / ((float)thresholdLevel);
+        else
+            weight = 0;
+
+        if (curHP < (thresholdLevel))
+        {
+            gcn::Color color1 = guiPalette->getColor(Palette::HPBAR_ONE_HALF);
+            gcn::Color color2 = guiPalette->getColor(Palette::HPBAR_ONE_QUARTER);
+            r1 = color1.r; r2 = color2.r;
+            g1 = color1.g; g2 = color2.g;
+            b1 = color1.b; b2 = color2.b;
+        }
+        else if (curHP < (thresholdLevel*2))
+        {
+            gcn::Color color1 = guiPalette->getColor(Palette::HPBAR_THREE_QUARTERS);
+            gcn::Color color2 = guiPalette->getColor(Palette::HPBAR_ONE_HALF);
+            r1 = color1.r; r2 = color2.r;
+            g1 = color1.g; g2 = color2.g;
+            b1 = color1.b; b2 = color2.b;
+        }
+        else if (curHP < thresholdLevel*3)
+        {
+            gcn::Color color1 = guiPalette->getColor(Palette::HPBAR_FULL);
+            gcn::Color color2 = guiPalette->getColor(Palette::HPBAR_THREE_QUARTERS);
+            r1 = color1.r; r2 = color2.r;
+            g1 = color1.g; g2 = color2.g;
+            b1 = color1.b; b2 = color2.b;
+        }
+        else
+        {
+            gcn::Color color1 = guiPalette->getColor(Palette::HPBAR_FULL);
+            gcn::Color color2 = guiPalette->getColor(Palette::HPBAR_FULL);
+            r1 = color1.r; r2 = color2.r;
+            g1 = color1.g; g2 = color2.g;
+            b1 = color1.b; b2 = color2.b;
+        }
+
+        // Safety checks
+        if (weight > 1.0f) weight = 1.0f;
+        if (weight < 0.0f) weight = 0.0f;
+
+        // Do the color blend
+        r1 = (int) weightedAverage(r1, r2,weight);
+        g1 = (int) weightedAverage(g1, g2, weight);
+        b1 = (int) weightedAverage(b1, b2, weight);
+
+        // More safety checks
+        if (r1 > 255) r1 = 255;
+        if (g1 > 255) g1 = 255;
+        if (b1 > 255) b1 = 255;
+
+        bar->setColor(r1, g1, b1);
     }
-
-    // Safety checks
-    if (weight > 1.0f) weight = 1.0f;
-    if (weight < 0.0f) weight = 0.0f;
-
-    // Do the color blend
-    r1 = (int) weightedAverage(r1, r2,weight);
-    g1 = (int) weightedAverage(g1, g2, weight);
-    b1 = (int) weightedAverage(b1, b2, weight);
-
-    // More safety checks
-    if (r1 > 255) r1 = 255;
-    if (g1 > 255) g1 = 255;
-    if (b1 > 255) b1 = 255;
-
-    bar->setColor(r1, g1, b1);
 
     bar->setProgress((float) player_node->getHp() / (float) player_node->getMaxHp());
+
 }
 
 void StatusWindow::updateMPBar(ProgressBar *bar, bool showMax)
@@ -368,12 +391,10 @@ void StatusWindow::updateMPBar(ProgressBar *bar, bool showMax)
     else
         bar->setText(toString(player_node->getMP()));
 
-#ifdef EATHENA_SUPPORT
-    if (player_node->getAttributeEffective(MATK) <= 0)
-        bar->setColor(100, 100, 100); // grey, to indicate that we lack magic
-    else
-#endif
+    if (Net::getPlayerHandler()->canUseMagic())
         bar->setColor(26, 102, 230); // blue, to indicate that we have magic
+    else
+        bar->setColor(100, 100, 100); // grey, to indicate that we lack magic
 
     bar->setProgress((float) player_node->getMP() /
                      (float) player_node->getMaxMP());
@@ -455,18 +476,22 @@ ChangeDisplay::ChangeDisplay(int id, const std::string &name):
         AttrDisplay(id, name), mNeeded(1)
 {
     mPoints = new Label("1");
-    mDec = new Button("-", "-", this);
-    mInc = new Button("+", "+", this);
-    mDec->setWidth(mInc->getWidth());
+    mInc = new Button(_("+"), "inc", this);
 
     // Do the layout
     ContainerPlacer place = mLayout->getPlacer(0, 0);
 
     place(0, 0, mLabel, 3);
-    place(3, 0, mDec);
     place(4, 0, mValue, 2);
     place(6, 0, mInc);
     place(7, 0, mPoints);
+
+#ifdef TMWSERV_SUPPORT
+    mDec = new Button(_("-"), "dec", this);
+    mDec->setWidth(mInc->getWidth());
+
+    place(3, 0, mDec);
+#endif
 
     update();
 }
@@ -475,7 +500,9 @@ std::string ChangeDisplay::update()
 {
     mPoints->setCaption(toString(mNeeded));
 
+#ifdef TMWSERV_SUPPORT
     mDec->setEnabled(player_node->getCorrectionPoints());
+#endif
     mInc->setEnabled(player_node->getCharacterPoints() >= mNeeded);
 
     return AttrDisplay::update();
@@ -490,12 +517,28 @@ void ChangeDisplay::setPointsNeeded(int needed)
 
 void ChangeDisplay::action(const gcn::ActionEvent &event)
 {
+#ifdef TMWSERV_SUPPORT
     if (event.getSource() == mDec)
     {
+        int newcorpoints = player_node->getCorrectionPoints() - 1;
+        player_node->setCorrectionPoints(newcorpoints);
+        int newpoints = player_node->getCharacterPoints() + 1;
+        player_node->setCharacterPoints(newpoints);
+        int newbase = player_node->getAttributeBase(mId) - 1;
+        player_node->setAttributeBase(mId, newbase);
+        int newmod = player_node->getAttributeEffective(mId) - 1;
+        player_node->setAttributeEffective(mId, newmod);
         Net::getPlayerHandler()->decreaseAttribute(mId);
-    }
-    else if (event.getSource() == mInc)
+    } else
+#endif
+    if (event.getSource() == mInc)
     {
+        int newpoints = player_node->getCharacterPoints() - 1;
+        player_node->setCharacterPoints(newpoints);
+        int newbase = player_node->getAttributeBase(mId) + 1;
+        player_node->setAttributeBase(mId, newbase);
+        int newmod = player_node->getAttributeEffective(mId) + 1;
+        player_node->setAttributeEffective(mId, newmod);
         Net::getPlayerHandler()->increaseAttribute(mId);
     }
 }

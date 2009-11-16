@@ -30,6 +30,7 @@
 
 #include "resources/image.h"
 #include "resources/resourcemanager.h"
+#include "gui/skin.h"
 
 #include "utils/dtor.h"
 
@@ -55,7 +56,7 @@ struct TabData
 
 static TabData const data[TAB_COUNT] = {
     { "graphics/gui/tab.png", 0, 0 },
-    { "graphics/gui/tab.png", 9, 4 },
+    { "graphics/gui/tab_hilight.png", 9, 4 },
     { "graphics/gui/tabselected.png", 16, 19 },
     { "graphics/gui/tab.png", 25, 23 }
 };
@@ -63,7 +64,7 @@ static TabData const data[TAB_COUNT] = {
 ImageRect Tab::tabImg[TAB_COUNT];
 
 Tab::Tab() : gcn::Tab(),
-    mTabColor(&guiPalette->getColor(Palette::TEXT))
+    mTabColor(&guiPalette->getColor(Palette::TAB))
 {
     init();
 }
@@ -116,36 +117,16 @@ void Tab::init()
     mInstances++;
 }
 
-void Tab::draw(gcn::Graphics *graphics)
+void Tab::updateAlpha()
 {
-    int mode = TAB_STANDARD;
-
-    // check which type of tab to draw
-    if (mTabbedArea)
-    {
-        if (mTabbedArea->isTabSelected(this))
-        {
-            mode = TAB_SELECTED;
-            // if tab is selected, it doesnt need to highlight activity
-            mLabel->setForegroundColor(*mTabColor);
-            mHighlighted = false;
-        }
-        else if (mHighlighted)
-        {
-            mode = TAB_HIGHLIGHTED;
-            mLabel->setForegroundColor(guiPalette->getColor(Palette::TAB_HIGHLIGHT));
-        }
-        else
-        {
-            mLabel->setForegroundColor(*mTabColor);
-        }
-    }
+    float alpha = std::max(config.getValue("guialpha", 0.8),
+                   (double)SkinLoader::instance()->getMinimumOpacity());
 
     // TODO We don't need to do this for every tab on every draw
     // Maybe use a config listener to do it as the value changes.
-    if (config.getValue("guialpha", 0.8) != mAlpha)
+    if (alpha != mAlpha)
     {
-        mAlpha = config.getValue("guialpha", 0.8);
+        mAlpha = alpha;
         for (int a = 0; a < 9; a++)
         {
             for (int t = 0; t < TAB_COUNT; t++)
@@ -154,6 +135,32 @@ void Tab::draw(gcn::Graphics *graphics)
             }
         }
     }
+}
+
+void Tab::draw(gcn::Graphics *graphics)
+{
+    int mode = TAB_STANDARD;
+
+    // check which type of tab to draw
+    if (mTabbedArea)
+    {
+        mLabel->setForegroundColor(*mTabColor);
+        if (mTabbedArea->isTabSelected(this))
+        {
+            mode = TAB_SELECTED;
+            // if tab is selected, it doesnt need to highlight activity
+            mHighlighted = false;
+        } else if (mHasMouse)
+        {
+            mode = TAB_HIGHLIGHTED;
+        }
+        if (mHighlighted)
+        {
+            mLabel->setForegroundColor(guiPalette->getColor(Palette::TAB_HIGHLIGHT));
+        }
+    }
+
+    updateAlpha();
 
     // draw tab
     static_cast<Graphics*>(graphics)->

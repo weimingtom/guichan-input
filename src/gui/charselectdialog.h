@@ -24,16 +24,21 @@
 
 #include "gui/widgets/window.h"
 
-#include "being.h"
 #include "guichanfwd.h"
 #include "lockedarray.h"
+#include "main.h"
+#include "player.h"
 
 #include <guichan/actionlistener.hpp>
 
+class CharEntry;
 class LocalPlayer;
 class LoginData;
-class Player;
 class PlayerBox;
+
+namespace Net {
+class CharHandler;
+}
 
 /**
  * Character selection dialog.
@@ -44,6 +49,7 @@ class CharSelectDialog : public Window, public gcn::ActionListener
 {
     public:
         friend class CharDeleteConfirm;
+
         /**
          * Constructor.
          */
@@ -52,45 +58,13 @@ class CharSelectDialog : public Window, public gcn::ActionListener
 
         void action(const gcn::ActionEvent &event);
 
-        void updatePlayerInfo();
-
-        void logic();
-
         bool selectByName(const std::string &name);
 
+        void chooseSelected();
+
+        void update(int slot = -1);
+
     private:
-        LockedArray<LocalPlayer*> *mCharInfo;
-
-        gcn::Button *mSelectButton;
-        gcn::Button *mCancelButton;
-        gcn::Button *mPreviousButton;
-        gcn::Button *mNextButton;
-        gcn::Button *mChangePasswordButton;
-
-        gcn::Label *mNameLabel;
-        gcn::Label *mLevelLabel;
-        gcn::Label *mMoneyLabel;
-        gcn::Label *mAccountNameLabel;
-        std::string mMoney;
-
-        LoginData *mLoginData;
-
-        PlayerBox *mPlayerBox;
-
-        bool mCharSelected;
-
-#ifdef TMWSERV_SUPPORT
-        gcn::Button *mNewCharButton;
-        gcn::Button *mDelCharButton;
-        gcn::Button *mUnRegisterButton;
-        gcn::Button *mChangeEmailButton;
-
-#else
-        gcn::Button *mNewDelCharButton;
-        gcn::Label *mJobLevelLabel;
-        Gender mGender;
-#endif
-
         /**
          * Communicate character deletion to the server.
          */
@@ -100,6 +74,19 @@ class CharSelectDialog : public Window, public gcn::ActionListener
          * Communicate character selection to the server.
          */
         void attemptCharSelect();
+
+        LockedArray<LocalPlayer*> *mCharInfo;
+
+        gcn::Label *mAccountNameLabel;
+
+        gcn::Button *mSwitchLoginButton;
+        gcn::Button *mChangePasswordButton;
+
+        CharEntry *mCharEntries[MAX_CHARACTER_COUNT];
+
+        LoginData *mLoginData;
+
+        Net::CharHandler *mCharHandler;
 };
 
 #endif

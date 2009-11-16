@@ -87,6 +87,7 @@ void InventoryHandler::handleMessage(MessageIn &msg)
             if (msg.getId() == SMSG_PLAYER_INVENTORY)
             {
                 // Clear inventory - this will be a complete refresh
+                clearEquipment();
                 inventory->clear();
             }
             else
@@ -189,6 +190,11 @@ void InventoryHandler::handleMessage(MessageIn &msg)
                 else
                 {
                     player_node->pickedUp(itemInfo, amount);
+
+                    Item *item = inventory->getItem(index);
+
+                    if  (item && item->getId() == itemId)
+                        amount += inventory->getItem(index)->getQuantity();
 
                     inventory->setItem(index, itemId, amount, equipType != 0);
                 }
@@ -298,7 +304,8 @@ void InventoryHandler::equipItem(const Item *item)
 
 void InventoryHandler::unequipItem(const Item *item)
 {
-    const Item *real_item = item->isEquipped() ? item : getRealEquipedItem(item);
+    const Item *real_item = item->isInEquipment() ? getRealEquipedItem(item)
+                                                  : item;
 
     if (!real_item)
         return;

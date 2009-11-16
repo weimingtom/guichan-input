@@ -39,9 +39,11 @@ class Sprite;
 class Tileset;
 
 typedef std::vector<Tileset*> Tilesets;
-typedef std::list<Sprite*> Sprites;
-typedef Sprites::iterator SpriteIterator;
+typedef std::list<Sprite*> MapSprites;
+typedef MapSprites::iterator MapSprite;
 typedef std::vector<MapLayer*> Layers;
+
+extern const int DEFAULT_TILE_SIDE_LENGTH;
 
 /**
  * A meta tile stores additional information about a location on a tile map.
@@ -128,7 +130,7 @@ class MapLayer
                   int startX, int startY,
                   int endX, int endY,
                   int scrollX, int scrollY,
-                  const Sprites &sprites) const;
+                  const MapSprites &sprites) const;
 
     private:
         int mX, mY;
@@ -258,13 +260,6 @@ class Map : public Properties
         const std::string &getName() const;
 
         /**
-         * Find a simple path from one location to the next.
-         */
-        Path findSimplePath(int startX, int startY,
-                            int destX, int destY,
-                            unsigned char walkmask);
-
-        /**
          * Find a path from one location to the next.
          */
         Path findPath(int startX, int startY, int destX, int destY,
@@ -273,12 +268,12 @@ class Map : public Properties
         /**
          * Adds a sprite to the map.
          */
-        SpriteIterator addSprite(Sprite *sprite);
+        MapSprite addSprite(Sprite *sprite);
 
         /**
          * Removes a sprite from the map.
          */
-        void removeSprite(SpriteIterator iterator);
+        void removeSprite(MapSprite iterator);
 
         /**
          * Adds a particle effect
@@ -299,7 +294,7 @@ class Map : public Properties
         /**
          * Gets the tile animation for a specific gid
          */
-        TileAnimation *getAnimationForGid(int gid);
+        TileAnimation *getAnimationForGid(int gid) const;
 
     private:
         /**
@@ -324,7 +319,7 @@ class Map : public Properties
         MetaTile *mMetaTiles;
         Layers mLayers;
         Tilesets mTilesets;
-        Sprites mSprites;
+        MapSprites mSprites;
 
         // Pathfinding members
         int mOnClosedList, mOnOpenList;

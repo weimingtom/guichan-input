@@ -25,6 +25,8 @@
 #include "net/loginhandler.h"
 #include "net/messagehandler.h"
 
+#include "net/ea/token.h"
+
 #include <string>
 
 struct LoginData;
@@ -38,7 +40,18 @@ class LoginHandler : public MessageHandler, public Net::LoginHandler
 
         void handleMessage(MessageIn &msg);
 
+        void connect();
+
+        bool isConnected();
+
+        void disconnect();
+
+        int supportedOptionalActions() const
+        { return SetGenderOnRegister; }
+
         void loginAccount(LoginData *loginData);
+
+        void logout();
 
         void changeEmail(const std::string &email);
 
@@ -46,19 +59,25 @@ class LoginHandler : public MessageHandler, public Net::LoginHandler
                             const std::string &oldPassword,
                             const std::string &newPassword);
 
-        void chooseServer(int server);
+        void chooseServer(unsigned int server);
 
         void registerAccount(LoginData *loginData);
 
         void unregisterAccount(const std::string &username,
                                const std::string &password);
 
+        Worlds getWorlds() const;
+        void clearWorlds();
+
+        const Token &getToken() const { return mToken; }
+
     private:
         void sendLoginRegister(const std::string &username,
                                const std::string &password);
 
-        LoginData *mLoginData;
         std::string mUpdateHost;
+        Worlds mWorlds;
+        Token mToken;
 };
 
 } // namespace EAthena

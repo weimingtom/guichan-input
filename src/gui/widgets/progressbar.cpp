@@ -30,6 +30,7 @@
 
 #include "resources/image.h"
 #include "resources/resourcemanager.h"
+#include "gui/skin.h"
 
 #include "utils/dtor.h"
 
@@ -43,13 +44,17 @@ ProgressBar::ProgressBar(float progress,
                          int width, int height,
                          const gcn::Color &color):
     gcn::Widget(),
-    mProgress(progress),
-    mProgressToGo(progress),
     mSmoothProgress(true),
     mColor(color),
     mColorToGo(color),
     mSmoothColorChange(true)
 {
+    // The progress value is directly set at load time:
+    if (progress > 1.0f || progress < 0.0f)
+        progress = 1.0f;
+
+    mProgress = mProgressToGo = progress;
+
     setSize(width, height);
 
     if (mInstances == 0)
@@ -116,16 +121,25 @@ void ProgressBar::logic()
     }
 }
 
-void ProgressBar::draw(gcn::Graphics *graphics)
+void ProgressBar::updateAlpha()
 {
-    if (config.getValue("guialpha", 0.8) != mAlpha)
+    float alpha = std::max(config.getValue("guialpha", 0.8),
+                   (double)SkinLoader::instance()->getMinimumOpacity());
+
+    if (mAlpha != alpha)
     {
-        mAlpha = config.getValue("guialpha", 0.8);
+        mAlpha = alpha;
         for (int i = 0; i < 9; i++)
         {
             mBorder.grid[i]->setAlpha(mAlpha);
         }
     }
+
+}
+
+void ProgressBar::draw(gcn::Graphics *graphics)
+{
+    updateAlpha();
 
     static_cast<Graphics*>(graphics)->
         drawImageRect(0, 0, getWidth(), getHeight(), mBorder);

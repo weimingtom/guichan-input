@@ -41,11 +41,11 @@ extern Window *inventoryWindow;
 extern Window *itemShortcutWindow;
 extern Window *setupWindow;
 extern Window *skillDialog;
+extern Window *specialsWindow;
 extern Window *statusWindow;
 #ifdef TMWSERV_SUPPORT
 extern Window *buddyWindow;
 extern Window *guildWindow;
-extern Window *magicDialog;
 #endif
 
 WindowMenu::WindowMenu():
@@ -59,10 +59,10 @@ WindowMenu::WindowMenu():
         N_("Equipment"),
         N_("Inventory"),
         N_("Skills"),
+        N_("Specials"),
 #ifdef TMWSERV_SUPPORT
-        N_("Magic"),
         N_("Guilds"),
-        N_("Buddys"),
+        N_("Buddies"),
 #endif
         N_("Shortcut"),
         N_("Setup"),
@@ -129,16 +129,16 @@ void WindowMenu::action(const gcn::ActionEvent &event)
     {
         window = skillDialog;
     }
-#ifdef TMWSERV_SUPPORT
-    else if (event.getId() == "Magic")
+    else if (event.getId() == "Specials")
     {
-        window = magicDialog;
+        window = specialsWindow;
     }
+#ifdef TMWSERV_SUPPORT
     else if (event.getId() == "Guilds")
     {
         window = guildWindow;
     }
-    else if (event.getId() == "Buddys")
+    else if (event.getId() == "Buddies")
     {
         window = buddyWindow;
     }

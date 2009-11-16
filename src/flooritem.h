@@ -24,14 +24,12 @@
 
 #include <list>
 
+#include "map.h"
 #include "sprite.h"
 
 class Graphics;
 class Image;
 class Item;
-class Map;
-
-typedef std::list<Sprite*> Sprites;
 
 /**
  * An item lying on the floor.
@@ -96,12 +94,29 @@ class FloorItem : public Sprite
          */
         void draw(Graphics *graphics, int offsetX, int offsetY) const;
 
+        /**
+         * Sets the alpha value of the floor item
+         */
+        void setAlpha(float alpha)
+        { mAlpha = alpha; }
+
+        /**
+         * Returns the current alpha opacity of the floor item.
+         */
+        virtual float getAlpha() const
+        { return mAlpha; }
+
+        /** We consider flooritems (at least for now) to be one layer-sprites */
+        virtual int getNumberOfLayers() const
+        { return 1; }
+
     private:
         int mId;
         int mX, mY;
         Item *mItem;
-        Sprites::iterator mSpriteIterator;
+        MapSprite mMapSprite;
         Map *mMap;
+        float mAlpha;
 };
 
 #endif

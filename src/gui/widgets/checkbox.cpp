@@ -28,6 +28,7 @@
 
 #include "resources/image.h"
 #include "resources/resourcemanager.h"
+#include "gui/skin.h"
 
 int CheckBox::instances = 0;
 float CheckBox::mAlpha = 1.0;
@@ -35,9 +36,12 @@ Image *CheckBox::checkBoxNormal;
 Image *CheckBox::checkBoxChecked;
 Image *CheckBox::checkBoxDisabled;
 Image *CheckBox::checkBoxDisabledChecked;
+Image *CheckBox::checkBoxNormalHi;
+Image *CheckBox::checkBoxCheckedHi;
 
 CheckBox::CheckBox(const std::string &caption, bool selected):
-    gcn::CheckBox(caption, selected)
+    gcn::CheckBox(caption, selected),
+    mHasMouse(false)
 {
     if (instances == 0)
     {
@@ -47,10 +51,14 @@ CheckBox::CheckBox(const std::string &caption, bool selected):
         checkBoxChecked = checkBox->getSubImage(9, 0, 9, 10);
         checkBoxDisabled = checkBox->getSubImage(18, 0, 9, 10);
         checkBoxDisabledChecked = checkBox->getSubImage(27, 0, 9, 10);
+        checkBoxNormalHi = checkBox->getSubImage(36, 0, 9, 10);
+        checkBoxCheckedHi = checkBox->getSubImage(45, 0, 9, 10);
         checkBoxNormal->setAlpha(mAlpha);
         checkBoxChecked->setAlpha(mAlpha);
         checkBoxDisabled->setAlpha(mAlpha);
         checkBoxDisabledChecked->setAlpha(mAlpha);
+        checkBoxNormalHi->setAlpha(mAlpha);
+        checkBoxCheckedHi->setAlpha(mAlpha);
         checkBox->decRef();
     }
 
@@ -67,6 +75,8 @@ CheckBox::~CheckBox()
         delete checkBoxChecked;
         delete checkBoxDisabled;
         delete checkBoxDisabledChecked;
+        delete checkBoxNormalHi;
+        delete checkBoxCheckedHi;
     }
 }
 
@@ -82,30 +92,55 @@ void CheckBox::draw(gcn::Graphics* graphics)
     graphics->drawText(getCaption(), h - 2, 0);
 }
 
-void CheckBox::drawBox(gcn::Graphics* graphics)
+void CheckBox::updateAlpha()
 {
-    Image *box;
+    float alpha = std::max(config.getValue("guialpha", 0.8f),
+                       (double)SkinLoader::instance()->getMinimumOpacity());
 
-    if (isSelected())
+    if (mAlpha != alpha)
     {
-        if (isEnabled())
-            box = checkBoxChecked;
-        else
-            box = checkBoxDisabledChecked;
-    }
-    else if (isEnabled())
-        box = checkBoxNormal;
-    else
-        box = checkBoxDisabled;
-
-    if (config.getValue("guialpha", 0.8) != mAlpha)
-    {
-        mAlpha = config.getValue("guialpha", 0.8);
+        mAlpha = alpha;
         checkBoxNormal->setAlpha(mAlpha);
         checkBoxChecked->setAlpha(mAlpha);
         checkBoxDisabled->setAlpha(mAlpha);
         checkBoxDisabledChecked->setAlpha(mAlpha);
+        checkBoxNormal->setAlpha(mAlpha);
+        checkBoxCheckedHi->setAlpha(mAlpha);
     }
+}
+
+void CheckBox::drawBox(gcn::Graphics* graphics)
+{
+    Image *box;
+
+    if (isEnabled())
+        if (isSelected())
+            if (mHasMouse)
+                box = checkBoxCheckedHi;
+            else
+                box = checkBoxChecked;
+        else
+            if (mHasMouse)
+                box = checkBoxNormalHi;
+            else
+                box = checkBoxNormal;
+    else
+        if (isSelected())
+            box = checkBoxDisabledChecked;
+        else
+            box = checkBoxDisabled;
+
+    updateAlpha();
 
     static_cast<Graphics*>(graphics)->drawImage(box, 2, 2);
+}
+
+void CheckBox::mouseEntered(gcn::MouseEvent& event)
+{
+    mHasMouse = true;
+}
+
+void CheckBox::mouseExited(gcn::MouseEvent& event)
+{
+    mHasMouse = false;
 }

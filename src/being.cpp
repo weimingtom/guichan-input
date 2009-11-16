@@ -49,7 +49,6 @@
 #include "gui/speechbubble.h"
 
 #include "utils/dtor.h"
-#include "utils/gettext.h"
 #include "utils/stringutils.h"
 #include "utils/xml.h"
 
@@ -59,14 +58,15 @@
 #define BEING_EFFECTS_FILE "effects.xml"
 #define HAIR_FILE "hair.xml"
 
-int Being::mNumberOfHairstyles = 1;
+static const int DEFAULT_BEING_WIDTH = 32;
+static const int DEFAULT_BEING_HEIGHT = 32;
+extern const int MILLISECONDS_IN_A_TICK;
 
-static const int DEFAULT_WIDTH = 32;
-static const int DEFAULT_HEIGHT = 32;
+
+int Being::mNumberOfHairstyles = 1;
 
 Being::Being(int id, int job, Map *map):
 #ifdef EATHENA_SUPPORT
-    mX(0), mY(0),
     mWalkTime(0),
 #endif
     mEmotion(0), mEmotionTime(0),
@@ -79,35 +79,30 @@ Being::Being(int id, int job, Map *map):
     mSpriteDirection(DIRECTION_DOWN),
     mMap(NULL),
     mParticleEffects(config.getValue("particleeffects", 1)),
+    mDispName(0),
+    mShowName(false),
     mEquippedWeapon(NULL),
-#ifdef TMWSERV_SUPPORT
-    mHairStyle(0),
-#else
-    mHairStyle(1),
-#endif
-    mHairColor(0),
-    mGender(GENDER_UNSPECIFIED),
+    mText(0),
     mStunMode(0),
-    mSprites(VECTOREND_SPRITE, NULL),
-    mSpriteIDs(VECTOREND_SPRITE, 0),
-    mSpriteColors(VECTOREND_SPRITE, ""),
+    mAlpha(1.0f),
     mStatusParticleEffects(&mStunParticleEffects, false),
     mChildParticleEffects(&mStatusParticleEffects, false),
     mMustResetParticles(false),
 #ifdef TMWSERV_SUPPORT
-    mWalkSpeed(100),
+    mWalkSpeed(6.0f), // default speed in tile per second
 #else
     mWalkSpeed(150),
 #endif
     mPx(0), mPy(0),
+    mX(0), mY(0),
     mUsedTargetCursor(NULL)
 {
     setMap(map);
 
     mSpeechBubble = new SpeechBubble;
 
-    mNameColor = &guiPalette->getColor(Palette::CHAT);
-    mText = 0;
+    mNameColor = &guiPalette->getColor(Palette::NPC);
+    mTextColor = &guiPalette->getColor(Palette::CHAT);
 }
 
 Being::~Being()
@@ -121,6 +116,7 @@ Being::~Being()
     setMap(NULL);
 
     delete mSpeechBubble;
+    delete mDispName;
     delete mText;
 }
 
@@ -148,36 +144,20 @@ void Being::setDestination(Uint16 destX, Uint16 destY)
 #endif
 
 #ifdef TMWSERV_SUPPORT
-
-void Being::adjustCourse(int srcX, int srcY)
-{
-    setDestination(srcX, srcY, mDest.x, mDest.y);
-}
-
 void Being::setDestination(int dstX, int dstY)
-{
-    setDestination(mPos.x, mPos.y, dstX, dstY);
-}
-
-Path Being::findPath()
-{
-    Path path;
-
-    if (mMap)
-    {
-        path = mMap->findPath(mPos.x / 32, mPos.y / 32,
-                              mDest.x / 32, mDest.y / 32, getWalkMask());
-    }
-
-    return path;
-}
-
-void Being::setDestination(int srcX, int srcY, int dstX, int dstY)
 {
     mDest.x = dstX;
     mDest.y = dstY;
+    int srcX = mPos.x;
+    int srcY = mPos.y;
 
-    Path thisPath = findPath();
+    Path thisPath;
+
+    if (mMap)
+    {
+        thisPath = mMap->findPath(mPos.x / 32, mPos.y / 32,
+                                  mDest.x / 32, mDest.y / 32, getWalkMask());
+    }
 
     if (thisPath.empty())
     {
@@ -188,20 +168,17 @@ void Being::setDestination(int srcX, int srcY, int dstX, int dstY)
     // FIXME: Look into making this code neater.
     // Interpolate the offsets.  Also convert from tile based to pixel based
 
-    // Note: I divided the offsets by 32 then muilpied it back to get the top left
-    // Conner of where the tile is. (If you know a better way then please change it)
-
     // Find the starting offset
-    int startX = srcX - ((srcX / 32) * 32 + 16);
-    int startY = srcY - ((srcY / 32) * 32 + 16);
+    float startX = (srcX % 32);
+    float startY = (srcY % 32);
 
     // Find the ending offset
-    int endX = dstX - ((dstX / 32) * 32 + 16);
-    int endY = dstY - ((dstY / 32) * 32 + 16);
+    float endX = (dstX % 32);
+    float endY = (dstY % 32);
 
     // Find the distance, and divide it by the number of steps
-    int changeX = (endX - startX) / thisPath.size();
-    int changeY = (endY - startY) / thisPath.size();
+    int changeX = (int)((endX - startX) / thisPath.size());
+    int changeY = (int)((endY - startY) / thisPath.size());
 
     // Convert the map path to pixels over tiles
     // And add interpolation between the starting and ending offsets
@@ -209,11 +186,17 @@ void Being::setDestination(int srcX, int srcY, int dstX, int dstY)
     int i = 0;
     while(it != thisPath.end())
     {
-       it->x = (it->x * 32 + 16) + startX + (changeX * i);
-       it->y = (it->y * 32 + 16) + startY + (changeY * i);
+       it->x = (it->x * 32) + startX + (changeX * i);
+       it->y = (it->y * 32) + startY + (changeY * i);
        i++;
        it++;
     }
+
+    // Remove the last path node, as it's more clever to go to mDest instead.
+    // It also permit to avoid zigzag at the end of the path,
+    // especially with mouse.
+    thisPath.pop_back();
+    thisPath.push_back(Position(mDest.x, mDest.y));
 
     setPath(thisPath);
 }
@@ -227,9 +210,7 @@ void Being::clearPath()
 void Being::setPath(const Path &path)
 {
     mPath = path;
-#ifdef TMWSERV_SUPPORT
-//    std::cout << this << " New path: " << path << std::endl;
-#else
+#ifdef EATHENA_SUPPORT
     if (mAction != WALK && mAction != DEAD)
     {
         nextStep();
@@ -238,22 +219,10 @@ void Being::setPath(const Path &path)
 #endif
 }
 
-void Being::setHairStyle(int style, int color)
-{
-    mHairStyle = style < 0 ? mHairStyle : style % mNumberOfHairstyles;
-    mHairColor = color < 0 ? mHairColor : color % ColorDB::size();
-}
-
-void Being::setSprite(int slot, int id, const std::string &color)
-{
-    assert(slot >= BASE_SPRITE && slot < VECTOREND_SPRITE);
-    mSpriteIDs[slot] = id;
-    mSpriteColors[slot] = color;
-}
-
 void Being::setSpeech(const std::string &text, int time)
 {
-    mSpeech = text;
+    // Remove colors
+    mSpeech = removeColors(text);
 
     // Trim whitespace
     trim(mSpeech);
@@ -388,17 +357,42 @@ void Being::handleAttack(Being *victim, int damage, AttackType type)
 #endif
 }
 
+void Being::setName(const std::string &name)
+{
+    mName = name;
+
+    if (getShowName())
+        showName();
+}
+
+void Being::setShowName(bool doShowName)
+{
+    bool oldShow = mShowName;
+    mShowName = doShowName;
+
+    if (doShowName != oldShow)
+    {
+        if (doShowName)
+            showName();
+        else
+        {
+            delete mDispName;
+            mDispName = 0;
+        }
+    }
+}
+
 void Being::setMap(Map *map)
 {
     // Remove sprite from potential previous map
     if (mMap)
-        mMap->removeSprite(mSpriteIterator);
+        mMap->removeSprite(mMapSprite);
 
     mMap = map;
 
     // Add sprite to potential new map
     if (mMap)
-        mSpriteIterator = mMap->addSprite(this);
+        mMapSprite = mMap->addSprite(this);
 
     // Clear particle effect list because child particles became invalid
     mChildParticleEffects.clear();
@@ -428,11 +422,9 @@ void Being::setAction(Action action, int attackType)
             else
                 currentAction = ACTION_ATTACK;
 
-            for (int i = 0; i < VECTOREND_SPRITE; i++)
-            {
-                if (mSprites[i])
-                    mSprites[i]->reset();
-            }
+            for (SpriteIterator it = mSprites.begin(); it != mSprites.end(); it++)
+                if (*it)
+                    (*it)->reset();
             break;
         case HURT:
             //currentAction = ACTION_HURT;  // Buggy: makes the player stop
@@ -449,11 +441,9 @@ void Being::setAction(Action action, int attackType)
 
     if (currentAction != ACTION_INVALID)
     {
-        for (int i = 0; i < VECTOREND_SPRITE; i++)
-        {
-            if (mSprites[i])
-                mSprites[i]->play(currentAction);
-        }
+        for (SpriteIterator it = mSprites.begin(); it != mSprites.end(); it++)
+            if (*it)
+                (*it)->play(currentAction);
         mAction = action;
     }
 }
@@ -481,11 +471,9 @@ void Being::setDirection(Uint8 direction)
         dir = DIRECTION_LEFT;
     mSpriteDirection = dir;
 
-    for (int i = 0; i < VECTOREND_SPRITE; i++)
-    {
-       if (mSprites[i])
-           mSprites[i]->setDirection(dir);
-    }
+    for (SpriteIterator it = mSprites.begin(); it != mSprites.end(); it++)
+        if (*it)
+           (*it)->setDirection(dir);
 }
 
 #ifdef EATHENA_SUPPORT
@@ -545,15 +533,41 @@ void Being::logic()
             mDest : Vector(mPath.front().x,
                            mPath.front().y);
 
+        // The Vector representing the difference between current position
+        // and the next destination path node.
         Vector dir = dest - mPos;
-        const float length = dir.length();
 
-        // When we're over 2 pixels from our destination, move to it
-        // TODO: Should be possible to make it even pixel exact, but this solves
-        //       the jigger caused by moving too far.
-        if (length > 2.0f) {
-            const float speed = mWalkSpeed / 100.0f;
-            setPosition(mPos + (dir / (length / speed)));
+        const float nominalLength = dir.length();
+
+        // When we've not reached our destination, move to it.
+        if (nominalLength > 1.0f && mWalkSpeed > 0.0f)
+        {
+
+            // The private mWalkSpeed member is the speed in tiles per second.
+            // We translate it into pixels per tick,
+            // because the logic is called every ticks.
+            const float speedInTicks = ((float)DEFAULT_TILE_SIDE_LENGTH * mWalkSpeed)
+                                      / 1000 * (float)MILLISECONDS_IN_A_TICK;
+
+            // The deplacement of a point along a vector is calculated
+            // using the Unit Vector (â) multiplied by the point speed.
+            // â = a / ||a|| (||a|| is the a length.)
+            // Then, diff = (dir/||dir||)*speed, or (dir / ||dir|| / 1/speed).
+            Vector diff = (dir / (nominalLength / speedInTicks));
+
+            // Test if we don't miss the destination by a move too far:
+            if (diff.length() > nominalLength)
+            {
+                setPosition(mPos + dir);
+
+                // Also, if the destination is reached, try to get the next
+                // path point, if existing.
+                if (!mPath.empty())
+                    mPath.pop_front();
+            }
+            // Otherwise, go to it using the nominal speed.
+            else
+                setPosition(mPos + diff);
 
             if (mAction != WALK)
                 setAction(WALK);
@@ -561,18 +575,27 @@ void Being::logic()
             // Update the player sprite direction
             int direction = 0;
             const float dx = std::abs(dir.x);
-            const float dy = std::abs(dir.y);
+            float dy = std::abs(dir.y);
+
+            // When not using mouse for the player, we slightly prefer
+            // UP and DOWN position, especially when walking diagonally.
+            if (this == player_node && !player_node->isPathSetByMouse())
+                dy = dy + 2;
+
             if (dx > dy)
                  direction |= (dir.x > 0) ? RIGHT : LEFT;
             else
                  direction |= (dir.y > 0) ? DOWN : UP;
             setDirection(direction);
         }
-        else if (!mPath.empty()) {
-            // TODO: Pop as soon as there is a direct unblocked line to the next
-            //       point on the path.
+        else if (!mPath.empty())
+        {
+            // If the current path node has been reached,
+            // remove it and go to the next one.
             mPath.pop_front();
-        } else if (mAction == WALK) {
+        }
+        else if (mAction == WALK)
+        {
             setAction(STAND);
         }
     }
@@ -593,11 +616,9 @@ void Being::logic()
     if (mUsedTargetCursor)
         mUsedTargetCursor->update(tick_time * 10);
 
-    for (int i = 0; i < VECTOREND_SPRITE; i++)
-    {
-        if (mSprites[i])
-            mSprites[i]->update(tick_time * 10);
-    }
+    for (SpriteIterator it = mSprites.begin(); it != mSprites.end(); it++)
+        if (*it)
+            (*it)->update(tick_time * 10);
 
     // Restart status/particle effects, if needed
     if (mMustResetParticles) {
@@ -625,13 +646,13 @@ void Being::draw(Graphics *graphics, int offsetX, int offsetY) const
     if (mUsedTargetCursor)
         mUsedTargetCursor->draw(graphics, px, py);
 
-    for (int i = 0; i < VECTOREND_SPRITE; i++)
-    {
-        if (mSprites[i])
+    for (SpriteConstIterator it = mSprites.begin(); it != mSprites.end(); it++)
+        if (*it)
         {
-            mSprites[i]->draw(graphics, px, py);
+            if ((*it)->getAlpha() != mAlpha)
+                (*it)->setAlpha(mAlpha);
+            (*it)->draw(graphics, px, py);
         }
-    }
 }
 
 void Being::drawEmotion(Graphics *graphics, int offsetX, int offsetY)
@@ -670,7 +691,7 @@ void Being::drawSpeech(int offsetX, int offsetY)
             mText = NULL;
         }
 
-        mSpeechBubble->setCaption(showName ? mName : "", mNameColor);
+        mSpeechBubble->setCaption(showName ? mName : "", mTextColor);
 
         mSpeechBubble->setText(mSpeech, showName);
         mSpeechBubble->setPosition(px - (mSpeechBubble->getWidth() / 2),
@@ -698,11 +719,6 @@ void Being::drawSpeech(int offsetX, int offsetY)
 
         mText = NULL;
     }
-}
-
-Being::Type Being::getType() const
-{
-    return UNKNOWN;
 }
 
 void Being::setStatusEffectBlock(int offset, Uint16 newEffects)
@@ -785,18 +801,30 @@ int Being::getOffset(char pos, char neg) const
 
 int Being::getWidth() const
 {
-    if (AnimatedSprite *base = mSprites[BASE_SPRITE])
-        return std::max(base->getWidth(), DEFAULT_WIDTH);
+    AnimatedSprite *base = NULL;
+
+    for (SpriteConstIterator it = mSprites.begin(); it != mSprites.end(); it++)
+        if ((base = (*it)))
+            break;
+
+    if (base)
+        return std::max(base->getWidth(), DEFAULT_BEING_WIDTH);
     else
-        return DEFAULT_WIDTH;
+        return DEFAULT_BEING_WIDTH;
 }
 
 int Being::getHeight() const
 {
-    if (AnimatedSprite *base = mSprites[BASE_SPRITE])
-        return std::max(base->getHeight(), DEFAULT_HEIGHT);
+    AnimatedSprite *base = NULL;
+
+    for (SpriteConstIterator it = mSprites.begin(); it != mSprites.end(); it++)
+        if ((base = (*it)))
+            break;
+
+    if (base)
+        return std::max(base->getHeight(), DEFAULT_BEING_HEIGHT);
     else
-        return DEFAULT_HEIGHT;
+        return DEFAULT_BEING_HEIGHT;
 }
 
 void Being::setTargetAnimation(SimpleAnimation* animation)
@@ -895,9 +923,32 @@ void Being::internalTriggerEffect(int effectId, bool sfx, bool gfx)
     }
 }
 
-int Being::getHairStyleCount()
+void Being::updateCoords()
 {
-    return mNumberOfHairstyles;
+    if (mDispName)
+    {
+        mDispName->adviseXY(getPixelX(), getPixelY());
+    }
+}
+
+void Being::flashName(int time)
+{
+    if (mDispName)
+        mDispName->flash(time);
+}
+
+void Being::showName()
+{
+    delete mDispName;
+    mDispName = 0;
+
+    mDispName = new FlashText(mName, getPixelX(), getPixelY(),
+                             gcn::Graphics::CENTER, mNameColor);
+}
+
+int Being::getNumberOfLayers() const
+{
+    return mSprites.size();
 }
 
 void Being::load()

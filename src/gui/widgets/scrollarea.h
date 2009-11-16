@@ -23,6 +23,7 @@
 #define SCROLLAREA_H
 
 #include <guichan/widgets/scrollarea.hpp>
+#include <guichan/widgetlistener.hpp>
 
 class Image;
 class ImageRect;
@@ -36,7 +37,7 @@ class ImageRect;
  *
  * \ingroup GUI
  */
-class ScrollArea : public gcn::ScrollArea
+class ScrollArea : public gcn::ScrollArea, public gcn::WidgetListener
 {
     public:
         /**
@@ -64,6 +65,11 @@ class ScrollArea : public gcn::ScrollArea
         void logic();
 
         /**
+         * Update the alpha value to the graphic components.
+         */
+        void updateAlpha();
+
+        /**
          * Draws the scroll area.
          */
         void draw(gcn::Graphics *graphics);
@@ -82,6 +88,23 @@ class ScrollArea : public gcn::ScrollArea
          * Returns whether the widget draws its background or not.
          */
         bool isOpaque() const { return mOpaque; }
+
+        /**
+         * Called when the mouse moves in the widget area.
+         */
+        void mouseMoved(gcn::MouseEvent& event);
+
+        /**
+         * Called when the mouse enteres the widget area.
+         */
+        void mouseEntered(gcn::MouseEvent& event);
+
+        /**
+         * Called when the mouse leaves the widget area.
+         */
+        void mouseExited(gcn::MouseEvent& event);
+
+        void widgetResized(const gcn::Event &event);
 
     protected:
         enum BUTTON_DIR {
@@ -110,8 +133,11 @@ class ScrollArea : public gcn::ScrollArea
         static float mAlpha;
         static ImageRect background;
         static ImageRect vMarker;
+        static ImageRect vMarkerHi;
         static Image *buttons[4][2];
 
+        int mX,mY;
+        bool mHasMouse;
         bool mOpaque;
 };
 

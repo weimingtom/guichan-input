@@ -21,36 +21,35 @@
 
 #include "gui/charselectdialog.h"
 
+#include "gui/widgets/button.h"
+#include "gui/widgets/container.h"
+#include "gui/widgets/label.h"
+#include "gui/widgets/layout.h"
+#include "gui/widgets/layouthelper.h"
+#include "gui/widgets/textfield.h"
+
+#include "gui/changeemaildialog.h"
+#include "gui/changepassworddialog.h"
 #include "gui/charcreatedialog.h"
 #include "gui/confirmdialog.h"
 #include "gui/okdialog.h"
 #include "gui/playerbox.h"
-#include "gui/changepassworddialog.h"
-#include "net/logindata.h"
-
-#ifdef TMWSERV_SUPPORT
-#include "gui/widgets/radiobutton.h"
-#include "gui/widgets/slider.h"
-
 #include "gui/unregisterdialog.h"
-#include "gui/changeemaildialog.h"
-
-#include "net/tmwserv/accountserver/account.h"
-#else
-#include "net/ea/protocol.h"
-#endif
-
-#include "gui/widgets/button.h"
-#include "gui/widgets/label.h"
-#include "gui/widgets/layout.h"
-#include "gui/widgets/textfield.h"
 
 #include "game.h"
 #include "localplayer.h"
 #include "main.h"
 #include "units.h"
 
+#ifdef TMWSERV_SUPPORT
+#include "net/tmwserv/accountserver/account.h"
+#else
+#include "net/ea/protocol.h"
+#endif
+
 #include "net/charhandler.h"
+#include "net/logindata.h"
+#include "net/loginhandler.h"
 #include "net/messageout.h"
 #include "net/net.h"
 
@@ -69,286 +68,170 @@
 class CharDeleteConfirm : public ConfirmDialog
 {
     public:
-        CharDeleteConfirm(CharSelectDialog *master);
-        void action(const gcn::ActionEvent &event);
+        CharDeleteConfirm(CharSelectDialog *m):
+            ConfirmDialog(_("Confirm Character Delete"),
+                    _("Are you sure you want to delete this character?"), m),
+            master(m)
+        {
+        }
+
+        void action(const gcn::ActionEvent &event)
+        {
+            //ConfirmDialog::action(event);
+            if (event.getId() == "yes")
+            {
+                master->attemptCharDelete();
+            }
+            ConfirmDialog::action(event);
+        }
+
     private:
         CharSelectDialog *master;
 };
 
-CharDeleteConfirm::CharDeleteConfirm(CharSelectDialog *m):
-    ConfirmDialog(_("Confirm Character Delete"),
-                  _("Are you sure you want to delete this character?"), m),
-    master(m)
+class CharEntry : public Container
 {
-}
+    public:
+        CharEntry(CharSelectDialog *m, char slot, LocalPlayer *chr);
 
-void CharDeleteConfirm::action(const gcn::ActionEvent &event)
-{
-    //ConfirmDialog::action(event);
-    if (event.getId() == "yes")
-    {
-        master->attemptCharDelete();
-    }
-    ConfirmDialog::action(event);
-}
+        char getSlot() const
+        { return mSlot; }
+
+        LocalPlayer *getChar() const
+        { return mCharacter; }
+
+        void setChar(LocalPlayer *chr);
+
+        void requestFocus();
+
+        void update();
+
+    protected:
+        friend class CharSelectDialog;
+        char mSlot;
+        LocalPlayer *mCharacter;
+
+        PlayerBox *mPlayerBox;
+        Label *mName;
+        Label *mMoney;
+        Button *mButton;
+        Button *mDelete;
+};
 
 CharSelectDialog::CharSelectDialog(LockedArray<LocalPlayer*> *charInfo,
                                    LoginData *loginData):
     Window(_("Account and Character Management")),
     mCharInfo(charInfo),
     mLoginData(loginData),
-    mCharSelected(false)
-#ifdef EATHENA_SUPPORT
-    , mGender(loginData->sex)
-#endif
+    mCharHandler(Net::getCharHandler())
 {
-    mSelectButton = new Button(_("OK"), "ok", this);
-    mCancelButton = new Button(_("Cancel"), "cancel", this);
-    mPreviousButton = new Button(_("Previous"), "previous", this);
-    mNextButton = new Button(_("Next"), "next", this);
-    mAccountNameLabel = new Label(strprintf(_("Account: %s"), mLoginData->username.c_str()));
-    mNameLabel = new Label(strprintf(_("Name: %s"), ""));
-    mLevelLabel = new Label(strprintf(_("Level: %d"), 0));
-    mChangePasswordButton = new Button(_("Change Password"), "change_password", this);
-#ifdef TMWSERV_SUPPORT
-    mNewCharButton = new Button(_("New"), "new", this);
-    mDelCharButton = new Button(_("Delete"), "delete", this);
-    mUnRegisterButton = new Button(_("Unregister"), "unregister", this);
-    mChangeEmailButton = new Button(_("Change Email Address"), "change_email", this);
+    setCloseButton(false);
 
-    mNameLabel = new Label(strprintf(_("Name: %s"), ""));
-    mLevelLabel = new Label(strprintf(_("Level: %d"), 0));
-    mMoneyLabel = new Label(strprintf(_("Money: %d"), 0));
+    mAccountNameLabel = new Label(loginData->username);
+    mSwitchLoginButton = new Button(_("Switch Login"), "switch", this);
+    mChangePasswordButton = new Button(_("Change Password"), "change_password",
+                                       this);
 
-    // Control that shows the Player
-    mPlayerBox = new PlayerBox;
-    mPlayerBox->setWidth(74);
+    for (int i = 0; i < MAX_CHARACTER_COUNT; i++)
+    {
+        charInfo->select(i);
+        mCharEntries[i] = new CharEntry(this, i, charInfo->getEntry());
+    }
+
+    int optionalActions = Net::getLoginHandler()->supportedOptionalActions();
 
     ContainerPlacer place;
     place = getPlacer(0, 0);
-    place(0, 0, mAccountNameLabel);
-    place(0, 1, mUnRegisterButton);
+
+    place(0, 0, mAccountNameLabel, 2);
+    place(0, 1, mSwitchLoginButton);
+
+    if (optionalActions & Net::LoginHandler::Unregister) {
+        gcn::Button *unregisterButton = new Button(_("Unregister"),
+                                                   "unregister", this);
+        place(3, 1, unregisterButton);
+    }
+
     place(0, 2, mChangePasswordButton);
-    place(1, 2, mChangeEmailButton);
+
+    if (optionalActions & Net::LoginHandler::ChangeEmail) {
+        gcn::Button *changeEmailButton = new Button(_("Change Email"),
+                                                    "change_email", this);
+        place(3, 2, changeEmailButton);
+    }
+
     place = getPlacer(0, 1);
-    place(0, 0, mPlayerBox, 1, 5).setPadding(3);
-    place(1, 0, mNameLabel, 3);
-    place(1, 1, mLevelLabel, 3);
-    place(1, 2, mMoneyLabel, 3);
-    place(1, 3, mPreviousButton);
-    place(2, 3, mNextButton);
-    place(1, 4, mNewCharButton);
-    place(2, 4, mDelCharButton);
-    place.getCell().matchColWidth(1, 2);
-    place = getPlacer(0, 2);
-    place(0, 0, mSelectButton);
-    place(1, 0, mCancelButton);
-    reflowLayout(265, 0);
-#else
-    mCharInfo->select(0);
-    LocalPlayer *pi = mCharInfo->getEntry();
-    if (pi)
-        mMoney = Units::formatCurrency(pi->getMoney());
-    // Control that shows the Player
-    mPlayerBox = new PlayerBox;
-    mPlayerBox->setWidth(74);
+    place(0, 0, mCharEntries[0]);
+    place(1, 0, mCharEntries[1]);
+    place(2, 0, mCharEntries[2]);
 
-    mJobLevelLabel = new Label(strprintf(_("Job Level: %d"), 0));
-    mMoneyLabel = new Label(strprintf(_("Money: %s"), mMoney.c_str()));
-
-    const std::string tempString = getFont()->getWidth(_("New")) <
-                                   getFont()->getWidth(_("Delete")) ?
-                                   _("Delete") : _("New");
-
-    mNewDelCharButton = new Button(tempString, "newdel", this);
-
-    ContainerPlacer place;
-    place = getPlacer(0, 0);
-    place(0, 0, mAccountNameLabel);
-    place(0, 1, mChangePasswordButton);
-    place = getPlacer(0, 1);
-    place(0, 0, mPlayerBox, 1, 6).setPadding(3);
-    place(1, 0, mNameLabel, 5);
-    place(1, 1, mLevelLabel, 5);
-    place(1, 2, mJobLevelLabel, 5);
-    place(1, 3, mMoneyLabel, 5);
-    place(1, 4, mNewDelCharButton);
-    place.getCell().matchColWidth(1, 4);
-    place = getPlacer(0, 2);
-    place(0, 0, mPreviousButton);
-    place(1, 0, mNextButton);
-    place(4, 0, mCancelButton);
-    place(5, 0, mSelectButton);
-
-    reflowLayout(270, 0);
-#endif
+    reflowLayout();
 
     center();
+    mCharEntries[0]->requestFocus();
     setVisible(true);
-    mSelectButton->requestFocus();
-    updatePlayerInfo();
+
+    Net::getCharHandler()->setCharSelectDialog(this);
 }
 
 void CharSelectDialog::action(const gcn::ActionEvent &event)
 {
-#ifdef TMWSERV_SUPPORT
-    // The pointers are set to NULL if there is no character stored
-    if (event.getId() == "ok" && (mCharInfo->getEntry()))
-#else
-    if (event.getId() == "ok" && n_character > 0)
-#endif
+    const gcn::Widget *sourceParent = event.getSource()->getParent();
+
+    // Update which character is selected when applicable
+    if (const CharEntry *entry = dynamic_cast<const CharEntry*>(sourceParent))
+        mCharInfo->select(entry->getSlot());
+
+    if (event.getId() == "use")
     {
-        // Start game
-#ifdef TMWSERV_SUPPORT
-        mNewCharButton->setEnabled(false);
-        mDelCharButton->setEnabled(false);
-        mUnRegisterButton->setEnabled(false);
-#else
-        mNewDelCharButton->setEnabled(false);
-#endif
-        mSelectButton->setEnabled(false);
-        mPreviousButton->setEnabled(false);
-        mNextButton->setEnabled(false);
-        mCharSelected = true;
-        attemptCharSelect();
+        chooseSelected();
     }
-    else if (event.getId() == "cancel")
+    else if (event.getId() == "switch")
     {
-#ifdef TMWSERV_SUPPORT
         mCharInfo->clear();
-        state = STATE_SWITCH_ACCOUNTSERVER_ATTEMPT;
-#else
-        state = STATE_EXIT;
-#endif
+        state = STATE_SWITCH_LOGIN;
     }
-#ifdef TMWSERV_SUPPORT
     else if (event.getId() == "new")
     {
-        // TODO: Search the first free slot, and start CharCreateDialog
-        //       maybe add that search to the constructor.
         if (!(mCharInfo->getEntry()))
         {
             // Start new character dialog
             CharCreateDialog *charCreateDialog =
                 new CharCreateDialog(this, mCharInfo->getPos());
-            Net::getCharHandler()->setCharCreateDialog(charCreateDialog);
+            mCharHandler->setCharCreateDialog(charCreateDialog);
         }
     }
     else if (event.getId() == "delete")
     {
-        // Delete character
         if (mCharInfo->getEntry())
         {
             new CharDeleteConfirm(this);
         }
-    }
-#else
-    else if (event.getId() == "newdel")
-    {
-        // Check for a character
-        if (mCharInfo->getEntry())
-        {
-            new CharDeleteConfirm(this);
-        }
-        else if (n_character <= maxSlot)
-        {
-            // Start new character dialog
-            CharCreateDialog *charCreateDialog =
-                new CharCreateDialog(this, mCharInfo->getPos());
-            Net::getCharHandler()->setCharCreateDialog(charCreateDialog);
-        }
-    }
-#endif
-    else if (event.getId() == "previous")
-    {
-        mCharInfo->prev();
-        LocalPlayer *pi = mCharInfo->getEntry();
-        if (pi)
-            mMoney = Units::formatCurrency(pi->getMoney());
-    }
-    else if (event.getId() == "next")
-    {
-        mCharInfo->next();
-        LocalPlayer *pi = mCharInfo->getEntry();
-        if (pi)
-            mMoney = Units::formatCurrency(pi->getMoney());
     }
     else if (event.getId() == "change_password")
     {
-        new ChangePasswordDialog(this, mLoginData);
-    }
-#ifdef TMWSERV_SUPPORT
-    else if (event.getId() == "unregister")
-    {
-        new UnRegisterDialog(this, mLoginData);
+        state = STATE_CHANGEPASSWORD;
     }
     else if (event.getId() == "change_email")
     {
-        new ChangeEmailDialog(this, mLoginData);
+        state = STATE_CHANGEEMAIL;
     }
-#endif
-}
-
-void CharSelectDialog::updatePlayerInfo()
-{
-    LocalPlayer *pi = mCharInfo->getEntry();
-
-    if (pi)
+    else if (event.getId() == "unregister")
     {
-        mNameLabel->setCaption(strprintf(_("Name: %s"),
-                                          pi->getName().c_str()));
-        mLevelLabel->setCaption(strprintf(_("Level: %d"), pi->getLevel()));
-#ifdef EATHENA_SUPPORT
-        mJobLevelLabel->setCaption(strprintf(_("Job Level: %d"),
-                                              pi->getAttributeBase(JOB)));
-#endif
-        mMoneyLabel->setCaption(strprintf(_("Money: %s"), mMoney.c_str()));
-        if (!mCharSelected)
-        {
-#ifdef TMWSERV_SUPPORT
-            mNewCharButton->setEnabled(false);
-            mDelCharButton->setEnabled(true);
-#else
-            mNewDelCharButton->setCaption(_("Delete"));
-#endif
-            mSelectButton->setEnabled(true);
-        }
+        state = STATE_UNREGISTER;
     }
-    else
-    {
-        mNameLabel->setCaption(strprintf(_("Name: %s"), ""));
-        mLevelLabel->setCaption(strprintf(_("Level: %d"), 0));
-#ifndef TMWSERV_SUPPORT
-        mJobLevelLabel->setCaption(strprintf(_("Job Level: %d"), 0));
-#endif
-        mMoneyLabel->setCaption(strprintf(_("Money: %s"), ""));
-#ifdef TMWSERV_SUPPORT
-        mNewCharButton->setEnabled(true);
-        mDelCharButton->setEnabled(false);
-#else
-        mNewDelCharButton->setCaption(_("New"));
-#endif
-        mSelectButton->setEnabled(false);
-    }
-
-    mPlayerBox->setPlayer(pi);
 }
 
 void CharSelectDialog::attemptCharDelete()
 {
-    Net::getCharHandler()->deleteCharacter(mCharInfo->getPos(), mCharInfo->getEntry());
+    mCharHandler->deleteCharacter(mCharInfo->getPos(), mCharInfo->getEntry());
     mCharInfo->lock();
 }
 
 void CharSelectDialog::attemptCharSelect()
 {
-    Net::getCharHandler()->chooseCharacter(mCharInfo->getPos(), mCharInfo->getEntry());
+    mCharHandler->chooseCharacter(mCharInfo->getPos(), mCharInfo->getEntry());
     mCharInfo->lock();
-}
-
-void CharSelectDialog::logic()
-{
-    updatePlayerInfo();
 }
 
 bool CharSelectDialog::selectByName(const std::string &name)
@@ -364,10 +247,10 @@ bool CharSelectDialog::selectByName(const std::string &name)
         LocalPlayer *player = mCharInfo->getEntry();
 
         if (player && player->getName() == name)
-	{
-	    mMoney = Units::formatCurrency(player->getMoney());
+        {
+            mCharEntries[mCharInfo->getPos()]->requestFocus();
             return true;
-	}
+        }
 
         mCharInfo->next();
     } while (mCharInfo->getPos());
@@ -375,4 +258,99 @@ bool CharSelectDialog::selectByName(const std::string &name)
     mCharInfo->select(oldPos);
 
     return false;
+}
+
+void CharSelectDialog::chooseSelected()
+{
+    if (!mCharInfo->getSize())
+        return;
+
+    setVisible(false);
+    attemptCharSelect();
+}
+
+void CharSelectDialog::update(int slot)
+{
+    if (slot >= 0 && slot < MAX_CHARACTER_COUNT)
+    {
+        mCharInfo->select(slot);
+        mCharEntries[slot]->setChar(mCharInfo->getEntry());
+        mCharEntries[slot]->requestFocus();
+    }
+    else
+    {
+        int slot = mCharInfo->getPos();
+        for (int i = 0; i < MAX_CHARACTER_COUNT; i++)
+        {
+            mCharInfo->select(slot);
+            mCharEntries[slot]->setChar(mCharInfo->getEntry());
+        }
+        mCharInfo->select(slot);
+    }
+}
+
+CharEntry::CharEntry(CharSelectDialog *m, char slot, LocalPlayer *chr):
+        mSlot(slot),
+        mCharacter(chr),
+        mPlayerBox(new PlayerBox(chr))
+{
+    mButton = new Button("wwwwwwwww", "go", m);
+    mName = new Label("wwwwwwwwwwwwwwwwwwwwwwww (888)");
+    mMoney = new Label("wwwwwwwww");
+
+    mDelete = new Button(_("Delete"), "delete", m);
+
+    LayoutHelper h(this);
+    ContainerPlacer place = h.getPlacer(0, 0);
+
+    place(0, 0, mPlayerBox, 3, 5);
+    place(0, 5, mName, 3);
+    place(0, 6, mMoney, 3);
+    place(0, 7, mButton, 3);
+    place(0, 8, mDelete, 3);
+
+    h.reflowLayout(74, 123 + mName->getHeight() + mMoney->getHeight() +
+                   mButton->getHeight() + mDelete->getHeight());
+
+    update();
+}
+
+void CharEntry::setChar(LocalPlayer *chr)
+{
+    mCharacter = chr;
+
+    mPlayerBox->setPlayer(chr);
+
+    update();
+}
+
+void CharEntry::requestFocus()
+{
+    mButton->requestFocus();
+}
+
+void CharEntry::update()
+{
+    if (mCharacter)
+    {
+        mButton->setCaption(_("Choose"));
+        mButton->setActionEventId("use");
+        mName->setCaption(strprintf("%s (%d)", mCharacter->getName().c_str(),
+                                    mCharacter->getLevel()));
+        mMoney->setCaption(Units::formatCurrency(mCharacter->getMoney()));
+
+        mDelete->setVisible(true);
+    }
+    else
+    {
+        mButton->setCaption(_("Create"));
+        mButton->setActionEventId("new");
+        mName->setCaption(_("(empty)"));
+        mMoney->setCaption(Units::formatCurrency(0));
+
+        mDelete->setVisible(false);
+    }
+
+    // Recompute layout
+    distributeResizedEvent();
 }

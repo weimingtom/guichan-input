@@ -23,6 +23,9 @@
 #define NET_TMWSERV_CHARSERVERHANDLER_H
 
 #include "net/charhandler.h"
+
+#include "gui/charselectdialog.h"
+
 #include "net/messagehandler.h"
 
 class LoginData;
@@ -32,10 +35,10 @@ namespace TmwServ {
 /**
  * Deals with incoming messages related to character selection.
  */
-class CharServerHandler : public MessageHandler, public Net::CharHandler
+class CharHandler : public MessageHandler, public Net::CharHandler
 {
     public:
-        CharServerHandler();
+        CharHandler();
 
         void handleMessage(MessageIn &msg);
 
@@ -44,6 +47,8 @@ class CharServerHandler : public MessageHandler, public Net::CharHandler
             mCharInfo = charInfo;
         }
 
+        void setCharSelectDialog(CharSelectDialog *window);
+
         /**
          * Sets the character create dialog. The handler will clean up this
          * dialog when a new character is succesfully created, and will unlock
@@ -51,7 +56,7 @@ class CharServerHandler : public MessageHandler, public Net::CharHandler
          */
         void setCharCreateDialog(CharCreateDialog *window);
 
-        void connect(LoginData *loginData) {} // Unused
+        void getCharacters();
 
         void chooseCharacter(int slot, LocalPlayer* character);
 
@@ -67,10 +72,8 @@ class CharServerHandler : public MessageHandler, public Net::CharHandler
         void handleCharSelectResponse(MessageIn &msg);
 
         LockedArray<LocalPlayer*> *mCharInfo;
+        CharSelectDialog *mCharSelectDialog;
         CharCreateDialog *mCharCreateDialog;
-
-        LocalPlayer*
-        readPlayerData(MessageIn &msg, int &slot);
 };
 
 } // namespace TmwServ

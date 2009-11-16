@@ -22,11 +22,13 @@
 #ifndef CHAR_CREATE_H
 #define CHAR_CREATE_H
 
-#include "being.h"
+#include "player.h"
 #include "guichanfwd.h"
 #include "lockedarray.h"
 
 #include "gui/widgets/window.h"
+
+#include "gui/charselectdialog.h"
 
 #include <guichan/actionlistener.hpp>
 
@@ -34,7 +36,6 @@
 #include <vector>
 
 class LocalPlayer;
-class Player;
 class PlayerBox;
 
 /**
@@ -48,7 +49,7 @@ class CharCreateDialog : public Window, public gcn::ActionListener
         /**
          * Constructor.
          */
-        CharCreateDialog(Window *parent, int slot);
+        CharCreateDialog(CharSelectDialog *parent, int slot);
 
         /**
          * Destructor.
@@ -67,6 +68,14 @@ class CharCreateDialog : public Window, public gcn::ActionListener
 
         void setFixedGender(bool fixed, Gender gender = GENDER_FEMALE);
 
+        /**
+         * Notify the CharSelectDialog the character was created successfully.
+         */
+        void success();
+
+        CharSelectDialog *getSelectDialog() const
+        { return mCharSelectDialog; }
+
     private:
         int getDistributedPoints() const;
 
@@ -81,6 +90,10 @@ class CharCreateDialog : public Window, public gcn::ActionListener
          * Communicate character creation to the server.
          */
         void attemptCharCreate();
+
+        void updateHair();
+
+        CharSelectDialog *mCharSelectDialog;
 
         gcn::TextField *mNameField;
         gcn::Label *mNameLabel;
@@ -107,6 +120,9 @@ class CharCreateDialog : public Window, public gcn::ActionListener
 
         Player *mPlayer;
         PlayerBox *mPlayerBox;
+
+        int mHairStyle;
+        int mHairColor;
 
         int mSlot;
 };

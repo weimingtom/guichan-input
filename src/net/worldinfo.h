@@ -19,33 +19,20 @@
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#ifndef NET_EA_MAPHANDLER_H
-#define NET_EA_MAPHANDLER_H
+#ifndef WORLD_INFO_H
+#define WORLD_INFO_H
 
-#include "net/maphandler.h"
-#include "net/messagehandler.h"
-#include "net/net.h"
+#include <string>
+#include <vector>
 
-namespace EAthena {
-
-class MapHandler : public MessageHandler, public Net::MapHandler
-{
-    public:
-        MapHandler();
-
-        void handleMessage(MessageIn &msg);
-
-        void connect(LoginData *loginData);
-
-        void mapLoaded(const std::string &mapName);
-
-        void who();
-
-        void quit();
-
-        void ping(int tick);
+struct WorldInfo {
+    int address;
+    std::string name;
+    short port;
+    short online_users;
+    std::string updateHost;
 };
 
-} // namespace EAthena
+typedef std::vector<WorldInfo*> Worlds;
 
-#endif // NET_EA_MAPHANDLER_H
+#endif // WORLD_INFO_H

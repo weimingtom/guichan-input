@@ -21,10 +21,6 @@
 
 #include "equipment.h"
 #include "item.h"
-#ifdef EATHENA_SUPPORT
-#include "inventory.h"
-#include "localplayer.h"
-#endif
 
 #include <algorithm>
 
@@ -55,5 +51,9 @@ void Equipment::setEquipment(int index, int id, int quantity)
     mEquipment[index] = (id > 0) ? new Item(id, quantity) : 0;
 
     if (mEquipment[index])
+    {
         mEquipment[index]->setInvIndex(index);
+        mEquipment[index]->setEquipped(true);
+        mEquipment[index]->setInEquipment(true);
+    }
 }

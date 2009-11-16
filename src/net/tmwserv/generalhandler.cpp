@@ -19,37 +19,43 @@
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#include "net/tmwserv/generalhandler.h"
+
+#include "gui/changeemaildialog.h"
+#include "gui/charselectdialog.h"
 #include "gui/inventorywindow.h"
 #include "gui/partywindow.h"
+#include "gui/register.h"
 #include "gui/skilldialog.h"
+#include "gui/specialswindow.h"
 #include "gui/statuswindow.h"
-
-#include "net/tmwserv/generalhandler.h"
 
 #include "net/tmwserv/network.h"
 #include "net/tmwserv/connection.h"
 
 #include "net/tmwserv/beinghandler.h"
 #include "net/tmwserv/buysellhandler.h"
-#include "net/tmwserv/charserverhandler.h"
+#include "net/tmwserv/charhandler.h"
 #include "net/tmwserv/chathandler.h"
 #include "net/tmwserv/effecthandler.h"
+#include "net/tmwserv/gamehandler.h"
 #include "net/tmwserv/guildhandler.h"
 #include "net/tmwserv/inventoryhandler.h"
 #include "net/tmwserv/itemhandler.h"
 #include "net/tmwserv/loginhandler.h"
-#include "net/tmwserv/logouthandler.h"
-#include "net/tmwserv/maphandler.h"
 #include "net/tmwserv/npchandler.h"
 #include "net/tmwserv/partyhandler.h"
 #include "net/tmwserv/playerhandler.h"
+#include "net/tmwserv/specialhandler.h"
 #include "net/tmwserv/tradehandler.h"
 
 #include "utils/gettext.h"
 
+#include "main.h"
+
 #include <list>
 
-Net::GeneralHandler *generalHandler;
+Net::GeneralHandler *generalHandler  = NULL;
 
 Net::Connection *gameServerConnection = 0;
 Net::Connection *chatServerConnection = 0;
@@ -57,23 +63,29 @@ Net::Connection *accountServerConnection = 0;
 
 namespace TmwServ {
 
+std::string netToken = "";
+ServerInfo gameServer;
+ServerInfo chatServer;
+
 GeneralHandler::GeneralHandler():
-    mBeingHandler(new BeingHandler),
-    mBuySellHandler(new BuySellHandler),
-    mCharServerHandler(new CharServerHandler),
-    mChatHandler(new ChatHandler),
-    mEffectHandler(new EffectHandler),
-    mGuildHandler(new GuildHandler),
-    mInventoryHandler(new InventoryHandler),
-    mItemHandler(new ItemHandler),
-    mLoginHandler(new LoginHandler),
-    mLogoutHandler(new LogoutHandler),
-    mMapHandler(new MapHandler),
-    mNpcHandler(new NpcHandler),
-    mPartyHandler(new PartyHandler),
-    mPlayerHandler(new PlayerHandler),
-    mTradeHandler(new TradeHandler)
+        mBeingHandler(new BeingHandler),
+        mBuySellHandler(new BuySellHandler),
+        mCharHandler(new CharHandler),
+        mChatHandler(new ChatHandler),
+        mEffectHandler(new EffectHandler),
+        mGameHandler(new GameHandler),
+        mGuildHandler(new GuildHandler),
+        mInventoryHandler(new InventoryHandler),
+        mItemHandler(new ItemHandler),
+        mLoginHandler(new LoginHandler),
+        mNpcHandler(new NpcHandler),
+        mPartyHandler(new PartyHandler),
+        mPlayerHandler(new PlayerHandler),
+        mTradeHandler(new TradeHandler),
+        mSpecialHandler(new SpecialHandler)
 {
+    Net::initialize();
+
     accountServerConnection = Net::getConnection();
     gameServerConnection = Net::getConnection();
     chatServerConnection = Net::getConnection();
@@ -95,19 +107,23 @@ void GeneralHandler::load()
 {
     Net::registerHandler(mBeingHandler.get());
     Net::registerHandler(mBuySellHandler.get());
-    Net::registerHandler(mCharServerHandler.get());
+    Net::registerHandler(mCharHandler.get());
     Net::registerHandler(mChatHandler.get());
     Net::registerHandler(mEffectHandler.get());
+    Net::registerHandler(mGameHandler.get());
     Net::registerHandler(mGuildHandler.get());
     Net::registerHandler(mInventoryHandler.get());
     Net::registerHandler(mItemHandler.get());
     Net::registerHandler(mLoginHandler.get());
-    Net::registerHandler(mLogoutHandler.get());
-    Net::registerHandler(mMapHandler.get());
     Net::registerHandler(mNpcHandler.get());
     Net::registerHandler(mPartyHandler.get());
     Net::registerHandler(mPlayerHandler.get());
     Net::registerHandler(mTradeHandler.get());
+}
+
+void GeneralHandler::reload()
+{
+    // Nothing needed yet
 }
 
 void GeneralHandler::unload()
@@ -149,6 +165,7 @@ void GeneralHandler::guiWindowsLoaded()
     inventoryWindow->setSplitAllowed(true);
     partyWindow->clearPartyName();
     skillDialog->loadSkills("tmw-skills.xml");
+    specialsWindow->loadSpecials("specials.xml");
 
     player_node->setExpNeeded(100);
 
@@ -163,6 +180,11 @@ void GeneralHandler::guiWindowsLoaded()
 void GeneralHandler::guiWindowsUnloaded()
 {
     // TODO
+}
+
+void GeneralHandler::clearHandlers()
+{
+    Net::clearHandlers();
 }
 
 } // namespace TmwServ

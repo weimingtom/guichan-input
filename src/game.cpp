@@ -71,14 +71,14 @@
 #ifdef TMWSERV_SUPPORT
 #include "gui/buddywindow.h"
 #include "gui/guildwindow.h"
-#include "gui/magic.h"
-#include "gui/quitdialog.h"
 #endif
 #include "gui/npcpostdialog.h"
+#include "gui/quitdialog.h"
+#include "gui/specialswindow.h"
 #include "gui/storagewindow.h"
 
+#include "net/gamehandler.h"
 #include "net/generalhandler.h"
-#include "net/maphandler.h"
 #include "net/net.h"
 
 #include "net/tmwserv/inventoryhandler.h"
@@ -107,11 +107,7 @@ Joystick *joystick = NULL;
 
 extern Window *weightNotice;
 extern Window *deathNotice;
-#ifdef TMWSERV_SUPPORT
 QuitDialog *quitDialog = NULL;
-#else
-ConfirmDialog *exitConfirm = NULL;
-#endif
 OkDialog *disconnectedDialog = NULL;
 
 ChatWindow *chatWindow;
@@ -128,7 +124,6 @@ PartyWindow *partyWindow;
 #ifdef TMWSERV_SUPPORT
 BuddyWindow *buddyWindow;
 GuildWindow *guildWindow;
-MagicDialog *magicDialog;
 #endif
 NpcDialog *npcDialog;
 NpcPostDialog *npcPostDialog;
@@ -141,6 +136,7 @@ DebugWindow *debugWindow;
 ShortcutWindow *itemShortcutWindow;
 ShortcutWindow *emoteShortcutWindow;
 OutfitWindow *outfitWindow;
+SpecialsWindow *specialsWindow;
 
 BeingManager *beingManager = NULL;
 FloorItemManager *floorItemManager = NULL;
@@ -151,22 +147,28 @@ EffectManager *effectManager = NULL;
 
 ChatTab *localChatTab = NULL;
 
-const int MAX_TIME = 10000;
+/**
+ * Tells the max tick value,
+ * setting it back to zero (and start again).
+ */
+const int MAX_TICK_VALUE = 10000;
+/**
+ * Set the milliseconds value of a tick time.
+ */
+const int MILLISECONDS_IN_A_TICK = 10;
 
 /**
  * Listener used for exiting handling.
  */
 namespace {
-    struct ExitListener : public gcn::ActionListener
+    class ExitListener : public gcn::ActionListener
     {
+    public:
         void action(const gcn::ActionEvent &event)
         {
             if (event.getId() == "yes" || event.getId() == "ok")
                 done = true;
 
-#ifdef EATHENA_SUPPORT
-            exitConfirm = NULL;
-#endif
             disconnectedDialog = NULL;
         }
     } exitListener;
@@ -174,16 +176,19 @@ namespace {
 
 /**
  * Advances game logic counter.
+ * Called every 10 milliseconds by SDL_AddTimer()
+ * @see MILLISECONDS_IN_A_TICK value
  */
 Uint32 nextTick(Uint32 interval, void *param)
 {
     tick_time++;
-    if (tick_time == MAX_TIME) tick_time = 0;
+    if (tick_time == MAX_TICK_VALUE) tick_time = 0;
     return interval;
 }
 
 /**
  * Updates fps.
+ * Called every seconds by SDL_AddTimer()
  */
 Uint32 nextSecond(Uint32 interval, void *param)
 {
@@ -193,12 +198,34 @@ Uint32 nextSecond(Uint32 interval, void *param)
     return interval;
 }
 
+/**
+ * @return the elapsed time in milliseconds
+ * between two tick values.
+ */
 int get_elapsed_time(int start_time)
 {
     if (start_time <= tick_time)
-        return (tick_time - start_time) * 10;
+        return (tick_time - start_time) * MILLISECONDS_IN_A_TICK;
     else
-        return (tick_time + (MAX_TIME - start_time)) * 10;
+        return (tick_time + (MAX_TICK_VALUE - start_time))
+                * MILLISECONDS_IN_A_TICK;
+}
+
+/**
+ * Initialize every game sub-engines in the right order
+ */
+static void initEngines()
+{
+    engine = new Engine;
+
+    beingManager = new BeingManager;
+    commandHandler = new CommandHandler;
+    floorItemManager = new FloorItemManager;
+    channelManager = new ChannelManager;
+    effectManager = new EffectManager;
+
+    particleEngine = new Particle(NULL);
+    particleEngine->setupEngine();
 }
 
 /**
@@ -206,6 +233,8 @@ int get_elapsed_time(int start_time)
  */
 static void createGuiWindows()
 {
+    setupWindow->clearWindowsForReset();
+
     // Create dialogs
     chatWindow = new ChatWindow;
     buyDialog = new BuyDialog;
@@ -213,7 +242,6 @@ static void createGuiWindows()
     tradeWindow = new TradeWindow;
     partyWindow = new PartyWindow;
 #ifdef TMWSERV_SUPPORT
-    magicDialog = new MagicDialog;
     buddyWindow = new BuddyWindow;
     guildWindow = new GuildWindow;
 #else
@@ -235,6 +263,7 @@ static void createGuiWindows()
     emoteShortcutWindow = new ShortcutWindow("EmoteShortcut",
                                              new EmoteShortcutContainer);
     outfitWindow = new OutfitWindow();
+    specialsWindow = new SpecialsWindow();
 
     localChatTab = new ChatTab(_("General"));
 
@@ -267,7 +296,6 @@ static void destroyGuiWindows()
     delete npcDialog;
     delete npcPostDialog;
 #ifdef TMWSERV_SUPPORT
-    delete magicDialog;
     delete buddyWindow;
     delete guildWindow;
 #endif
@@ -281,6 +309,7 @@ static void destroyGuiWindows()
     delete emoteShortcutWindow;
     delete storageWindow;
     delete outfitWindow;
+    delete specialsWindow;
 }
 
 Game::Game():
@@ -289,60 +318,50 @@ Game::Game():
 {
     done = false;
 
-    createGuiWindows();
+        createGuiWindows();
 
-    mWindowMenu = new WindowMenu;
-    windowContainer->add(mWindowMenu);
+        mWindowMenu = new WindowMenu;
+        windowContainer->add(mWindowMenu);
 
-    engine = new Engine;
+        initEngines();
 
-    beingManager = new BeingManager;
-    commandHandler = new CommandHandler;
-    floorItemManager = new FloorItemManager;
-    channelManager = new ChannelManager;
-    effectManager = new EffectManager;
+        // Initialize logic and seconds counters
+        tick_time = 0;
+        mLogicCounterId = SDL_AddTimer(MILLISECONDS_IN_A_TICK, nextTick, NULL);
+        mSecondsCounterId = SDL_AddTimer(1000, nextSecond, NULL);
 
-    particleEngine = new Particle(NULL);
-    particleEngine->setupEngine();
+        // This part is eAthena specific
+        // For TMWserv, the map is obtained
+        // with the GPMSG_PLAYER_MAP_CHANGE flag.
+        map_path = map_path.substr(0, map_path.rfind("."));
+        if (!map_path.empty())
+            engine->changeMap(map_path);
 
-    // Initialize logic and seconds counters
-    tick_time = 0;
-    mLogicCounterId = SDL_AddTimer(10, nextTick, NULL);
-    mSecondsCounterId = SDL_AddTimer(1000, nextSecond, NULL);
+        // Initialize beings
+        beingManager->setPlayer(player_node);
 
-    // Initialize frame limiting
-    config.addListener("fpslimit", this);
-    optionChanged("fpslimit");
+       /*
+        * To prevent the server from sending data before the client
+        * has initialized, I've modified it to wait for a "ping"
+        * from the client to complete its initialization
+        *
+        * Note: This only affects the latest eAthena version.  This
+        * packet is handled by the older version, but its response
+        * is ignored by the client
+        */
+        Net::getGameHandler()->ping(tick_time);
 
-    // Initialize beings
-    beingManager->setPlayer(player_node);
+        // Initialize frame limiting
+        config.addListener("fpslimit", this);
+        optionChanged("fpslimit");
 
-    Joystick::init();
-    // TODO: The user should be able to choose which one to use
-    // Open the first device
-    if (Joystick::getNumberOfJoysticks() > 0)
-        joystick = new Joystick(0);
+        Joystick::init();
+        // TODO: The user should be able to choose which one to use
+        // Open the first device
+        if (Joystick::getNumberOfJoysticks() > 0)
+            joystick = new Joystick(0);
 
-#ifdef EATHENA_SUPPORT
-    // fade out logon-music here too to give the desired effect of "flowing"
-    // into the game.
-    sound.fadeOutMusic(1000);
-    map_path = map_path.substr(0, map_path.rfind("."));
-    engine->changeMap(map_path);
-#endif
-
-    setupWindow->setInGame(true);
-
-    /*
-     * To prevent the server from sending data before the client
-     * has initialized, I've modified it to wait for a "ping"
-     * from the client to complete its initialization
-     *
-     * Note: This only affects the latest eAthena version.  This
-     * packet is handled by the older version, but its response
-     * is ignored by the client
-     */
-    Net::getMapHandler()->ping(tick_time);
+        setupWindow->setInGame(true);
 }
 
 Game::~Game()
@@ -404,6 +423,7 @@ bool Game::saveScreenshot()
     if (success)
     {
         std::stringstream chatlogentry;
+        // TODO: Make it one complete gettext string below
         chatlogentry << _("Screenshot saved to ~/") << filenameSuffix.str();
         localChatTab->chatLog(chatlogentry.str(), BY_SERVER);
     }
@@ -425,7 +445,7 @@ void Game::optionChanged(const std::string &name)
     mMinFrameTime = fpsLimit ? 1000 / fpsLimit : 0;
 
     // Reset draw time to current time
-    mDrawTime = tick_time * 10;
+    mDrawTime = tick_time * MILLISECONDS_IN_A_TICK;
 }
 
 void Game::logic()
@@ -433,7 +453,7 @@ void Game::logic()
     // mDrawTime has a higher granularity than gameTime in order to be able to
     // work with minimum frame durations in milliseconds.
     int gameTime = tick_time;
-    mDrawTime = tick_time * 10;
+    mDrawTime = tick_time * MILLISECONDS_IN_A_TICK;
     SDL_Event event;
 
     while (!done)
@@ -497,23 +517,23 @@ void Game::logic()
                 mDrawTime += mMinFrameTime;
 
                 // Make sure to wrap mDrawTime, since tick_time will wrap.
-                if (mDrawTime > MAX_TIME * 10)
-                    mDrawTime -= MAX_TIME * 10;
+                if (mDrawTime > MAX_TICK_VALUE * MILLISECONDS_IN_A_TICK)
+                    mDrawTime -= MAX_TICK_VALUE * MILLISECONDS_IN_A_TICK;
             }
             else
             {
-                SDL_Delay(10);
+                SDL_Delay(MILLISECONDS_IN_A_TICK);
             }
         }
         else
         {
-            SDL_Delay(10);
-            mDrawTime = tick_time * 10;
+            SDL_Delay(MILLISECONDS_IN_A_TICK);
+            mDrawTime = tick_time * MILLISECONDS_IN_A_TICK;
         }
 
         // Handle network stuff
         Net::getGeneralHandler()->flushNetwork();
-        if (!Net::getGeneralHandler()->isNetworkConnected())
+        if (!Net::getGameHandler()->isConnected())
         {
             if (state != STATE_ERROR)
             {
@@ -533,7 +553,6 @@ void Game::logic()
 
 void Game::quit()
 {
-#ifdef TMWSERV_SUPPORT
     if (!quitDialog)
     {
         quitDialog = new QuitDialog(&done, &quitDialog);
@@ -543,18 +562,4 @@ void Game::quit()
     {
         quitDialog->action(gcn::ActionEvent(NULL, "cancel"));
     }
-#else
-    if (!exitConfirm)
-    {
-        exitConfirm = new ConfirmDialog(_("Quit"),
-                                        _("Are you sure you "
-                                          "want to quit?"));
-        exitConfirm->addActionListener(&exitListener);
-        exitConfirm->requestMoveToTop();
-    }
-    else
-    {
-        exitConfirm->action(gcn::ActionEvent(NULL, _("no")));
-    }
-#endif
 }

@@ -146,8 +146,11 @@ static const char *speechModeToString(Being::Speech mode)
     return "";
 }
 
-static const char *overlayDetailToString(int detail)
+const char *Setup_Video::overlayDetailToString(int detail)
 {
+    if (detail == -1)
+        detail = config.getValue("OverlayDetail", -1);
+
     switch (detail)
     {
         case 0: return _("off");
@@ -157,8 +160,11 @@ static const char *overlayDetailToString(int detail)
     return "";
 }
 
-static const char *particleDetailToString(int detail)
+const char *Setup_Video::particleDetailToString(int detail)
 {
+    if (detail == -1)
+        detail = 3 - config.getValue("particleEmitterSkip", -1);
+
     switch (detail)
     {
         case 0: return _("low");
@@ -194,13 +200,15 @@ Setup_Video::Setup_Video():
                                           mParticleEffectsEnabled)),
     mNameCheckBox(new CheckBox(_("Show own name"), mNameEnabled)),
     mPickupNotifyLabel(new Label(_("Show pickup notification"))),
+    // TRANSLATORS: Refers to "Show own name"
     mPickupChatCheckBox(new CheckBox(_("in chat"), mPickupChatEnabled)),
+    // TRANSLATORS: Refers to "Show own name"
     mPickupParticleCheckBox(new CheckBox(_("as particle"),
                                          mPickupParticleEnabled)),
     mSpeechSlider(new Slider(0, 3)),
     mSpeechLabel(new Label("")),
     mAlphaSlider(new Slider(0.2, 1.0)),
-    mFpsCheckBox(new CheckBox(_("FPS Limit:"))),
+    mFpsCheckBox(new CheckBox(_("FPS limit:"))),
     mFpsSlider(new Slider(10, 120)),
     mFpsField(new TextField),
     mOverlayDetail((int) config.getValue("OverlayDetail", 2)),
@@ -219,7 +227,7 @@ Setup_Video::Setup_Video():
     speechLabel = new Label(_("Overhead text"));
     alphaLabel = new Label(_("Gui opacity"));
     overlayDetailLabel = new Label(_("Ambient FX"));
-    particleDetailLabel = new Label(_("Particle Detail"));
+    particleDetailLabel = new Label(_("Particle detail"));
     fontSizeLabel = new Label(_("Font size"));
 
     mFontSizeDropDown = new DropDown(new FontSizeChoiceListModel);
@@ -372,7 +380,7 @@ void Setup_Video::apply()
         }
         else
         {
-            new OkDialog(_("Switching to full screen"),
+            new OkDialog(_("Switching to Full Screen"),
                          _("Restart needed for changes to take effect."));
         }
 #endif
@@ -385,7 +393,7 @@ void Setup_Video::apply()
         config.setValue("opengl", mOpenGLCheckBox->isSelected());
 
         // OpenGL can currently only be changed by restarting, notify user.
-        new OkDialog(_("Changing OpenGL"),
+        new OkDialog(_("Changing to OpenGL"),
                      _("Applying change to OpenGL requires restart."));
     }
 
@@ -444,11 +452,17 @@ void Setup_Video::action(const gcn::ActionEvent &event)
         const int width = atoi(mode.substr(0, mode.find("x")).c_str());
         const int height = atoi(mode.substr(mode.find("x") + 1).c_str());
 
+          // TODO: Find out why the drawing area doesn't resize without a restart.
         if (width != graphics->getWidth() || height != graphics->getHeight())
         {
-            // TODO: Find out why the drawing area doesn't resize without a restart.
-            new OkDialog(_("Screen resolution changed"),
-                         _("Restart your client for the change to take effect."));
+            if (width < graphics->getWidth() || height < graphics->getHeight())
+                new OkDialog(_("Screen Resolution Changed"),
+                       _("Restart your client for the change to take effect.")
+                       + std::string("\n") +
+                _("Some windows may be moved to fit the lowered resolution."));
+            else
+                new OkDialog(_("Screen Resolution Changed"),
+                     _("Restart your client for the change to take effect."));
         }
 
         config.setValue("screenwidth", width);
@@ -472,7 +486,7 @@ void Setup_Video::action(const gcn::ActionEvent &event)
                         mParticleEffectsCheckBox->isSelected());
         if (engine)
         {
-            new OkDialog(_("Particle effect settings changed."),
+            new OkDialog(_("Particle Effect Settings Changed."),
                          _("Changes will take effect on map change."));
         }
     }

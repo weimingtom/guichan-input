@@ -50,8 +50,9 @@
 
 #include <guichan/font.hpp>
 
-CharCreateDialog::CharCreateDialog(Window *parent, int slot):
+CharCreateDialog::CharCreateDialog(CharSelectDialog *parent, int slot):
     Window(_("Create Character"), true, parent),
+    mCharSelectDialog(parent),
     mSlot(slot)
 {
     mPlayer = new Player(0, 0, NULL);
@@ -59,17 +60,22 @@ CharCreateDialog::CharCreateDialog(Window *parent, int slot):
 
     int numberOfHairColors = ColorDB::size();
 
-    mPlayer->setHairStyle(rand() % mPlayer->getNumOfHairstyles(),
-                          rand() % numberOfHairColors);
+    mHairStyle = rand() % mPlayer->getNumOfHairstyles();
+    mHairColor = rand() % numberOfHairColors;
+    updateHair();
 
     mNameField = new TextField("");
     mNameLabel = new Label(_("Name:"));
-    mNextHairColorButton = new Button(">", "nextcolor", this);
-    mPrevHairColorButton = new Button("<", "prevcolor", this);
-    mHairColorLabel = new Label(_("Hair Color:"));
-    mNextHairStyleButton = new Button(">", "nextstyle", this);
-    mPrevHairStyleButton = new Button("<", "prevstyle", this);
-    mHairStyleLabel = new Label(_("Hair Style:"));
+    // TRANSLATORS: This is a narrow symbol used to denote 'next'.
+    // You may change this symbol if your language uses another.
+    mNextHairColorButton = new Button(_(">"), "nextcolor", this);
+    // TRANSLATORS: This is a narrow symbol used to denote 'previous'.
+    // You may change this symbol if your language uses another.
+    mPrevHairColorButton = new Button(_("<"), "prevcolor", this);
+    mHairColorLabel = new Label(_("Hair color:"));
+    mNextHairStyleButton = new Button(_(">"), "nextstyle", this);
+    mPrevHairStyleButton = new Button(_("<"), "prevstyle", this);
+    mHairStyleLabel = new Label(_("Hair style:"));
     mCreateButton = new Button(_("Create"), "create", this);
     mCancelButton = new Button(_("Cancel"), "cancel", this);
     mMale = new RadioButton(_("Male"), "gender");
@@ -149,7 +155,6 @@ CharCreateDialog::~CharCreateDialog()
 
 void CharCreateDialog::action(const gcn::ActionEvent &event)
 {
-    int numberOfColors = ColorDB::size();
     if (event.getId() == "create")
     {
         if (getName().length() >= 4)
@@ -164,8 +169,8 @@ void CharCreateDialog::action(const gcn::ActionEvent &event)
             }
 
             Net::getCharHandler()->newCharacter(getName(), mSlot,
-                                mFemale->isSelected(), mPlayer->getHairStyle(),
-                                mPlayer->getHairColor(), atts);
+                                mFemale->isSelected(), mHairStyle,
+                                mHairColor, atts);
         }
         else
         {
@@ -177,19 +182,25 @@ void CharCreateDialog::action(const gcn::ActionEvent &event)
     else if (event.getId() == "cancel")
         scheduleDelete();
     else if (event.getId() == "nextcolor")
-        mPlayer->setHairStyle(mPlayer->getHairStyle(),
-                             (mPlayer->getHairColor() + 1) % numberOfColors);
+    {
+        mHairColor++;
+        updateHair();
+    }
     else if (event.getId() == "prevcolor")
-        mPlayer->setHairStyle(mPlayer->getHairStyle(),
-                             (mPlayer->getHairColor() + numberOfColors - 1) %
-                              numberOfColors);
+    {
+        mHairColor--;
+        updateHair();
+    }
     else if (event.getId() == "nextstyle")
-        mPlayer->setHairStyle(mPlayer->getHairStyle() + 1,
-                              mPlayer->getHairColor());
+    {
+        mHairStyle++;
+        updateHair();
+    }
     else if (event.getId() == "prevstyle")
-        mPlayer->setHairStyle(mPlayer->getHairStyle() +
-                              mPlayer->getNumOfHairstyles() - 1,
-                              mPlayer->getHairColor());
+    {
+        mHairStyle--;
+        updateHair();
+    }
     else if (event.getId() == "statslider") {
         updateSliders();
     }
@@ -329,4 +340,23 @@ void CharCreateDialog::setFixedGender(bool fixed, Gender gender)
         mMale->setEnabled(false);
         mFemale->setEnabled(false);
     }
+}
+
+void CharCreateDialog::success()
+{
+    mCharSelectDialog->update(mSlot);
+}
+
+void CharCreateDialog::updateHair()
+{
+    mHairStyle %= Being::getNumOfHairstyles();
+    if (mHairStyle < 0)
+       mHairStyle += Being::getNumOfHairstyles();
+
+    mHairColor %= ColorDB::size();
+    if (mHairColor < 0)
+       mHairColor += ColorDB::size();
+
+    mPlayer->setSprite(Player::HAIR_SPRITE,
+                      mHairStyle * -1, ColorDB::get(mHairColor));
 }

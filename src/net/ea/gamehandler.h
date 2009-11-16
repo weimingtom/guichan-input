@@ -1,6 +1,6 @@
 /*
  *  The Mana World
- *  Copyright (C) 2004  The Mana World Development Team
+ *  Copyright (C) 2009  The Mana World Development Team
  *
  *  This file is part of The Mana World.
  *
@@ -19,40 +19,44 @@
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#ifndef NET_TMWSERV_LOGOUTHANDLER_H
-#define NET_TMWSERV_LOGOUTHANDLER_H
+#ifndef NET_EA_MAPHANDLER_H
+#define NET_EA_MAPHANDLER_H
 
-#include "net/logouthandler.h"
+#include "net/gamehandler.h"
 #include "net/messagehandler.h"
+#include "net/net.h"
+#include "net/serverinfo.h"
 
-#include <string>
+#include "net/ea/token.h"
 
-namespace TmwServ {
+namespace EAthena {
 
-class LogoutHandler : public MessageHandler, public Net::LogoutHandler
+class GameHandler : public MessageHandler, public Net::GameHandler
 {
     public:
-        LogoutHandler();
+        GameHandler();
 
         void handleMessage(MessageIn &msg);
 
-        void setScenario(unsigned short scenario,
-                         std::string *passToken = NULL);
+        void connect();
 
-        void reset();
+        bool isConnected();
 
-        void setAccountLoggedOut() { mLoggedOutAccount = true; }
-        void setGameLoggedOut() { mLoggedOutGame = true; }
-        void setChatLoggedOut() { mLoggedOutChat = true; }
+        void disconnect();
 
-    private:
-        std::string* mPassToken;
-        unsigned short mScenario;
-        bool mLoggedOutAccount;
-        bool mLoggedOutGame;
-        bool mLoggedOutChat;
+        void inGame();
+
+        void mapLoaded(const std::string &mapName);
+
+        void who();
+
+        void quit();
+
+        void ping(int tick);
+
+        void clear();
 };
 
-} // namespace TmwServ
+} // namespace EAthena
 
-#endif
+#endif // NET_EA_MAPHANDLER_H

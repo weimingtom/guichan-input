@@ -49,6 +49,11 @@ class Slider : public gcn::Slider {
         ~Slider();
 
         /**
+         * Update the alpha value to the graphic components.
+         */
+        void updateAlpha();
+
+        /**
          * Draws the slider.
          */
         void draw(gcn::Graphics *graphics);
@@ -58,6 +63,16 @@ class Slider : public gcn::Slider {
          */
         void drawMarker(gcn::Graphics *graphics);
 
+        /**
+         * Called when the mouse enteres the widget area.
+         */
+        void mouseEntered(gcn::MouseEvent& event);
+
+        /**
+         * Called when the mouse leaves the widget area.
+         */
+        void mouseExited(gcn::MouseEvent& event);
+
     private:
         /**
          * Used to initialize instances.
@@ -66,6 +81,9 @@ class Slider : public gcn::Slider {
 
         static Image *hStart, *hMid, *hEnd, *hGrip;
         static Image *vStart, *vMid, *vEnd, *vGrip;
+        static Image *hStartHi, *hMidHi, *hEndHi, *hGripHi;
+        static Image *vStartHi, *vMidHi, *vEndHi, *vGripHi;
+        bool mHasMouse;
         static float mAlpha;
         static int mInstances;
 };

@@ -116,22 +116,12 @@ void Viewport::draw(gcn::Graphics *gcnGraphics)
     }
 
     // Calculate viewpoint
-#ifdef TMWSERV_SUPPORT
     int midTileX = (graphics->getWidth() + mScrollCenterOffsetX) / 2;
     int midTileY = (graphics->getHeight() + mScrollCenterOffsetX) / 2;
 
     const Vector &playerPos = player_node->getPosition();
     const int player_x = (int) playerPos.x - midTileX;
     const int player_y = (int) playerPos.y - midTileY;
-#else
-    int midTileX = (graphics->getWidth() + mScrollCenterOffsetX) / 32 / 2;
-    int midTileY = (graphics->getHeight() + mScrollCenterOffsetY) / 32 / 2;
-
-    int player_x = (player_node->mX - midTileX) * 32 +
-                    player_node->getXOffset();
-    int player_y = (player_node->mY - midTileY) * 32 +
-                    player_node->getYOffset();
-#endif
 
     if (mScrollLaziness < 1)
         mScrollLaziness = 1; // Avoids division by zero
@@ -238,26 +228,20 @@ void Viewport::logic()
 {
     WindowContainer::logic();
 
-    Uint8 button = SDL_GetMouseState(&mMouseX, &mMouseY);
-
     if (!mMap || !player_node)
         return;
 
+#ifdef EATHENA_SUPPORT
+    Uint8 button = SDL_GetMouseState(&mMouseX, &mMouseY);
+
     if (mPlayerFollowMouse && button & SDL_BUTTON(1) &&
-#ifdef TMWSERV_SUPPORT
-            get_elapsed_time(mLocalWalkTime) >= walkingMouseDelay)
-    {
-            mLocalWalkTime = tick_time;
-            player_node->setDestination(mMouseX + (int) mPixelViewX,
-                                        mMouseY + (int) mPixelViewY);
-#else
             mWalkTime != player_node->mWalkTime)
     {
         player_node->setDestination(mMouseX / 32 + mTileViewX,
                                     mMouseY / 32 + mTileViewY);
         mWalkTime = player_node->mWalkTime;
-#endif
     }
+#endif
 }
 
 void Viewport::drawDebugPath(Graphics *graphics)
@@ -394,6 +378,7 @@ void Viewport::mousePressed(gcn::MouseEvent &event)
                 mLocalWalkTime = tick_time;
                 player_node->setDestination(event.getX() + (int) mPixelViewX,
                                             event.getY() + (int) mPixelViewY);
+                player_node->pathSetByMouse();
             }
 #else
             player_node->setDestination(tilex, tiley);

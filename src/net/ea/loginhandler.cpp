@@ -21,24 +21,25 @@
 
 #include "net/ea/loginhandler.h"
 
+#include "net/ea/network.h"
 #include "net/ea/protocol.h"
 
 #include "net/logindata.h"
 #include "net/messagein.h"
 #include "net/messageout.h"
-#include "net/serverinfo.h"
 
 #include "log.h"
 #include "main.h"
 
+#include "utils/dtor.h"
 #include "utils/gettext.h"
 #include "utils/stringutils.h"
-
-extern SERVER_INFO **server_info;
 
 Net::LoginHandler *loginHandler;
 
 namespace EAthena {
+
+extern ServerInfo charServer;
 
 LoginHandler::LoginHandler()
 {
@@ -47,6 +48,7 @@ LoginHandler::LoginHandler()
         SMSG_LOGIN_DATA,
         SMSG_LOGIN_ERROR,
         SMSG_CHAR_PASSWORD_RESPONSE,
+        SMSG_SERVER_VERSION_RESPONSE,
         0
     };
     handledMessages = _messages;
@@ -55,7 +57,7 @@ LoginHandler::LoginHandler()
 
 void LoginHandler::handleMessage(MessageIn &msg)
 {
-    int code;
+    int code, worldCount;
 
     switch (msg.getId())
     {
@@ -66,7 +68,7 @@ void LoginHandler::handleMessage(MessageIn &msg)
             // Successful pass change
             if (errMsg == 1)
             {
-                state = STATE_CHANGEPASSWORD;
+                state = STATE_CHANGEPASSWORD_SUCCESS;
             }
             // pass change failed
             else
@@ -76,13 +78,13 @@ void LoginHandler::handleMessage(MessageIn &msg)
                         errorMessage = _("Account was not found. Please re-login.");
                         break;
                     case 2:
-                        errorMessage = _("Old password incorrect");
+                        errorMessage = _("Old password incorrect.");
                         break;
                     case 3:
-                        errorMessage = _("New password too short");
+                        errorMessage = _("New password too short.");
                         break;
                     default:
-                        errorMessage = _("Unknown error");
+                        errorMessage = _("Unknown error.");
                         break;
                 }
                 state = STATE_ACCOUNTCHANGE_ERROR;
@@ -96,7 +98,7 @@ void LoginHandler::handleMessage(MessageIn &msg)
              len = msg.readInt16() - 4;
              mUpdateHost = msg.readString(len);
 
-             logger->log("Received update host \"%s\" from login server",
+             logger->log("Received update host \"%s\" from login server.",
                      mUpdateHost.c_str());
              break;
 
@@ -104,33 +106,35 @@ void LoginHandler::handleMessage(MessageIn &msg)
             // Skip the length word
             msg.skip(2);
 
-            n_server = (msg.getLength() - 47) / 32;
-            server_info =
-                (SERVER_INFO**) malloc(sizeof(SERVER_INFO*) * n_server);
+            clearWorlds();
 
-            mLoginData->session_ID1 = msg.readInt32();
-            mLoginData->account_ID = msg.readInt32();
-            mLoginData->session_ID2 = msg.readInt32();
+            worldCount = (msg.getLength() - 47) / 32;
+
+            mToken.session_ID1 = msg.readInt32();
+            mToken.account_ID = msg.readInt32();
+            mToken.session_ID2 = msg.readInt32();
             msg.skip(30);                           // unknown
-            mLoginData->sex = msg.readInt8() ? GENDER_MALE : GENDER_FEMALE;
+            mToken.sex = msg.readInt8() ? GENDER_MALE : GENDER_FEMALE;
 
-            for (int i = 0; i < n_server; i++)
+            for (int i = 0; i < worldCount; i++)
             {
-                server_info[i] = new SERVER_INFO;
+                WorldInfo *world = new WorldInfo;
 
-                server_info[i]->address = msg.readInt32();
-                server_info[i]->port = msg.readInt16();
-                server_info[i]->name = msg.readString(20);
-                server_info[i]->online_users = msg.readInt32();
-                server_info[i]->updateHost = mUpdateHost;
+                world->address = msg.readInt32();
+                world->port = msg.readInt16();
+                world->name = msg.readString(20);
+                world->online_users = msg.readInt32();
+                world->updateHost = mUpdateHost;
                 msg.skip(2);                        // unknown
 
                 logger->log("Network: Server: %s (%s:%d)",
-                        server_info[i]->name.c_str(),
-                        ipToString(server_info[i]->address),
-                        server_info[i]->port);
+                        world->name.c_str(),
+                        ipToString(world->address),
+                        world->port);
+
+                mWorlds.push_back(world);
             }
-            state = STATE_CHAR_SERVER;
+            state = STATE_WORLD_SELECT;
             break;
 
         case SMSG_LOGIN_ERROR:
@@ -139,21 +143,21 @@ void LoginHandler::handleMessage(MessageIn &msg)
 
             switch (code) {
                 case 0:
-                    errorMessage = _("Unregistered ID");
+                    errorMessage = _("Unregistered ID.");
                     break;
                 case 1:
-                    errorMessage = _("Wrong password");
+                    errorMessage = _("Wrong password.");
                     break;
                 case 2:
-                    errorMessage = _("Account expired");
+                    errorMessage = _("Account expired.");
                     break;
                 case 3:
-                    errorMessage = _("Rejected from server");
+                    errorMessage = _("Rejected from server.");
                     break;
                 case 4:
 
                     errorMessage = _("You have been permanently banned from "
-                                     "the game. Please contact the GM Team.");
+                                     "the game. Please contact the GM team.");
                     break;
                 case 6:
                     errorMessage = strprintf(_("You have been temporarily "
@@ -163,21 +167,56 @@ void LoginHandler::handleMessage(MessageIn &msg)
                                                msg.readString(20).c_str());
                     break;
                 case 9:
-                    errorMessage = _("This user name is already taken");
+                    errorMessage = _("This user name is already taken.");
                     break;
                 default:
-                    errorMessage = _("Unknown error");
+                    errorMessage = _("Unknown error.");
                     break;
             }
             state = STATE_ERROR;
             break;
+        case SMSG_SERVER_VERSION_RESPONSE:
+            {
+                // TODO: verify these!
+                msg.readInt8(); // -1
+                msg.readInt8(); // T
+                msg.readInt8(); // M
+                msg.readInt8(); // W
+                msg.readInt8(); // (space)
+                msg.readInt8(); // e
+                msg.readInt8(); // A
+
+                //state = STATE_LOGIN;
+            }
+            break;
     }
+}
+
+void LoginHandler::connect()
+{
+    mNetwork->connect(mServer);
+    MessageOut outMsg(CMSG_SERVER_VERSION_REQUEST);
+}
+
+bool LoginHandler::isConnected()
+{
+    return mNetwork->isConnected();
+}
+
+void LoginHandler::disconnect()
+{
+    if (mNetwork->getServer() == mServer)
+        mNetwork->disconnect();
 }
 
 void LoginHandler::loginAccount(LoginData *loginData)
 {
-    mLoginData = loginData;
     sendLoginRegister(loginData->username, loginData->password);
+}
+
+void LoginHandler::logout()
+{
+    // TODO
 }
 
 void LoginHandler::changeEmail(const std::string &email)
@@ -194,17 +233,22 @@ void LoginHandler::changePassword(const std::string &username,
     outMsg.writeString(newPassword, 24);
 }
 
-void LoginHandler::chooseServer(int server)
+void LoginHandler::chooseServer(unsigned int server)
 {
-    // TODO
+    if (server >= mWorlds.size())
+        return;
+
+    charServer.clear();
+    charServer.hostname = ipToString(mWorlds[server]->address);
+    charServer.port = mWorlds[server]->port;
+
+    state = STATE_UPDATE;
 }
 
 void LoginHandler::registerAccount(LoginData *loginData)
 {
-    mLoginData = loginData;
-
     std::string username = loginData->username;
-    username.append((loginData->sex == GENDER_FEMALE) ? "_F" : "_M");
+    username.append((loginData->gender == GENDER_FEMALE) ? "_F" : "_M");
 
     sendLoginRegister(username, loginData->password);
 }
@@ -230,6 +274,17 @@ void LoginHandler::sendLoginRegister(const std::string &username,
      *  1 - defaults to the first char-server (instead of the last)
      */
     outMsg.writeInt8(0x03);
+}
+
+Worlds LoginHandler::getWorlds() const
+{
+    return mWorlds;
+}
+
+void LoginHandler::clearWorlds()
+{
+    delete_all(mWorlds);
+    mWorlds.clear();
 }
 
 } // namespace EAthena

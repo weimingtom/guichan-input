@@ -33,6 +33,7 @@
 #include "gui/widgets/tabbedarea.h"
 #include "gui/widgets/vertcontainer.h"
 #include "gui/widgets/windowcontainer.h"
+#include "gui/setup.h"
 
 #include "localplayer.h"
 #include "log.h"
@@ -46,7 +47,6 @@
 #include "utils/xml.h"
 
 #include <string>
-#include <vector>
 
 class SkillEntry;
 
@@ -89,12 +89,13 @@ SkillDialog::SkillDialog():
     setResizable(true);
     setSaveVisible(true);
     setDefaultSize(windowContainer->getWidth() - 280, 30, 275, 425);
+    setupWindow->registerWindowForReset(this);
 
     mTabs = new TabbedArea();
     mPointsLabel = new Label("0");
 
     place(0, 0, mTabs, 5, 5);
-    place(0, 5, mPointsLabel);
+    place(0, 5, mPointsLabel, 2);
 
     setLocationRelativeTo(getParent());
     loadWindowState();
@@ -102,7 +103,8 @@ SkillDialog::SkillDialog():
 
 SkillDialog::~SkillDialog()
 {
-    //delete_all(mTabs);
+    // Clear gui
+    loadSkills("");
 }
 
 void SkillDialog::action(const gcn::ActionEvent &event)
@@ -117,36 +119,6 @@ void SkillDialog::action(const gcn::ActionEvent &event)
     else if (event.getId() == "close")
     {
         setVisible(false);
-    }
-}
-
-void SkillDialog::adjustTabSize()
-{
-    gcn::Widget *content = mTabs->getCurrentWidget();
-    if (content) {
-        int width = mTabs->getWidth() - 2 * content->getFrameSize() - 2 * mTabs->getFrameSize();
-        int height = mTabs->getContainerHeight() - 2 * content->getFrameSize();
-        content->setSize(width, height);
-        content->setVisible(true);
-        content->logic();
-    }
-}
-
-void SkillDialog::widgetResized(const gcn::Event &event)
-{
-    Window::widgetResized(event);
-
-    adjustTabSize();
-}
-
-void SkillDialog::logic()
-{
-    Window::logic();
-
-    Tab *tab = dynamic_cast<Tab*>(mTabs->getSelectedTab());
-    if (tab != mCurrentTab) {
-        mCurrentTab = tab;
-        adjustTabSize();
     }
 }
 
@@ -180,8 +152,20 @@ void SkillDialog::update()
 void SkillDialog::loadSkills(const std::string &file)
 {
     // TODO: mTabs->clear();
+    while (mTabs->getSelectedTabIndex() != -1)
+    {
+        mTabs->removeTabWithIndex(mTabs->getSelectedTabIndex());
+    }
+
+    for (SkillMap::iterator it = mSkills.begin(); it != mSkills.end();  it++)
+    {
+        delete (*it).second->display;
+    }
     delete_all(mSkills);
     mSkills.clear();
+
+    if (file.length() == 0)
+        return;
 
     XML::Document doc(file);
     xmlNodePtr root = doc.rootNode();
@@ -234,8 +218,6 @@ void SkillDialog::loadSkills(const std::string &file)
             }
         }
     }
-
-    adjustTabSize();
     update();
 }
 
@@ -256,7 +238,7 @@ SkillEntry::SkillEntry(SkillInfo *info) :
     mIcon(NULL),
     mNameLabel(new Label(info->name)),
     mLevelLabel(new Label("999")),
-    mIncrease(new Button("+", "inc", skillDialog)),
+    mIncrease(new Button(_("+"), "inc", skillDialog)),
     mProgress(new ProgressBar(0.0f, 200, 20, gcn::Color(150, 150, 150)))
 {
     setFrameSize(1);
@@ -326,9 +308,18 @@ void SkillEntry::update()
 
     setVisible(true);
 
-    std::string skillLevel("Lvl: " + toString(baseLevel));
+    std::string skillLevel;
+
     if (effLevel != baseLevel)
-        skillLevel += strprintf(" (%+d)", baseLevel - effLevel);
+    {
+        skillLevel = strprintf(_("Lvl: %d (%+d)"),
+                               baseLevel, baseLevel - effLevel);
+    }
+    else
+    {
+        skillLevel = strprintf(_("Lvl: %d"), baseLevel);
+    }
+
     mLevelLabel->setCaption(skillLevel);
 
     std::pair<int, int> exp = player_node->getExperience(mInfo->id);

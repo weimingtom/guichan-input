@@ -34,6 +34,8 @@
 #include "gui/widgets/layout.h"
 
 #include "net/logindata.h"
+#include "net/loginhandler.h"
+#include "net/net.h"
 
 #include "utils/gettext.h"
 #include "utils/stringutils.h"
@@ -41,9 +43,8 @@
 #include <string>
 #include <sstream>
 
-ChangePasswordDialog::ChangePasswordDialog(Window *parent,
-                                           LoginData *loginData):
-    Window(_("Change Password"), true, parent),
+ChangePasswordDialog::ChangePasswordDialog(LoginData *loginData):
+    Window(_("Change Password"), true),
     mWrongDataNoticeListener(new WrongDataNoticeListener),
     mLoginData(loginData)
 {
@@ -66,7 +67,7 @@ ChangePasswordDialog::ChangePasswordDialog(Window *parent,
     place(2, 6, mChangePassButton);
     reflowLayout(200);
 
-    setLocationRelativeTo(getParent());
+    center();
     setVisible(true);
     mOldPassField->requestFocus();
 
@@ -84,7 +85,7 @@ void ChangePasswordDialog::action(const gcn::ActionEvent &event)
 {
     if (event.getId() == "cancel")
     {
-        scheduleDelete();
+        state = STATE_CHAR_SELECT;
     }
     else if (event.getId() == "change_password")
     {
@@ -99,6 +100,9 @@ void ChangePasswordDialog::action(const gcn::ActionEvent &event)
         std::stringstream errorMessage;
         int error = 0;
 
+        unsigned int min = Net::getLoginHandler()->getMinPasswordLength();
+        unsigned int max = Net::getLoginHandler()->getMaxPasswordLength();
+
         // Check old Password
         if (oldPassword.empty())
         {
@@ -106,19 +110,18 @@ void ChangePasswordDialog::action(const gcn::ActionEvent &event)
             errorMessage << _("Enter the old password first.");
             error = 1;
         }
-        else if (newFirstPass.length() < LEN_MIN_PASSWORD)
+        else if (newFirstPass.length() < min)
         {
             // First password too short
-            errorMessage << strprintf(_("The new password needs to be at least "
-                                      "%d characters long."), LEN_MIN_PASSWORD);
+            errorMessage << strprintf(_("The new password needs to be at least"
+                                        " %d characters long."), min);
             error = 2;
         }
-        else if (newFirstPass.length() > LEN_MAX_PASSWORD - 1 )
+        else if (newFirstPass.length() > max - 1 )
         {
             // First password too long
             errorMessage << strprintf(_("The new password needs to be less "
-                                        "than %d characters long."),
-                                      LEN_MAX_PASSWORD);
+                                        "than %d characters long."), max);
             error = 2;
         }
         else if (newFirstPass != newSecondPass)
@@ -154,8 +157,6 @@ void ChangePasswordDialog::action(const gcn::ActionEvent &event)
             mLoginData->password = oldPassword;
             mLoginData->newPassword = newFirstPass;
             state = STATE_CHANGEPASSWORD_ATTEMPT;
-            scheduleDelete();
         }
-
     }
 }

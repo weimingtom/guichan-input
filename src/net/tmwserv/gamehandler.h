@@ -19,29 +19,42 @@
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#ifndef NET_EA_LOGOUTHANDLER_H
-#define NET_EA_LOGOUTHANDLER_H
+#ifndef NET_TMWSERV_MAPHANDLER_H
+#define NET_TMWSERV_MAPHANDLER_H
 
-#include "net/logouthandler.h"
+#include "net/gamehandler.h"
 #include "net/messagehandler.h"
 
-#include <string>
+#include "net/serverinfo.h"
 
-namespace EAthena {
+namespace TmwServ {
 
-class LogoutHandler : public MessageHandler, public Net::LogoutHandler
+class GameHandler : public MessageHandler, public Net::GameHandler
 {
     public:
-        LogoutHandler();
+        GameHandler();
 
         void handleMessage(MessageIn &msg);
 
-        void setScenario(unsigned short scenario,
-                         std::string *passToken = NULL);
+        void connect();
 
-        void reset();
+        bool isConnected();
+
+        void disconnect();
+
+        void inGame();
+
+        void mapLoaded(const std::string &mapName);
+
+        void who();
+
+        void quit();
+
+        void ping(int tick);
+
+        void clear();
 };
 
-} // namespace EAthena
+} // namespace TmwServ
 
-#endif // NET_EA_LOGOUTHANDLER_H
+#endif

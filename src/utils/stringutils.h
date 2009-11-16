@@ -92,9 +92,18 @@ std::string strprintf(char const *, ...)
  */
 std::string &removeBadChars(std::string &str);
 
+
 #ifdef WIN32
 #define strcasecmp _stricmp
 #define strncasecmp _strnicmp
 #endif
+
+/**
+ * Removes colors from a string
+ *
+ * @param msg the string to remove the colors from
+ * @return string without colors
+ */
+std::string removeColors(std::string msg);
 
 #endif // UTILS_STRINGUTILS_H

@@ -200,17 +200,16 @@ void PlayerHandler::handleMessage(MessageIn &msg)
 
                 /* Scroll if neccessary */
                 if (!nearby
-                    || (abs(x - player_node->mX) > MAP_TELEPORT_SCROLL_DISTANCE)
-                    || (abs(y - player_node->mY) > MAP_TELEPORT_SCROLL_DISTANCE))
+                    || (abs(x - player_node->getTileX()) > MAP_TELEPORT_SCROLL_DISTANCE)
+                    || (abs(y - player_node->getTileY()) > MAP_TELEPORT_SCROLL_DISTANCE))
                 {
-                    scrollOffsetX = (x - player_node->mX) * 32;
-                    scrollOffsetY = (y - player_node->mY) * 32;
+                    scrollOffsetX = (x - player_node->getTileX()) * 32;
+                    scrollOffsetY = (y - player_node->getTileY()) * 32;
                 }
 
                 player_node->setAction(Being::STAND);
                 player_node->mFrame = 0;
-                player_node->mX = x;
-                player_node->mY = y;
+                player_node->setTileCoords(x, y);
 
                 logger->log("Adjust scrolling by %d:%d", (int) scrollOffsetX,
                            (int) scrollOffsetY);
@@ -260,10 +259,11 @@ void PlayerHandler::handleMessage(MessageIn &msg)
 
                     case 0x002b: player_node->setAttributeEffective(MATK, value
                                                            + ATTR_BONUS(MATK));
-                        player_node->setAttributeBase(MATK, value); break;
+                        player_node->setAttributeBase(MATK, value);
+                        statusWindow->update(StatusWindow::MP); break;
                     case 0x002c: value += player_node->getAttributeBase(MATK);
-                        player_node->setAttributeEffective(MATK, value); break;
-
+                        player_node->setAttributeEffective(MATK, value);
+                        statusWindow->update(StatusWindow::MP); break;
                     case 0x002d: player_node->setAttributeEffective(DEF, value
                                                            + ATTR_BONUS(DEF));
                         player_node->setAttributeBase(DEF, value); break;
@@ -289,8 +289,8 @@ void PlayerHandler::handleMessage(MessageIn &msg)
                         player_node->setAttributeEffective(CRIT, value); break;
 
                     case 0x0035: player_node->mAttackSpeed = value; break;
-                    case 0x0037:
-                        player_node->setAttributeBase(JOB, value); break;
+                    case 0x0037: player_node->setAttributeBase(JOB, value);
+                        player_node->setAttributeEffective(JOB, value); break;
                     case 500: player_node->setGMLevel(value); break;
                 }
 
@@ -317,9 +317,10 @@ void PlayerHandler::handleMessage(MessageIn &msg)
                         int curGp = player_node->getMoney();
                         player_node->setMoney(msg.readInt32());
                         if (player_node->getMoney() > curGp)
-                            localChatTab->chatLog(_("You picked up ") +
+                            localChatTab->chatLog(strprintf(_("You picked up "
+                                                              "%s."),
                                 Units::formatCurrency(player_node->getMoney()
-                                    - curGp), BY_SERVER);
+                                    - curGp).c_str()), BY_SERVER);
                     }
                     break;
                 case 0x0016:
@@ -333,7 +334,7 @@ void PlayerHandler::handleMessage(MessageIn &msg)
             }
             break;
 
-        case SMSG_PLAYER_STAT_UPDATE_3:
+        case SMSG_PLAYER_STAT_UPDATE_3: // Update a base attribute
             {
                 int type = msg.readInt32();
                 int base = msg.readInt32();
@@ -347,11 +348,14 @@ void PlayerHandler::handleMessage(MessageIn &msg)
         case SMSG_PLAYER_STAT_UPDATE_4: // Attribute increase ack
             {
                 int type = msg.readInt16();
-                int fail = msg.readInt8();
+                int ok = msg.readInt8();
                 int value = msg.readInt8();
 
-                if (fail != 1)
-                    break;
+                if (ok != 1)
+                {
+                    localChatTab->chatLog(_("Cannot raise skill!"),
+                                          BY_SERVER);
+                }
 
                 int bonus = ATTR_BONUS(type);
 
@@ -404,6 +408,7 @@ void PlayerHandler::handleMessage(MessageIn &msg)
                 player_node->setAttributeBase(MATK, val);
                 val += msg.readInt16();  // MATK bonus
                 player_node->setAttributeEffective(MATK, val);
+                statusWindow->update(StatusWindow::MP);
 
                 val = msg.readInt16(); // DEF
                 player_node->setAttributeBase(DEF, val);
@@ -546,7 +551,7 @@ void PlayerHandler::changeAction(Being::Action action)
 
 void PlayerHandler::respawn()
 {
-    MessageOut outMsg(CMSG_PLAYER_RESPAWN);
+    MessageOut outMsg(CMSG_PLAYER_RESTART);
     outMsg.writeInt8(0);
 }
 
@@ -558,6 +563,11 @@ void PlayerHandler::ignorePlayer(const std::string &player, bool ignore)
 void PlayerHandler::ignoreAll(bool ignore)
 {
     // TODO
+}
+
+bool PlayerHandler::canUseMagic()
+{
+    return player_node->getAttributeEffective(MATK) > 0;
 }
 
 } // namespace EAthena

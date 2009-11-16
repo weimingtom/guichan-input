@@ -611,9 +611,12 @@ inline void KeyboardConfig::parseMovement()
     if (player_node->mAction == Being::DEAD && current_npc != 0)
         return;
 
-    // Now get the adjusted direction (remove conflicting directions)
+    const Vector &pos = player_node->getPosition();
+    const Uint16 x = (int) pos.x / 32;
+    const Uint16 y = (int) pos.y / 32;
     int direction = 0;
 
+    // Now get the adjusted direction (remove conflicting directions)
     if (isKeyActive(KEY_MOVE_UP))
         direction |= Being::UP;
     else if (isKeyActive(KEY_MOVE_DOWN))
@@ -624,17 +627,9 @@ inline void KeyboardConfig::parseMovement()
     else if (isKeyActive(KEY_MOVE_RIGHT))
         direction |= Being::RIGHT;
 
-    // If the direction is different, then stop first (this makes things weird
-    // for the eAthena build)
-#ifdef TMWSERV_SUPPORT
-    if (!direction || direction != player_node->getWalkingDir())
-        player_node->stopWalking(false);
-#endif
-
     // Set the player's direction
     player_node->setWalkingDir(direction);
 
-#ifdef EATHENA_SUPPORT
     if (isKeyActive(KEY_ATTACK) && lastTarget != Being::UNKNOWN)
     {
         Being *target = NULL;
@@ -643,7 +638,11 @@ inline void KeyboardConfig::parseMovement()
         // A set target has highest priority
         if (newTarget || !player_node->getTarget())
         {
-            Uint16 targetX = player_node->mX, targetY = player_node->mY;
+#ifdef TMWSERV_SUPPORT
+                Uint16 targetX = x / 32, targetY = y / 32;
+#else
+                Uint16 targetX = x, targetY = y;
+#endif
 
             switch (player_node->getSpriteDirection())
             {
@@ -661,19 +660,13 @@ inline void KeyboardConfig::parseMovement()
 
         player_node->attack(target, newTarget);
     }
-#endif
 }
 
 inline void KeyboardConfig::parseTarget()
 {
-#ifdef TMWSERV_SUPPORT
     const Vector &pos = player_node->getPosition();
     const Uint16 x = (int) pos.x / 32;
     const Uint16 y = (int) pos.y / 32;
-#else
-    const Uint16 x = player_node->mX;
-    const Uint16 y = player_node->mY;
-#endif
 
     if (keyboard.isKeyActive(keyboard.KEY_TARGET_ATTACK))
     {

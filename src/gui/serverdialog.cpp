@@ -24,103 +24,136 @@
 #include "gui/okdialog.h"
 
 #include "gui/widgets/button.h"
-#include "gui/widgets/dropdown.h"
 #include "gui/widgets/label.h"
 #include "gui/widgets/layout.h"
+#include "gui/widgets/listbox.h"
+#include "gui/widgets/scrollarea.h"
 #include "gui/widgets/textfield.h"
-
-#include "net/logindata.h"
 
 #include "configuration.h"
 #include "log.h"
 #include "main.h"
 
+#include "net/net.h"
+
 #include "utils/gettext.h"
 #include "utils/stringutils.h"
+#include "utils/xml.h"
 
 #include <cstdlib>
 #include <iostream>
 #include <string>
 
-const short MAX_SERVERLIST = 5;
+#define MAX_SERVERLIST 5
+
+ServersListModel::ServersListModel(ServerInfos *servers, ServerDialog *parent):
+        mServers(servers),
+        mParent(parent)
+{
+}
 
 int ServersListModel::getNumberOfElements()
 {
-    return servers.size();
+    MutexLocker lock = mParent->lock();
+    return mServers->size();
 }
 
 std::string ServersListModel::getElementAt(int elementIndex)
 {
-    std::string myServer = "";
-    myServer = servers.at(elementIndex).serverName;
-    myServer += ":";
-    myServer += toString(servers.at(elementIndex).port);
+    MutexLocker lock = mParent->lock();
+    ServerInfo server = mServers->at(elementIndex);
+    std::string myServer;
+    if (server.name.empty())
+    {
+        myServer += server.hostname;
+        myServer += ":";
+        myServer += toString(server.port);
+    }
+    else
+    {
+        myServer += server.name;
+        myServer += " (";
+        myServer += server.hostname;
+        myServer += ":";
+        myServer += toString(server.port);
+        myServer += ")";
+    }
     return myServer;
 }
 
-void ServersListModel::addFirstElement(Server server)
-{
-    // Equivalent to push_front
-    std::vector<Server>::iterator MyIterator = servers.begin();
-    servers.insert(MyIterator, 1, server);
-}
 
-void ServersListModel::addElement(Server server)
+ServerDialog::ServerDialog(ServerInfo *serverInfo, const std::string &dir):
+    Window(_("Choose Your Server")),
+    mDir(dir),
+    mDownloadStatus(DOWNLOADING_PREPARING),
+    mDownloadProgress(-1.0f),
+    mServers(ServerInfos()),
+    mServerInfo(serverInfo)
 {
-    servers.push_back(server);
-}
+    Label *serverLabel = new Label(_("Server:"));
+    Label *portLabel = new Label(_("Port:"));
+    mServerNameField = new TextField(mServerInfo->hostname);
+    mPortField = new TextField(toString(mServerInfo->port));
 
-ServerDialog::ServerDialog(LoginData *loginData):
-    Window(_("Choose your server")), mLoginData(loginData)
-{
-    gcn::Label *serverLabel = new Label(_("Server:"));
-    gcn::Label *portLabel = new Label(_("Port:"));
-    mServerNameField = new TextField(mLoginData->hostname);
-    mPortField = new TextField(toString(mLoginData->port));
-
-    // Add the most used servers from config
-    mMostUsedServersListModel = new ServersListModel;
-    Server currentServer;
+    ServerInfo currentServer;
+    // Add the most used servers from config if they are not in the online list
     std::string currentConfig = "";
-    for (int i=0; i<=MAX_SERVERLIST; i++)
+    for (int i = 0; i <= MAX_SERVERLIST; i++)
     {
-        currentServer.serverName = "";
-        currentServer.port = 0;
+        currentServer.clear();
 
         currentConfig = "MostUsedServerName" + toString(i);
-        currentServer.serverName = config.getValue(currentConfig, "");
+        currentServer.hostname = config.getValue(currentConfig, "");
 
         currentConfig = "MostUsedServerPort" + toString(i);
-        currentServer.port = (short)atoi(config.getValue(currentConfig, "").c_str());
-        if (!currentServer.serverName.empty() || currentServer.port != 0)
+        currentServer.port = (short) config.getValue(currentConfig, DEFAULT_PORT);
+
+        if (!currentServer.hostname.empty() && currentServer.port != 0)
         {
-            mMostUsedServersListModel->addElement(currentServer);
+            mServers.push_back(currentServer);
         }
     }
 
-    mMostUsedServersDropDown = new DropDown(mMostUsedServersListModel);
+    mServersListModel = new ServersListModel(&mServers, this);
 
-    mOkButton = new Button(_("OK"), "connect", this);
-    mCancelButton = new Button(_("Cancel"), "cancel", this);
+    mServersList = new ListBox(mServersListModel);
+    ScrollArea *usedScroll = new ScrollArea(mServersList);
+    usedScroll->setHorizontalScrollPolicy(gcn::ScrollArea::SHOW_NEVER);
+
+    mDescription = new Label(std::string());
+
+    mQuitButton = new Button(_("Quit"), "quit", this);
+    mConnectButton = new Button(_("Connect"), "connect", this);
+    mManualEntryButton = new Button(_("Add Entry"), "addEntry", this);
 
     mServerNameField->setActionEventId("connect");
     mPortField->setActionEventId("connect");
-    mMostUsedServersDropDown->setActionEventId("changeSelection");
 
     mServerNameField->addActionListener(this);
     mPortField->addActionListener(this);
-    mMostUsedServersDropDown->addActionListener(this);
+    mManualEntryButton->addActionListener(this);
+    mServersList->addSelectionListener(this);
+    mServersList->setSelected(0);
+    usedScroll->setVerticalScrollAmount(0);
 
     place(0, 0, serverLabel);
+    place(1, 0, mServerNameField, 3).setPadding(3);
     place(0, 1, portLabel);
-    place(1, 0, mServerNameField, 3).setPadding(2);
-    place(1, 1, mPortField, 3).setPadding(2);
-    place(0, 2, mMostUsedServersDropDown, 4).setPadding(2);
-    place(2, 3, mOkButton);
-    place(3, 3, mCancelButton);
-    reflowLayout(250, 0);
+    place(1, 1, mPortField, 3).setPadding(3);
+    place(0, 2, usedScroll, 4, 5).setPadding(3);
+    place(0, 7, mDescription, 4);
+    place(0, 8, mManualEntryButton);
+    place(2, 8, mQuitButton);
+    place(3, 8, mConnectButton);
 
-    setLocationRelativeTo(getParent());
+    // Make sure the list has enough height
+    getLayout().setRowHeight(3, 80);
+
+
+    reflowLayout(300, 0);
+
+    center();
+    setFieldsReadOnly(true);
     setVisible(true);
 
     if (mServerNameField->getText().empty()) {
@@ -129,31 +162,24 @@ ServerDialog::ServerDialog(LoginData *loginData):
         if (mPortField->getText().empty()) {
             mPortField->requestFocus();
         } else {
-            mOkButton->requestFocus();
+            mConnectButton->requestFocus();
         }
     }
+
+    downloadServerList();
 }
 
 ServerDialog::~ServerDialog()
 {
-    delete mMostUsedServersListModel;
+    delete mServersListModel;
 }
 
-void
-ServerDialog::action(const gcn::ActionEvent &event)
+void ServerDialog::action(const gcn::ActionEvent &event)
 {
     if (event.getId() == "ok")
     {
         // Give focus back to the server dialog.
         mServerNameField->requestFocus();
-    }
-    else if (event.getId() == "changeSelection")
-    {
-        // Change the textField Values according to new selection
-        Server myServer = mMostUsedServersListModel->getServer
-            (mMostUsedServersDropDown->getSelected());
-        mServerNameField->setText(myServer.serverName);
-        mPortField->setText(toString(myServer.port));
     }
     else if (event.getId() == "connect")
     {
@@ -166,43 +192,251 @@ ServerDialog::action(const gcn::ActionEvent &event)
         }
         else
         {
-            mLoginData->hostname = mServerNameField->getText();
-            mLoginData->port = (short) atoi(mPortField->getText().c_str());
-            mOkButton->setEnabled(false);
-            mCancelButton->setEnabled(false);
+            mDownload->cancel();
+            mQuitButton->setEnabled(false);
+            mConnectButton->setEnabled(false);
 
             // First, look if the entry is a new one.
-            Server currentServer;
-            bool newEntry = true;
-            for (int i = 0; i < mMostUsedServersListModel->getNumberOfElements(); i++)
-            {
-                currentServer = mMostUsedServersListModel->getServer(i);
-                if (currentServer.serverName == mLoginData->hostname &&
-                    currentServer.port == mLoginData->port)
-                    newEntry = false;
-            }
-            // Then, add it to config if it's really new
-            currentServer.serverName = mLoginData->hostname;
-            currentServer.port = mLoginData->port;
-            if (newEntry)
-                mMostUsedServersListModel->addFirstElement(currentServer);
-            // Write the entry in config
+            ServerInfo currentServer;
+            ServerInfo tempServer;
+            currentServer.hostname = mServerNameField->getText();
+            currentServer.port = (short) atoi(mPortField->getText().c_str());
+
+            // now rewrite the configuration...
+            // id = 0 is always the last selected server
+            config.setValue("MostUsedServerName0", currentServer.hostname);
+            config.setValue("MostUsedServerPort0", currentServer.port);
+
+            // now add the rest of the list...
             std::string currentConfig = "";
-            for (int i = 0; i < mMostUsedServersListModel->getNumberOfElements(); i++)
+            int configCount = 1;
+            for (int i = 0; i < mServersListModel->getNumberOfElements(); i++)
             {
-                currentServer = mMostUsedServersListModel->getServer(i);
+                tempServer = mServersListModel->getServer(i);
 
-                currentConfig = "MostUsedServerName" + toString(i);
-                config.setValue(currentConfig, currentServer.serverName);
+                // ensure, that our server will not be added twice
+                if (tempServer != currentServer)
+                {
+                    currentConfig = "MostUsedServerName" + toString(configCount);
+                    config.setValue(currentConfig, toString(tempServer.hostname));
+                    currentConfig = "MostUsedServerPort" + toString(configCount);
+                    config.setValue(currentConfig, toString(tempServer.port));
+                    configCount++;
+                }
 
-                currentConfig = "MostUsedServerPort" + toString(i);
-                config.setValue(currentConfig, toString(currentServer.port));
+                // stop if we exceed the number of maximum config entries
+                if (configCount >= MAX_SERVERLIST)
+                    break;
             }
-            state = STATE_CONNECT_ACCOUNT;
+            mServerInfo->hostname = currentServer.hostname;
+            mServerInfo->port = currentServer.port;
+            state = STATE_CONNECT_SERVER;
         }
     }
-    else if (event.getId() == "cancel")
+    else if (event.getId() == "quit")
     {
+        mDownload->cancel();
         state = STATE_FORCE_QUIT;
     }
+    else if (event.getId() == "addEntry")
+    {
+        setFieldsReadOnly(false);
+    }
+}
+
+void ServerDialog::valueChanged(const gcn::SelectionEvent &event)
+{
+    const int index = mServersList->getSelected();
+    if (index == -1)
+        return;
+
+    // Update the server and post fields according to the new selection
+    const ServerInfo myServer = mServersListModel->getServer(index);
+    mDescription->setCaption(myServer.name);
+    mServerNameField->setText(myServer.hostname);
+    mPortField->setText(toString(myServer.port));
+
+    setFieldsReadOnly(true);
+}
+
+void ServerDialog::logic()
+{
+    {
+        MutexLocker lock(&mMutex);
+        if (mDownloadStatus == DOWNLOADING_COMPLETE)
+        {
+            mDownloadStatus = DOWNLOADING_OVER;
+
+            mDescription->setCaption(std::string());
+        }
+        else if (mDownloadStatus == DOWNLOADING_IN_PROGRESS)
+        {
+            mDescription->setCaption(strprintf(_("Downloading server list..."
+                                                 "%2.2f%%"),
+                                     mDownloadProgress * 100));
+        }
+        else if (mDownloadStatus == DOWNLOADING_IDLE)
+        {
+            mDescription->setCaption(_("Waiting for server..."));
+        }
+        else if (mDownloadStatus == DOWNLOADING_PREPARING)
+        {
+            mDescription->setCaption(_("Preparing download"));
+        }
+    }
+
+    Window::logic();
+}
+
+void ServerDialog::setFieldsReadOnly(const bool readOnly)
+{
+    if (readOnly)
+    {
+        mServerNameField->setEnabled(false);
+        mPortField->setEnabled(false);
+        mManualEntryButton->setVisible(true);
+        mDescription->setVisible(true);
+    }
+    else
+    {
+        mManualEntryButton->setVisible(false);
+
+        mDescription->setVisible(false);
+        mDescription->setCaption(std::string());
+        mServersList->setSelected(-1);
+
+        mServerNameField->setText(std::string());
+        mServerNameField->setEnabled(true);
+
+        mPortField->setText(toString(DEFAULT_PORT));
+        mPortField->setEnabled(true);
+
+        mServerNameField->requestFocus();
+    }
+}
+
+void ServerDialog::downloadServerList()
+{
+    // try to load the configuration value for the onlineServerList
+    std::string listFile = config.getValue("onlineServerList", "void");
+    // if there is no entry, try to load the file from the default updatehost
+    if (listFile == "void")
+        listFile = config.getValue("updatehost", "http://updates.themanaworld.org")
+            + "/serverlist.xml";
+
+    mDownload = new Net::Download(this, listFile, &downloadUpdate);
+    mDownload->setFile(mDir + "/serverlist.xml");
+    mDownload->start();
+}
+
+void ServerDialog::loadServers()
+{
+    ServerInfo currentServer;
+
+    xmlDocPtr doc = xmlReadFile((mDir + "/serverlist.xml").c_str(), NULL, 0);
+
+    if (doc != NULL)
+    {
+        xmlNodePtr rootNode = xmlDocGetRootElement(doc);
+        int version = XML::getProperty(rootNode, "version", 3);
+
+        if (version != 1)
+        {
+            logger->log("Online server list has wrong version");
+            return;
+        }
+
+        for_each_xml_child_node(server, rootNode)
+        {
+            if (xmlStrEqual(server->name, BAD_CAST "server"))
+            {
+                //check wether the version matches
+                #ifdef TMWSERV_SUPPORT
+                if (XML::getProperty(server, "type", "unknown") != "TMWSERV")
+                    continue;
+                #endif
+
+                #ifdef EATHENA_SUPPORT
+                if (XML::getProperty(server, "type", "unknown") != "EATHENA")
+                    continue;
+                #endif
+
+                currentServer.clear();
+                currentServer.name = XML::getProperty(server, "name", std::string());
+
+                for_each_xml_child_node(subnode, server)
+                {
+                    if (xmlStrEqual(subnode->name, BAD_CAST "connection"))
+                    {
+                        currentServer.hostname = XML::getProperty(subnode, "hostname", std::string());
+                        currentServer.port = XML::getProperty(subnode, "port", DEFAULT_PORT);
+                    }
+                }
+
+
+                MutexLocker lock(&mMutex);
+                // add the server to the local list (if it's not already present)
+                ServerInfos::iterator it;
+                bool found = false;
+                for (it = mServers.begin(); it != mServers.end(); it++)
+                {
+                    if ((*it) == currentServer)
+                    {
+                        (*it).name = currentServer.name;
+                        found = true;
+                        break;
+                    }
+                }
+
+                if (!found)
+                    mServers.push_back(currentServer);
+            }
+        }
+
+        xmlFreeDoc(doc);
+    }
+
+    MutexLocker lock(&mMutex);
+    mDownloadStatus = DOWNLOADING_COMPLETE;
+}
+
+int ServerDialog::downloadUpdate(void *ptr, DownloadStatus status,
+                                 size_t total, size_t remaining)
+{
+    if (status == DOWNLOAD_STATUS_CANCELLED)
+        return -1;
+
+    ServerDialog *sd = reinterpret_cast<ServerDialog*>(ptr);
+    bool finished = false;
+
+    if (status == DOWNLOAD_STATUS_COMPLETE)
+    {
+        finished = true;
+    }
+    else if (status < 0)
+    {
+        logger->log("Error retreiving server list: %s\n",
+                    sd->mDownload->getError());
+
+        finished = true;
+    }
+    else
+    {
+        float progress = (float) remaining / total;
+
+        if (progress != progress) progress = 0.0f; // check for NaN
+        if (progress < 0.0f) progress = 0.0f; // no idea how this could ever happen, but why not check for it anyway.
+        if (progress > 1.0f) progress = 1.0f;
+
+        MutexLocker lock(&sd->mMutex);
+        sd->mDownloadStatus = DOWNLOADING_IN_PROGRESS;
+        sd->mDownloadProgress = progress;
+    }
+
+    if (finished)
+    {
+        sd->loadServers();
+    }
+
+    return 0;
 }

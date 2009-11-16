@@ -67,9 +67,9 @@ class StatusWindow : public Window
         static void updateMPBar(ProgressBar *bar, bool showMax = false);
         static void updateXPBar(ProgressBar *bar, bool percent = true);
         static void updateProgressBar(ProgressBar *bar, int value, int max,
-                              bool percent);
-        static void updateProgressBar(ProgressBar *bar, int id,
-                                      bool percent = true);
+                               bool percent);
+        void updateProgressBar(ProgressBar *bar, int id,
+                               bool percent = true);
 
     private:
         /**
@@ -89,7 +89,10 @@ class StatusWindow : public Window
         VertContainer *mDAttrCont;
         ScrollArea *mDAttrScroll;
 
-        gcn::Label *mCharacterPointsLabel, *mCorrectionPointsLabel;
+        gcn::Label *mCharacterPointsLabel;
+#ifdef TMWSERV_SUPPORT
+        gcn::Label *mCorrectionPointsLabel;
+#endif
 
         typedef std::map<int, AttrDisplay*> Attrs;
         Attrs mAttrs;

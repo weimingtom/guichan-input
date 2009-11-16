@@ -29,6 +29,7 @@
 #include "graphics.h"
 #include "inventory.h"
 #include "item.h"
+#include "log.h"
 #include "map.h"
 #include "monster.h"
 #include "particle.h"
@@ -53,8 +54,8 @@
 #include "net/specialhandler.h"
 #include "net/tradehandler.h"
 
-#ifdef TMWSERV_SUPPORT
 #include "effectmanager.h"
+#ifdef TMWSERV_SUPPORT
 #include "guild.h"
 
 //#include "net/tmwserv/gameserver/player.h"
@@ -63,6 +64,7 @@
 
 #include "resources/animation.h"
 #include "resources/imageset.h"
+#include "resources/itemdb.h"
 #include "resources/iteminfo.h"
 #include "resources/resourcemanager.h"
 
@@ -72,10 +74,10 @@
 #include <cassert>
 
 #ifdef TMWSERV_SUPPORT
-// This is shorter then it really needs to be for normal use
-// But if we ever wanted to increase player speed, having this lower
-// Won't hurt
-const short walkingKeyboardDelay = 40;
+// This is the minimal delay between to permitted
+// setDestination() calls using the keyboard.
+// TODO: This can fine tuned later on when running is added...
+const short walkingKeyboardDelay = 1000;
 #endif
 
 LocalPlayer *player_node = NULL;
@@ -87,9 +89,7 @@ LocalPlayer::LocalPlayer(int id, int job, Map *map):
 #endif
     mEquipment(new Equipment),
     mInStorage(false),
-#ifdef EATHENA_SUPPORT
     mTargetTime(-1),
-#endif
     mLastTarget(-1),
     mCharacterPoints(0),
     mCorrectionPoints(0),
@@ -104,6 +104,7 @@ LocalPlayer::LocalPlayer(int id, int job, Map *map):
     mTrading(false), mGoingToTarget(false), mKeepAttacking(false),
     mLastAction(-1),
     mWalkingDir(0),
+    mPathSetByMouse(false),
     mDestX(0), mDestY(0),
     mInventory(new Inventory(INVENTORY_SIZE)),
 #ifdef TMWSERV_SUPPORT
@@ -119,7 +120,13 @@ LocalPlayer::LocalPlayer(int id, int job, Map *map):
 
     mUpdateName = true;
 
+    mTextColor = &guiPalette->getColor(Palette::PLAYER);
+    mNameColor = &guiPalette->getColor(Palette::SELF);
+
     initTargetCursor();
+
+    config.addListener("showownname", this);
+    setShowName(config.getValue("showownname", 1));
 }
 
 LocalPlayer::~LocalPlayer()
@@ -128,6 +135,8 @@ LocalPlayer::~LocalPlayer()
 #ifdef EATHENA_SUPPORT
     delete mStorage;
 #endif
+
+    config.removeListener("showownname", this);
 
     for (int i = Being::TC_SMALL; i < Being::NUM_TC; i++)
     {
@@ -168,7 +177,22 @@ void LocalPlayer::logic()
         mMessageTime--;
     }
 
-#ifdef EATHENA_SUPPORT
+    if ((mSpecialRechargeUpdateNeeded%11) == 0)
+    {
+        mSpecialRechargeUpdateNeeded = 0;
+        for (std::map<int, Special>::iterator i = mSpecials.begin();
+             i != mSpecials.end();
+             i++)
+        {
+            i->second.currentMana += i->second.recharge;
+            if (i->second.currentMana > i->second.neededMana)
+            {
+                i->second.currentMana = i->second.neededMana;
+            }
+        }
+    }
+    mSpecialRechargeUpdateNeeded++;
+
     // Targeting allowed 4 times a second
     if (get_elapsed_time(mLastTarget) >= 250)
         mLastTarget = -1;
@@ -180,7 +204,6 @@ void LocalPlayer::logic()
         setTarget(NULL);
         mLastTarget = -1;
     }
-#endif
 
     if (mTarget)
     {
@@ -198,8 +221,8 @@ void LocalPlayer::logic()
             const int rangeY = abs(mTarget->getPosition().y - getPosition().y);
 #else
             // Find whether target is in range
-            const int rangeX = abs(mTarget->mX - mX);
-            const int rangeY = abs(mTarget->mY - mY);
+            const int rangeX = abs(mTarget->getTileX() - getTileX());
+            const int rangeY = abs(mTarget->getTileY() - getTileY());
 #endif
             const int attackRange = getAttackRange();
             const int inRange = rangeX > attackRange || rangeY > attackRange
@@ -242,22 +265,10 @@ void LocalPlayer::setGMLevel(int level)
         setGM(true);
 }
 
-void LocalPlayer::setName(const std::string &name)
-{
-    if (mName)
-    {
-        delete mName;
-        mName = 0;
-    }
 
-    if (config.getValue("showownname", false) && mMapInitialized)
-        Player::setName(name);
-    else
-        Being::setName(name);
-}
-
-void LocalPlayer::nextStep()
+void LocalPlayer::nextStep(unsigned char dir = 0)
 {
+#ifdef EATHENA_SUPPORT
     // TODO: Fix picking up when reaching target (this method is obsolete)
     // TODO: Fix holding walking button to keep walking smoothly
     if (mPath.empty())
@@ -266,7 +277,7 @@ void LocalPlayer::nextStep()
             pickUp(mPickUpTarget);
 
         if (mWalkingDir)
-            walk(mWalkingDir);
+            startWalking(mWalkingDir);
     }
 
     // TODO: Fix automatically walking within range of target, when wanted
@@ -284,10 +295,68 @@ void LocalPlayer::nextStep()
         mPath.clear();
     }
 
-#ifdef EATHENA_SUPPORT
+
     Player::nextStep();
+#else // TMWSERV_SUPPORT
+        if (!mMap || !dir)
+        return;
+
+    const Vector &pos = getPosition();
+
+    // Compute where the next step will be set.
+
+    int dx = 0, dy = 0;
+    if (dir & UP)
+        dy--;
+    if (dir & DOWN)
+        dy++;
+    if (dir & LEFT)
+        dx--;
+    if (dir & RIGHT)
+        dx++;
+
+    // Prevent skipping corners over colliding tiles
+    if (dx && !mMap->getWalk(((int) pos.x + dx) / 32,
+                             (int) pos.y / 32, getWalkMask()))
+        dx = 16 - (int) pos.x % 32;
+    if (dy && !mMap->getWalk((int) pos.x / 32,
+                             ((int) pos.y + dy) / 32, getWalkMask()))
+        dy = 16 - (int) pos.y % 32;
+
+    // Choose a straight direction when diagonal target is blocked
+    if (dx && dy && !mMap->getWalk((pos.x + dx) / 32,
+                                   (pos.y + dy) / 32, getWalkMask()))
+        dx = 16 - (int) pos.x % 32;
+
+    int dScaler; // Distance to walk
+
+    // Checks our path up to 1 tiles, if a blocking tile is found
+    // We go to the last good tile, and break out of the loop
+    for (dScaler = 1; dScaler <= 32; dScaler++)
+    {
+        if ( (dx || dy) &&
+             !mMap->getWalk( ((int) pos.x + (dx * dScaler)) / 32,
+                             ((int) pos.y + (dy * dScaler)) / 32, getWalkMask()) )
+        {
+            dScaler--;
+            break;
+        }
+    }
+
+    if (dScaler > 0)
+    {
+        //effectManager->trigger(15, (int) pos.x + (dx * dScaler), (int) pos.y + (dy * dScaler));
+        setDestination((int) pos.x + (dx * dScaler), (int) pos.y + (dy * dScaler));
+    }
+    else if (dir)
+    {
+        // If the being can't move, just change direction
+        Net::getPlayerHandler()->setDirection(dir);
+        setDirection(dir);
+    }
 #endif
 }
+
 
 #ifdef TMWSERV_SUPPORT
 bool LocalPlayer::checkInviteRights(const std::string &guildName)
@@ -325,20 +394,20 @@ void LocalPlayer::clearInventory()
 
 void LocalPlayer::setInvItem(int index, int id, int amount)
 {
-    mInventory->setItem(index, id, amount);
+    bool equipment = false;
+    int itemType = ItemDB::get(id).getType();
+    if (itemType != ITEM_UNUSABLE && itemType != ITEM_USABLE)
+        equipment = true;
+    mInventory->setItem(index, id, amount, equipment);
 }
 
 #endif
 
 void LocalPlayer::pickUp()
 {
-#ifdef TMWSERV_SUPPORT
-    Uint16 x = (int) getPosition().x / 32;
-    Uint16 y = (int) getPosition().y / 32;
-#else
-    Uint16 x = mX;
-    Uint16 y = mY;
-#endif
+    const Vector &pos = player_node->getPosition();
+    Uint16 x = (int) pos.x / 32;
+    Uint16 y = (int) pos.y / 32;
     FloorItem *item = floorItemManager->findByCoordinates(x, y);
 
     // If none below the player, try the tile in front
@@ -365,13 +434,9 @@ void LocalPlayer::pickUp()
 
 void LocalPlayer::pickUp(FloorItem *item)
 {
-#ifdef TMWSERV_SUPPORT
-    int dx = item->getX() - (int) getPosition().x / 32;
-    int dy = item->getY() - (int) getPosition().y / 32;
-#else
-    int dx = item->getX() - mX;
-    int dy = item->getY() - mY;
-#endif
+    const Vector &pos = player_node->getPosition();
+    int dx = item->getX() - (int) pos.x / 32;
+    int dy = item->getY() - (int) pos.y / 32;
 
     if (dx * dx + dy * dy < 4)
     {
@@ -392,106 +457,6 @@ void LocalPlayer::pickUp(FloorItem *item)
     }
 }
 
-void LocalPlayer::walk(unsigned char dir)
-{
-    // TODO: Evaluate the implementation of this method for tmwserv
-    if (!mMap || !dir)
-        return;
-
-#ifdef TMWSERV_SUPPORT
-    const Vector &pos = getPosition();
-#endif
-
-    if (mAction == WALK && !mPath.empty())
-    {
-        // Just finish the current action, otherwise we get out of sync
-#ifdef TMWSERV_SUPPORT
-        Being::setDestination(pos.x, pos.y);
-#else
-        Being::setDestination(mX, mY);
-#endif
-        return;
-    }
-
-    int dx = 0, dy = 0;
-#ifdef TMWSERV_SUPPORT
-    if (dir & UP)
-        dy -= 32;
-    if (dir & DOWN)
-        dy += 32;
-    if (dir & LEFT)
-        dx -= 32;
-    if (dir & RIGHT)
-        dx += 32;
-#else
-    if (dir & UP)
-        dy--;
-    if (dir & DOWN)
-        dy++;
-    if (dir & LEFT)
-        dx--;
-    if (dir & RIGHT)
-        dx++;
-#endif
-
-    // Prevent skipping corners over colliding tiles
-#ifdef TMWSERV_SUPPORT
-    if (dx && !mMap->getWalk(((int) pos.x + dx) / 32,
-                             (int) pos.y / 32, getWalkMask()))
-        dx = 16 - (int) pos.x % 32;
-    if (dy && !mMap->getWalk((int) pos.x / 32,
-                             ((int) pos.y + dy) / 32, getWalkMask()))
-        dy = 16 - (int) pos.y % 32;
-#else
-    if (dx && !mMap->getWalk(mX + dx, mY, getWalkMask()))
-        dx = 0;
-    if (dy && !mMap->getWalk(mX, mY + dy, getWalkMask()))
-        dy = 0;
-#endif
-
-    // Choose a straight direction when diagonal target is blocked
-#ifdef TMWSERV_SUPPORT
-    if (dx && dy && !mMap->getWalk((pos.x + dx) / 32,
-                                   (pos.y + dy) / 32, getWalkMask()))
-        dx = 16 - (int) pos.x % 32;
-
-    int dScaler; // Distance to walk
-
-    // Checks our path up to 1 tiles, if a blocking tile is found
-    // We go to the last good tile, and break out of the loop
-    for (dScaler = 1; dScaler <= 1; dScaler++)
-    {
-        if ( (dx || dy) &&
-             !mMap->getWalk( ((int) pos.x + (dx * dScaler)) / 32,
-                             ((int) pos.y + (dy * dScaler)) / 32, getWalkMask()) )
-        {
-            dScaler--;
-            break;
-        }
-    }
-
-    if (dScaler >= 0)
-    {
-         setDestination((int) pos.x + (dx * dScaler), (int) pos.y + (dy * dScaler));
-    }
-#else
-    if (dx && dy && !mMap->getWalk(mX + dx, mY + dy, getWalkMask()))
-        dx = 0;
-
-    // Walk to where the player can actually go
-    if ((dx || dy) && mMap->getWalk(mX + dx, mY + dy, getWalkMask()))
-    {
-        setDestination(mX + dx, mY + dy);
-    }
-#endif
-    else if (dir)
-    {
-        // If the being can't move, just change direction
-        Net::getPlayerHandler()->setDirection(dir);
-        setDirection(dir);
-    }
-}
-
 Being *LocalPlayer::getTarget() const
 {
     return mTarget;
@@ -499,7 +464,6 @@ Being *LocalPlayer::getTarget() const
 
 void LocalPlayer::setTarget(Being *target)
 {
-#ifdef EATHENA_SUPPORT
     if (mLastTarget != -1 || target == this)
         return;
 
@@ -517,7 +481,6 @@ void LocalPlayer::setTarget(Being *target)
         mKeepAttacking = false;
         mTargetTime = -1;
     }
-#endif
 
     if (mTarget)
         mTarget->untarget();
@@ -538,6 +501,26 @@ void LocalPlayer::setDestination(Uint16 x, Uint16 y)
 #endif
 {
 #ifdef TMWSERV_SUPPORT
+    // Check the walkability of the destination
+    // If the destination is a wall, don't go there!
+    if (!mMap->getWalk(x / 32, y / 32))
+        return;
+
+    // check if we're finding a path to the seeked destination
+    // If the path is empty... and isn't on the same tile,
+    // then, it's an unvalid one.
+    Vector playerPosition = getPosition();
+    if (((int)(playerPosition.x / 32) != x / 32)
+      || (((int)playerPosition.y / 32) != y / 32))
+    {
+        Path evaluatedPath = mMap->findPath(playerPosition.x / 32,
+                                        playerPosition.y / 32,
+                                        x / 32, y / 32,
+                                        getWalkMask());
+        if (evaluatedPath.empty())
+            return;
+    }
+
     // Fix coordinates so that the player does not seem to dig into walls.
     const int tx = x / 32;
     const int ty = y / 32;
@@ -574,17 +557,108 @@ void LocalPlayer::setDestination(Uint16 x, Uint16 y)
 
 void LocalPlayer::setWalkingDir(int dir)
 {
+    // This function is called by Game::handleInput()
+
+#ifdef TMWSERV_SUPPORT
+        // First if player is pressing key for the direction he is already
+        // going, do nothing more...
+
+        // Else if he is pressing a key, and its different from what he has
+        // been pressing, stop (do not send this stop to the server) and
+        // start in the new direction
+        if (dir && (dir != getWalkingDir()))
+            player_node->stopWalking(false);
+
+        // Else, he is not pressing a key,
+        // and the current path hasn't been sent by mouse,
+        // then, stop (sending to server).
+        else if (!dir)
+        {
+            if (!mPathSetByMouse)
+                player_node->stopWalking(true);
+            return;
+        }
+
+        // If the delay to send another walk message to the server hasn't expired,
+        // don't do anything or we could get disconnected for spamming the server
+        if (get_elapsed_time(mLocalWalkTime) < walkingKeyboardDelay)
+            return;
+#endif
+
     mWalkingDir = dir;
 
     // If we're not already walking, start walking.
-    if (mAction != WALK && dir
-#ifdef TMWSERV_SUPPORT
-        && get_elapsed_time(mLocalWalkTime) >= walkingKeyboardDelay
-#endif
-       )
+    if (mAction != WALK && dir)
     {
-        walk(dir);
+        startWalking(dir);
     }
+#ifdef TMWSERV_SUPPORT
+    else if (mAction == WALK)
+    {
+        nextStep(dir);
+    }
+#endif
+}
+
+void LocalPlayer::startWalking(unsigned char dir)
+{
+    // This function is called by setWalkingDir(),
+    // but also by nextStep() for eAthena...
+
+    // TODO: Evaluate the implementation of this method for tmwserv
+    if (!mMap || !dir)
+        return;
+
+#ifdef TMWSERV_SUPPORT
+    const Vector &pos = getPosition();
+#endif
+
+    if (mAction == WALK && !mPath.empty())
+    {
+        // Just finish the current action, otherwise we get out of sync
+#ifdef TMWSERV_SUPPORT
+        Being::setDestination(pos.x, pos.y);
+#else
+        Being::setDestination(getTileX(), getTileY());
+#endif
+        return;
+    }
+
+    int dx = 0, dy = 0;
+    if (dir & UP)
+        dy--;
+    if (dir & DOWN)
+        dy++;
+    if (dir & LEFT)
+        dx--;
+    if (dir & RIGHT)
+        dx++;
+
+#ifdef EATHENA_SUPPORT
+    // Prevent skipping corners over colliding tiles
+    if (dx && !mMap->getWalk(getTileX() + dx, getTileY(), getWalkMask()))
+        dx = 0;
+    if (dy && !mMap->getWalk(getTileX(), getTileY() + dy, getWalkMask()))
+        dy = 0;
+
+    // Choose a straight direction when diagonal target is blocked
+    if (dx && dy && !mMap->getWalk(getTileX() + dx, getTileY() + dy, getWalkMask()))
+        dx = 0;
+
+    // Walk to where the player can actually go
+    if ((dx || dy) && mMap->getWalk(getTileX() + dx, getTileY() + dy, getWalkMask()))
+    {
+        setDestination(getTileX() + dx, getTileY() + dy);
+    }
+    else if (dir)
+    {
+        // If the being can't move, just change direction
+        Net::getPlayerHandler()->setDirection(dir);
+        setDirection(dir);
+    }
+#else // TMWSERV_SUPPORT
+    nextStep(dir);
+#endif
 }
 
 void LocalPlayer::stopWalking(bool sendToServer)
@@ -601,6 +675,9 @@ void LocalPlayer::stopWalking(bool sendToServer)
                                                     mDirection);
         setAction(STAND);
     }
+
+    // No path set anymore, so we reset the path by mouse flag
+    mPathSetByMouse = false;
 
     clearPath();
 }
@@ -683,12 +760,21 @@ void LocalPlayer::attack()
     Net::GameServer::Player::attack(getSpriteDirection());
 }
 */
-#endif
 
 void LocalPlayer::useSpecial(int special)
 {
     Net::getSpecialHandler()->use(special);
 }
+
+void LocalPlayer::setSpecialStatus(int id, int current, int max, int recharge)
+{
+    logger->log("SpecialUpdate Skill #%d -- (%d/%d) -> %d", id, current, max, recharge);
+    mSpecials[id].currentMana = current;
+    mSpecials[id].neededMana = max;
+    mSpecials[id].recharge = recharge;
+}
+
+#endif
 
 void LocalPlayer::attack(Being *target, bool keep)
 {
@@ -717,8 +803,8 @@ void LocalPlayer::attack(Being *target, bool keep)
     int dist_x = plaPos.x - tarPos.x;
     int dist_y = plaPos.y - tarPos.y;
 #else
-    int dist_x = target->mX - mX;
-    int dist_y = target->mY - mY;
+    int dist_x = target->getTileX() - getTileX();
+    int dist_y = target->getTileY() - getTileY();
 
     // Must be standing to attack
     if (mAction != STAND)
@@ -799,7 +885,9 @@ void LocalPlayer::raiseAttribute(size_t attr)
 {
     // we assume that the server allows the change. When not we will undo it later.
     mCharacterPoints--;
-    mAttributeBase.at(attr)++;
+    IntMap::iterator it = mAttributeBase.find(attr);
+    if (it != mAttributeBase.end())
+        (*it).second++;
     Net::getPlayerHandler()->increaseAttribute(attr);
 }
 
@@ -808,7 +896,9 @@ void LocalPlayer::lowerAttribute(size_t attr)
     // we assume that the server allows the change. When not we will undo it later.
     mCorrectionPoints--;
     mCharacterPoints++;
-    mAttributeBase.at(attr)--;
+    IntMap::iterator it = mAttributeBase.find(attr);
+    if (it != mAttributeBase.end())
+        (*it).second--;
     Net::getPlayerHandler()->decreaseAttribute(attr);
 }
 
@@ -822,8 +912,7 @@ void LocalPlayer::setAttributeBase(int num, int value)
         if (skillDialog->update(num).empty() || !(value > old))
             return;
 
-        Particle* effect = particleEngine->addEffect("graphics/particles/skillup.particle.xml", 0, 0);
-        this->controlParticle(effect);
+        effectManager->trigger(1, this);
     }
 
     if (statusWindow)
@@ -946,6 +1035,14 @@ void LocalPlayer::setMaxMP(int value)
         statusWindow->update(StatusWindow::MP);
 }
 
+void LocalPlayer::setMoney(int value)
+{
+    mMoney = value;
+
+    if (statusWindow)
+        statusWindow->update(StatusWindow::MONEY);
+}
+
 void LocalPlayer::pickedUp(const ItemInfo &itemInfo, int amount)
 {
     if (!amount)
@@ -957,24 +1054,14 @@ void LocalPlayer::pickedUp(const ItemInfo &itemInfo, int amount)
     }
     else
     {
-        const std::string amountStr = (amount > 1) ? toString(amount) : _("a");
-
         if (config.getValue("showpickupchat", 1))
         {
-            if (amount == 1)
-            {
-                // TRANSLATORS: Used as in "You picked up a [Candy]", when
-                // picking up only one item.
-                localChatTab->chatLog(strprintf(_("You picked up a [@@%d|%s@@]."),
-                    itemInfo.getId(), itemInfo.getName().c_str()), BY_SERVER);
-            }
-            else
-            {
-                // TRANSLATORS: Used as in "You picked up 4 [Candy]", when
-                // picking up more than one item.
-                localChatTab->chatLog(strprintf(_("You picked up %d [@@%d|%s@@]."),
-                    amount, itemInfo.getId(), itemInfo.getName().c_str()), BY_SERVER);
-            }
+            // TRANSLATORS: This sentence may be translated differently
+            // for different grammatical numbers (singular, plural, ...)
+            localChatTab->chatLog(strprintf(ngettext("You picked up %d "
+                    "[@@%d|%s@@].", "You picked up %d [@@%d|%s@@].", amount),
+                    amount, itemInfo.getId(), itemInfo.getName().c_str()),
+                    BY_SERVER);
         }
 
         if (mMap && config.getValue("showpickupparticle", 0))
@@ -1011,8 +1098,8 @@ bool LocalPlayer::withinAttackRange(Being *target)
 
     return !(dx > range || dy > range);
 #else
-    int dist_x = abs(target->mX - mX);
-    int dist_y = abs(target->mY - mY);
+    int dist_x = abs(target->getTileX() - getTileY());
+    int dist_y = abs(target->getTileY() - getTileX());
 
     if (dist_x > getAttackRange() || dist_y > getAttackRange())
     {
@@ -1034,7 +1121,7 @@ void LocalPlayer::setGotoTarget(Being *target)
 #else
     setTarget(target);
     mGoingToTarget = true;
-    setDestination(target->mX, target->mY);
+    setDestination(target->getTileX(), target->getTileY());
 #endif
 }
 
@@ -1135,4 +1222,12 @@ void LocalPlayer::addMessageToQueue(const std::string &message,
                                     Palette::ColorType color)
 {
     mMessages.push_back(MessagePair(message, color));
+}
+
+void LocalPlayer::optionChanged(const std::string &value)
+{
+    if (value == "showownname")
+    {
+        setShowName(config.getValue("showownname", 1));
+    }
 }

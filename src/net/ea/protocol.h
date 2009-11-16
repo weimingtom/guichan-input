@@ -47,6 +47,8 @@ static const int STORAGE_OFFSET = 1;
 /*********************************
  * Packets from server to client *
  *********************************/
+#define SMSG_SERVER_VERSION_RESPONSE 0x7531
+
 #define SMSG_SERVER_PING             0x007f /**< Contains server tick */
 #define SMSG_CONNECTION_PROBLEM      0x0081
 
@@ -57,7 +59,7 @@ static const int STORAGE_OFFSET = 1;
 #define SMSG_CHAR_LOGIN              0x006b
 #define SMSG_CHAR_LOGIN_ERROR        0x006c
 #define SMSG_CHAR_CREATE_SUCCEEDED   0x006d
-#define SMSG_CHAR_CREATE_FAILED      0x007e
+#define SMSG_CHAR_CREATE_FAILED      0x006e
 #define SMSG_CHAR_DELETE_SUCCEEDED   0x006f
 #define SMSG_CHAR_DELETE_FAILED      0x0070
 #define SMSG_CHAR_MAP_INFO           0x0071
@@ -162,6 +164,8 @@ static const int STORAGE_OFFSET = 1;
 /**********************************
  *  Packets from client to server *
  **********************************/
+#define CMSG_SERVER_VERSION_REQUEST  0x7530
+
 #define CMSG_CHAR_PASSWORD_CHANGE    0x0061 /**< Custom change password packet */
 #define CMSG_CHAR_SERVER_CONNECT     0x0065
 #define CMSG_CHAR_SELECT             0x0066
@@ -195,7 +199,7 @@ static const int STORAGE_OFFSET = 1;
 #define CMSG_PLAYER_CHANGE_DIR       0x009b
 #define CMSG_PLAYER_CHANGE_DEST      0x0085
 #define CMSG_PLAYER_CHANGE_ACT       0x0089
-#define CMSG_PLAYER_RESPAWN          0x00b2
+#define CMSG_PLAYER_RESTART          0x00b2
 #define CMSG_PLAYER_EMOTE            0x00bf
 #define CMSG_PLAYER_ATTACK           0x0089
 #define CMSG_WHO_REQUEST             0x00c1

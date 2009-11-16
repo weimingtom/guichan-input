@@ -37,6 +37,8 @@
 #include "gui/widgets/textfield.h"
 
 #include "net/logindata.h"
+#include "net/loginhandler.h"
+#include "net/net.h"
 
 #include "utils/gettext.h"
 #include "utils/stringutils.h"
@@ -54,29 +56,20 @@ void WrongDataNoticeListener::action(const gcn::ActionEvent &event)
 
 RegisterDialog::RegisterDialog(LoginData *loginData):
     Window(_("Register")),
+    mEmailField(0),
+    mMaleButton(0),
+    mFemaleButton(0),
     mWrongDataNoticeListener(new WrongDataNoticeListener),
     mLoginData(loginData)
 {
+    int optionalActions = Net::getLoginHandler()->supportedOptionalActions();
+
     gcn::Label *userLabel = new Label(_("Name:"));
     gcn::Label *passwordLabel = new Label(_("Password:"));
     gcn::Label *confirmLabel = new Label(_("Confirm:"));
-#ifdef EATHENA_SUPPORT
-    gcn::Label *serverLabel = new Label(_("Server:"));
-    gcn::Label *portLabel = new Label(_("Port:"));
-#else
-    gcn::Label *emailLabel = new Label(_("Email:"));
-#endif
     mUserField = new TextField(loginData->username);
     mPasswordField = new PasswordField(loginData->password);
     mConfirmField = new PasswordField;
-#ifdef EATHENA_SUPPORT
-    mServerField = new TextField(loginData->hostname);
-    mPortField = new TextField(toString(loginData->port));
-    mMaleButton = new RadioButton(_("Male"), "sex", true);
-    mFemaleButton = new RadioButton(_("Female"), "sex", false);
-#else
-    mEmailField = new TextField;
-#endif
     mRegisterButton = new Button(_("Register"), "register", this);
     mCancelButton = new Button(_("Cancel"), "cancel", this);
 
@@ -85,23 +78,33 @@ RegisterDialog::RegisterDialog(LoginData *loginData):
     place(0, 0, userLabel);
     place(0, 1, passwordLabel);
     place(0, 2, confirmLabel);
-#ifdef EATHENA_SUPPORT
-    place(1, 3, mMaleButton);
-    place(2, 3, mFemaleButton);
-    place(0, 4, serverLabel);
-    place(0, 5, portLabel);
-#else
-    place(0, 3, emailLabel);
-#endif
+
     place(1, 0, mUserField, 3).setPadding(2);
     place(1, 1, mPasswordField, 3).setPadding(2);
     place(1, 2, mConfirmField, 3).setPadding(2);
-#ifdef EATHENA_SUPPORT
-    place(1, 4, mServerField, 3).setPadding(2);
-    place(1, 5, mPortField, 3).setPadding(2);
-#else
-    place(1, 3, mEmailField, 3).setPadding(2);
-#endif
+
+    int row = 3;
+
+    if (optionalActions & Net::LoginHandler::SetGenderOnRegister)
+    {
+        mMaleButton = new RadioButton(_("Male"), "sex", true);
+        mFemaleButton = new RadioButton(_("Female"), "sex", false);
+        place(1, row, mMaleButton);
+        place(2, row, mFemaleButton);
+
+        row++;
+    }
+
+    if (optionalActions & Net::LoginHandler::SetEmailOnRegister)
+    {
+        gcn::Label *emailLabel = new Label(_("Email:"));
+        mEmailField = new TextField;
+        place(0, row, emailLabel);
+        place(1, row, mEmailField, 3).setPadding(2);
+
+        row++;
+    }
+
     place = getPlacer(0, 2);
     place(1, 0, mRegisterButton);
     place(2, 0, mCancelButton);
@@ -110,10 +113,6 @@ RegisterDialog::RegisterDialog(LoginData *loginData):
     mUserField->addKeyListener(this);
     mPasswordField->addKeyListener(this);
     mConfirmField->addKeyListener(this);
-#ifdef EATHENA_SUPPORT
-    mServerField->addKeyListener(this);
-    mPortField->addKeyListener(this);
-#endif
 
     /* TODO:
      * This is a quick and dirty way to respond to the ENTER key, regardless of
@@ -127,14 +126,6 @@ RegisterDialog::RegisterDialog(LoginData *loginData):
     mUserField->addActionListener(this);
     mPasswordField->addActionListener(this);
     mConfirmField->addActionListener(this);
-
-#ifdef EATHENA_SUPPORT
-    mServerField->setActionEventId("register");
-    mPortField->setActionEventId("register");
-
-    mServerField->addActionListener(this);
-    mPortField->addActionListener(this);
-#endif
 
     center();
     setVisible(true);
@@ -163,36 +154,41 @@ void RegisterDialog::action(const gcn::ActionEvent &event)
         std::string errorMessage;
         int error = 0;
 
-        if (user.length() < LEN_MIN_USERNAME)
+        unsigned int minUser = Net::getLoginHandler()->getMinUserNameLength();
+        unsigned int maxUser = Net::getLoginHandler()->getMaxUserNameLength();
+        unsigned int minPass = Net::getLoginHandler()->getMinPasswordLength();
+        unsigned int maxPass = Net::getLoginHandler()->getMaxPasswordLength();
+
+        if (user.length() < minUser)
         {
             // Name too short
             errorMessage = strprintf
                 (_("The username needs to be at least %d characters long."),
-                 LEN_MIN_USERNAME);
+                 minUser);
             error = 1;
         }
-        else if (user.length() > LEN_MAX_USERNAME - 1 )
+        else if (user.length() > maxUser - 1 )
         {
             // Name too long
             errorMessage = strprintf
                 (_("The username needs to be less than %d characters long."),
-                 LEN_MAX_USERNAME);
+                 maxUser);
             error = 1;
         }
-        else if (mPasswordField->getText().length() < LEN_MIN_PASSWORD)
+        else if (mPasswordField->getText().length() < minPass)
         {
             // Pass too short
             errorMessage = strprintf
                 (_("The password needs to be at least %d characters long."),
-                 LEN_MIN_PASSWORD);
+                 minPass);
             error = 2;
         }
-        else if (mPasswordField->getText().length() > LEN_MAX_PASSWORD - 1 )
+        else if (mPasswordField->getText().length() > maxPass - 1 )
         {
             // Pass too long
             errorMessage = strprintf
                 (_("The password needs to be less than %d characters long."),
-                 LEN_MAX_PASSWORD);
+                 maxPass);
             error = 2;
         }
         else if (mPasswordField->getText() != mConfirmField->getText())
@@ -229,21 +225,14 @@ void RegisterDialog::action(const gcn::ActionEvent &event)
 
             mLoginData->username = mUserField->getText();
             mLoginData->password = mPasswordField->getText();
-#ifdef EATHENA_SUPPORT
-            mLoginData->hostname = mServerField->getText();
-            mLoginData->port = getUShort(mPortField->getText());
-            mLoginData->sex =
-                    mFemaleButton->isSelected() ? GENDER_FEMALE : GENDER_MALE;
-#else
-            mLoginData->email = mEmailField->getText();
-#endif
+            if (mFemaleButton)
+                mLoginData->gender = mFemaleButton->isSelected() ?
+                                     GENDER_FEMALE : GENDER_MALE;
+            if (mEmailField)
+                mLoginData->email = mEmailField->getText();
             mLoginData->registerLogin = true;
 
-#ifdef TMWSERV_SUPPORT
             state = STATE_REGISTER_ATTEMPT;
-#else
-            state = STATE_ACCOUNT;
-#endif
         }
     }
 }
@@ -258,45 +247,5 @@ bool RegisterDialog::canSubmit() const
     return !mUserField->getText().empty() &&
            !mPasswordField->getText().empty() &&
            !mConfirmField->getText().empty() &&
-#ifdef EATHENA_SUPPORT
-           !mServerField->getText().empty() &&
-           isUShort(mPortField->getText()) &&
-#endif
            state == STATE_REGISTER;
 }
-
-#ifdef EATHENA_SUPPORT
-bool RegisterDialog::isUShort(const std::string &str)
-{
-    if (str.empty())
-    {
-        return false;
-    }
-    unsigned long l = 0;
-    for (std::string::const_iterator strPtr = str.begin(), strEnd = str.end();
-         strPtr != strEnd; ++strPtr)
-    {
-        if (*strPtr < '0' || *strPtr > '9')
-        {
-            return false;
-        }
-        l = l * 10 + (*strPtr - '0'); // *strPtr - '0' will never be negative
-        if (l > 65535)
-        {
-            return false;
-        }
-    }
-    return true;
-}
-
-unsigned short RegisterDialog::getUShort(const std::string &str)
-{
-    unsigned long l = 0;
-    for (std::string::const_iterator strPtr = str.begin(), strEnd = str.end();
-         strPtr != strEnd; ++strPtr)
-    {
-        l = l * 10 + (*strPtr - '0');
-    }
-    return static_cast<unsigned short>(l);
-}
-#endif

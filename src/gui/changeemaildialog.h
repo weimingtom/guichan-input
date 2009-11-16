@@ -45,7 +45,7 @@ class ChangeEmailDialog : public Window, public gcn::ActionListener
          *
          * @see Window::Window
          */
-        ChangeEmailDialog(Window *parent, LoginData *loginData);
+        ChangeEmailDialog(LoginData *loginData);
 
         /**
          * Destructor.
@@ -56,6 +56,12 @@ class ChangeEmailDialog : public Window, public gcn::ActionListener
          * Called when receiving actions from the widgets.
          */
         void action(const gcn::ActionEvent &event);
+
+        /**
+         * This is used to pass the pointer to where the new email should be
+         * put when the dialog finishes.
+         */
+        static void setEmail(std::string *email);
 
     private:
         gcn::TextField *mFirstEmailField;

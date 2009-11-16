@@ -34,7 +34,7 @@
 #include "gui/okdialog.h"
 #include "gui/viewport.h"
 
-#include "net/maphandler.h"
+#include "net/gamehandler.h"
 #include "net/net.h"
 
 #include "resources/mapreader.h"
@@ -43,6 +43,8 @@
 
 #include "utils/gettext.h"
 #include "utils/stringutils.h"
+
+#include <assert.h>
 
 Engine::Engine():
     mCurrentMap(0)
@@ -85,7 +87,7 @@ bool Engine::changeMap(const std::string &mapPath)
     if (!newMap)
     {
         logger->log("Error while loading %s", map_path.c_str());
-        new OkDialog(_("Could not load map"),
+        new OkDialog(_("Could Not Load Map"),
                      strprintf(_("Error while loading %s"), map_path.c_str()));
     }
 
@@ -94,6 +96,11 @@ bool Engine::changeMap(const std::string &mapPath)
     beingManager->setMap(newMap);
     particleEngine->setMap(newMap);
     viewport->setMap(newMap);
+
+    delete mCurrentMap;
+    mCurrentMap = newMap;
+
+    Net::getGameHandler()->mapLoaded(mapPath);
 
     // Initialize map-based particle effects
     if (newMap)
@@ -105,9 +112,5 @@ bool Engine::changeMap(const std::string &mapPath)
     if (newMusic != oldMusic)
         sound.playMusic(newMusic);
 
-    delete mCurrentMap;
-    mCurrentMap = newMap;
-
-    Net::getMapHandler()->mapLoaded(mapPath);
     return true;
 }

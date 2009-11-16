@@ -19,43 +19,49 @@
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#ifndef MAGIC_H
-#define MAGIC_H
+#ifndef WORLD_SELECT_DIALOG_H
+#define WORLD_SELECT_DIALOG_H
 
 #include "gui/widgets/window.h"
 
-#include "guichanfwd.h"
+#include "net/worldinfo.h"
 
 #include <guichan/actionlistener.hpp>
+#include <guichan/listmodel.hpp>
+#include <vector>
+
+class LoginData;
+class WorldListModel;
 
 /**
- * The skill dialog.
+ * The server select dialog.
  *
  * \ingroup Interface
  */
-class MagicDialog : public Window, public gcn::ActionListener
-{
+class WorldSelectDialog : public Window, public gcn::ActionListener {
     public:
-        MagicDialog();
-
-        ~MagicDialog();
+        /**
+         * Constructor
+         *
+         * @see Window::Window
+         */
+        WorldSelectDialog(Worlds worlds);
 
         /**
-         * Called when receiving actions from widget.
+         * Destructor.
+         */
+        ~WorldSelectDialog();
+
+        /**
+         * Called when receiving actions from the widgets.
          */
         void action(const gcn::ActionEvent &event);
 
-        /**
-         * Update the tabs in this dialog
-         */
-        void update();
-
-        /**
-          * Draw this window.
-          */
-        void draw(gcn::Graphics *g);
+    private:
+        WorldListModel *mWorldListModel;
+        gcn::ListBox *mWorldList;
+        gcn::Button *mChangeLoginButton;
+        gcn::Button *mChooseWorld;
 };
 
-extern MagicDialog *magicDialog;
-
-#endif
+#endif // WORLD_SELECT_DIALOG_H

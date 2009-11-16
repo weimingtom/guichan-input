@@ -24,6 +24,7 @@
 #include "gui/gui.h"
 #include "gui/itemlinkhandler.h"
 #include "gui/recorder.h"
+#include "gui/setup.h"
 #include "gui/sdlinput.h"
 
 #include "gui/widgets/chattab.h"
@@ -40,6 +41,7 @@
 #include "net/net.h"
 
 #include "utils/dtor.h"
+#include "utils/gettext.h"
 #include "utils/stringutils.h"
 
 #include <guichan/focushandler.hpp>
@@ -77,6 +79,8 @@ ChatWindow::ChatWindow():
 {
     setWindowName("Chat");
 
+    setupWindow->registerWindowForReset(this);
+
     // no title presented, title bar is padding so window can be moved.
     gcn::Window::setTitleBarHeight(gcn::Window::getPadding() + 4);
     setShowTitle(false);
@@ -95,8 +99,8 @@ ChatWindow::ChatWindow():
 
     mChatTabs = new TabbedArea;
 
-    add(mChatTabs);
-    add(mChatInput);
+    place(0, 0, mChatTabs, 3, 3);
+    place(0, 3, mChatInput, 3);
 
     loadWindowState();
 
@@ -123,35 +127,6 @@ void ChatWindow::resetToDefaultSize()
     Window::resetToDefaultSize();
 }
 
-void ChatWindow::adjustTabSize()
-{
-    const gcn::Rectangle area = getChildrenArea();
-
-    mChatInput->setPosition(mChatInput->getFrameSize(),
-                            area.height - mChatInput->getHeight() -
-                                mChatInput->getFrameSize());
-    mChatInput->setWidth(area.width - 2 * mChatInput->getFrameSize());
-
-    mChatTabs->setWidth(area.width - 2 * mChatTabs->getFrameSize());
-    mChatTabs->setHeight(area.height - 2 * mChatTabs->getFrameSize() -
-                         (mChatInput->getHeight() + mChatInput->getFrameSize() * 2));
-
-    ChatTab *tab = getFocused();
-    if (tab) {
-        gcn::Widget *content = tab->mScrollArea;
-        content->setSize(mChatTabs->getWidth() - 2 * content->getFrameSize(),
-                         mChatTabs->getContainerHeight() - 2 * content->getFrameSize());
-        content->logic();
-    }
-}
-
-void ChatWindow::widgetResized(const gcn::Event &event)
-{
-    Window::widgetResized(event);
-
-    adjustTabSize();
-}
-
 void ChatWindow::logic()
 {
     Window::logic();
@@ -159,7 +134,6 @@ void ChatWindow::logic()
     Tab *tab = getFocused();
     if (tab != mCurrentTab) {
         mCurrentTab = tab;
-        adjustTabSize();
     }
 }
 
@@ -283,10 +257,6 @@ void ChatWindow::addTab(ChatTab *tab)
 
     mChatTabs->addTab(tab, tab->mScrollArea);
 
-    // Fix for layout issues when adding the first tab
-    if (tab == localChatTab)
-        adjustTabSize();
-
     // Update UI
     logic();
 }
@@ -324,8 +294,8 @@ void ChatWindow::doPresent()
         }
     }
 
-    std::string cpc = strprintf(_("%d players are present."), playercount);
-    std::string log = _("Present: ") + response + std::string("; ") + cpc;
+    std::string log = strprintf(_("Present: %s; %d players are present."),
+                                response.c_str(), playercount);
 
     if (mRecorder->isRecording())
     {
@@ -360,6 +330,37 @@ void ChatWindow::scroll(int amount)
     if (tab)
         tab->scroll(amount);
 }
+
+void ChatWindow::mousePressed(gcn::MouseEvent &event)
+{
+    Window::mousePressed(event);
+
+    if(event.isConsumed())
+        return;
+
+    mMoved = event.getY() <= mCurrentTab->getHeight();
+    mDragOffsetX = event.getX();
+    mDragOffsetY = event.getY();
+
+}
+
+void ChatWindow::mouseDragged(gcn::MouseEvent &event)
+{
+    Window::mouseDragged(event);
+
+    if(event.isConsumed())
+        return;
+
+    if(isMovable() && mMoved)
+    {
+        int newX = std::max(0, getX() + event.getX() - mDragOffsetX);
+        int newY = std::max(0, getY() + event.getY() - mDragOffsetY);
+        newX = std::min(graphics->getWidth() - getWidth(), newX);
+        newY = std::min(graphics->getHeight() - getHeight(), newY);
+        setPosition(newX, newY);
+    }
+}
+
 
 void ChatWindow::keyPressed(gcn::KeyEvent &event)
 {
@@ -453,7 +454,7 @@ void ChatWindow::whisper(const std::string &nick,
 
     if (i != mWhispers.end())
         tab = i->second;
-    else if (config.getValue("whispertab", false))
+    else if (config.getValue("whispertab", true))
         tab = addWhisperTab(nick);
 
     if (tab)

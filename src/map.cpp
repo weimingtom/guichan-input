@@ -41,6 +41,11 @@
 extern volatile int tick_time;
 
 /**
+ * The used side-length for tiles
+ */
+const int DEFAULT_TILE_SIDE_LENGTH = 32;
+
+/**
  * A location on a tile map. Used for pathfinding, open list.
  */
 struct Location
@@ -123,7 +128,7 @@ Image* MapLayer::getTile(int x, int y) const
 
 void MapLayer::draw(Graphics *graphics, int startX, int startY,
                     int endX, int endY, int scrollX, int scrollY,
-                    const Sprites &sprites) const
+                    const MapSprites &sprites) const
 {
     startX -= mX;
     startY -= mY;
@@ -135,7 +140,7 @@ void MapLayer::draw(Graphics *graphics, int startX, int startY,
     if (endX > mWidth) endX = mWidth;
     if (endY > mHeight) endY = mHeight;
 
-    Sprites::const_iterator si = sprites.begin();
+    MapSprites::const_iterator si = sprites.begin();
 
     for (int y = startY; y < endY; y++)
     {
@@ -145,6 +150,7 @@ void MapLayer::draw(Graphics *graphics, int startX, int startY,
         {
             while (si != sprites.end() && (*si)->getPixelY() <= y * 32)
             {
+                (*si)->setAlpha(1.0f);
                 (*si)->draw(graphics, -scrollX, -scrollY);
                 si++;
             }
@@ -167,6 +173,7 @@ void MapLayer::draw(Graphics *graphics, int startX, int startY,
     {
         while (si != sprites.end())
         {
+            (*si)->setAlpha(1.0f);
             (*si)->draw(graphics, -scrollX, -scrollY);
             si++;
         }
@@ -218,11 +225,12 @@ void Map::initializeOverlays()
         const float speedX = getFloatProperty(name + "scrollX");
         const float speedY = getFloatProperty(name + "scrollY");
         const float parallax = getFloatProperty(name + "parallax");
+        const bool keepRatio = getBoolProperty(name + "keepratio");
 
         if (img)
         {
             mOverlays.push_back(
-                    new AmbientOverlay(img, parallax, speedX, speedY));
+                    new AmbientOverlay(img, parallax, speedX, speedY, keepRatio));
 
             // The AmbientOverlay takes control over the image.
             img->decRef();
@@ -282,6 +290,23 @@ void Map::draw(Graphics *graphics, int scrollX, int scrollY)
                         startX, startY, endX, endY,
                         scrollX, scrollY,
                         mSprites);
+    }
+
+    // Draws beings with a lower opacity to make them visible
+    // even when covered by a wall or some other elements...
+    MapSprites::const_iterator si = mSprites.begin();
+    while (si != mSprites.end())
+    {
+        if (Sprite *sprite = *si)
+        {
+            // For now, just draw sprites with only one layer.
+            if (sprite->getNumberOfLayers() == 1)
+            {
+                sprite->setAlpha(0.3f);
+                sprite->draw(graphics, -scrollX, -scrollY);
+            }
+        }
+        si++;
     }
 
     drawOverlay(graphics, scrollX, scrollY,
@@ -378,7 +403,7 @@ void Map::drawOverlay(Graphics *graphics,
         // Detail 1: only one overlay, higher: all overlays
         if (detail == 1)
             break;
-    };
+    }
 }
 
 class ContainsGidFunctor
@@ -448,7 +473,7 @@ bool Map::occupied(int x, int y) const
         const Being *being = *i;
 
         // job 45 is a portal, they don't collide
-        if (being->mX == x && being->mY == y && being->mJob != 45)
+        if (being->getTileX() == x && being->getTileY() == y && being->mJob != 45)
             return true;
     }
 
@@ -466,13 +491,13 @@ MetaTile *Map::getMetaTile(int x, int y) const
     return &mMetaTiles[x + y * mWidth];
 }
 
-SpriteIterator Map::addSprite(Sprite *sprite)
+MapSprite Map::addSprite(Sprite *sprite)
 {
     mSprites.push_front(sprite);
     return mSprites.begin();
 }
 
-void Map::removeSprite(SpriteIterator iterator)
+void Map::removeSprite(MapSprite iterator)
 {
     mSprites.erase(iterator);
 }
@@ -488,50 +513,6 @@ const std::string &Map::getName() const
         return getProperty("name");
 
     return getProperty("mapname");
-}
-
-Path Map::findSimplePath(int startX, int startY,
-                         int destX, int destY,
-                         unsigned char walkmask)
-{
-    // Path to be built up (empty by default)
-    Path path;
-    int positionX = startX, positionY = startY;
-    int directionX, directionY;
-    // Checks our path up to 1 tiles, if a blocking tile is found
-    // We go to the last good tile, and break out of the loop
-    while(true)
-    {
-        directionX = destX - positionX;
-        directionY = destY - positionY;
-
-        if (directionX > 0)
-            directionX = 1;
-        else if(directionX < 0)
-            directionX = -1;
-
-        if (directionY > 0)
-            directionY = 1;
-        else if(directionY < 0)
-            directionY = -1;
-
-        positionX += directionX;
-        positionY += directionY;
-
-        if (getWalk(positionX, positionY, walkmask))
-        {
-            path.push_back(Position(positionX, positionY));
-
-            if ((positionX == destX) && (positionY == destY))
-            {
-                return path;
-            }
-        }
-        else
-        {
-            return path;
-        }
-    }
 }
 
 static int const basicCost = 100;
@@ -745,13 +726,8 @@ void Map::initializeParticleEffects(Particle *particleEngine)
     }
 }
 
-TileAnimation *Map::getAnimationForGid(int gid)
+TileAnimation *Map::getAnimationForGid(int gid) const
 {
-    std::map<int, TileAnimation*>::iterator i = mTileAnimations.find(gid);
-    if (i == mTileAnimations.end())
-    {
-        return NULL;
-    } else {
-        return i->second;
-    }
+    std::map<int, TileAnimation*>::const_iterator i = mTileAnimations.find(gid);
+    return (i == mTileAnimations.end()) ? NULL : i->second;
 }

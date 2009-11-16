@@ -34,6 +34,8 @@
 #include "gui/widgets/textfield.h"
 
 #include "net/logindata.h"
+#include "net/loginhandler.h"
+#include "net/net.h"
 
 #include "utils/gettext.h"
 #include "utils/stringutils.h"
@@ -41,12 +43,13 @@
 #include <string>
 #include <sstream>
 
-UnRegisterDialog::UnRegisterDialog(Window *parent, LoginData *loginData):
-    Window("Unregister", true, parent),
+UnRegisterDialog::UnRegisterDialog(LoginData *loginData):
+    Window(_("Unregister"), true),
     mWrongDataNoticeListener(new WrongDataNoticeListener),
     mLoginData(loginData)
 {
-    gcn::Label *userLabel = new Label(strprintf(_("Name: %s"), mLoginData->username.c_str()));
+    gcn::Label *userLabel = new Label(strprintf(_("Name: %s"), mLoginData->
+                                                username.c_str()));
     gcn::Label *passwordLabel = new Label(_("Password:"));
     mPasswordField = new PasswordField(mLoginData->password);
     mUnRegisterButton = new Button(_("Unregister"), "unregister", this);
@@ -77,7 +80,7 @@ UnRegisterDialog::UnRegisterDialog(Window *parent, LoginData *loginData):
     add(mUnRegisterButton);
     add(mCancelButton);
 
-    setLocationRelativeTo(getParent());
+    center();
     setVisible(true);
     mPasswordField->requestFocus();
     mPasswordField->setActionEventId("cancel");
@@ -93,7 +96,7 @@ UnRegisterDialog::action(const gcn::ActionEvent &event)
 {
     if (event.getId() == "cancel")
     {
-        scheduleDelete();
+        state = STATE_CHAR_SELECT;
     }
     else if (event.getId() == "unregister")
     {
@@ -105,20 +108,22 @@ UnRegisterDialog::action(const gcn::ActionEvent &event)
         std::stringstream errorMessage;
         bool error = false;
 
+        unsigned int min = Net::getLoginHandler()->getMinPasswordLength();
+        unsigned int max = Net::getLoginHandler()->getMaxPasswordLength();
+
         // Check password
-        if (password.length() < LEN_MIN_PASSWORD)
+        if (password.length() < min)
         {
             // Pass too short
             errorMessage << strprintf(_("The password needs to be at least %d "
-                                        "characters long."), LEN_MIN_PASSWORD);
+                                        "characters long."), min);
             error = true;
         }
-        else if (password.length() > LEN_MAX_PASSWORD - 1)
+        else if (password.length() > max - 1)
         {
             // Pass too long
             errorMessage << strprintf(_("The password needs to be less than "
-                                        "%d characters long."),
-                                      LEN_MAX_PASSWORD);
+                                        "%d characters long."), max);
             error = true;
         }
 
@@ -135,7 +140,6 @@ UnRegisterDialog::action(const gcn::ActionEvent &event)
             mUnRegisterButton->setEnabled(false);
             mLoginData->password = password;
             state = STATE_UNREGISTER_ATTEMPT;
-            scheduleDelete();
         }
     }
 }

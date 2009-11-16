@@ -25,6 +25,7 @@
 #include "gui/itempopup.h"
 #include "gui/palette.h"
 #include "gui/playerbox.h"
+#include "gui/setup.h"
 #include "gui/viewport.h"
 
 #include "equipment.h"
@@ -69,6 +70,7 @@ EquipmentWindow::EquipmentWindow(Equipment *equipment):
     mSelected(-1)
 {
     mItemPopup = new ItemPopup;
+    setupWindow->registerWindowForReset(this);
 
     // Control that shows the Player
     PlayerBox *playerBox = new PlayerBox;
@@ -134,6 +136,7 @@ void EquipmentWindow::draw(gcn::Graphics *graphics)
         {
             // Draw Item.
             Image *image = item->getImage();
+            image->setAlpha(1.0f); // Ensure the image is drawn with maximum opacity
             g->drawImage(image,
                          mEquipBox[i].posX + 2,
                          mEquipBox[i].posY + 2);
@@ -203,7 +206,7 @@ void EquipmentWindow::mousePressed(gcn::MouseEvent& mouseEvent)
              */
             const int mx = x + getX();
             const int my = y + getY();
-            viewport->showPopup(mx, my, item);
+            viewport->showPopup(mx, my, item, true);
         }
     }
 }

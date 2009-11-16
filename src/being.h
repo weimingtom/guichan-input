@@ -46,11 +46,11 @@
 #define SPEECH_MAX_TIME 1000
 
 class AnimatedSprite;
+class FlashText;
+class Graphics;
 class Image;
 class ItemInfo;
 class Item;
-class Map;
-class Graphics;
 class Particle;
 class Position;
 class SimpleAnimation;
@@ -58,16 +58,6 @@ class SpeechBubble;
 class Text;
 
 class StatusEffect;
-
-typedef std::list<Sprite*> Sprites;
-typedef Sprites::iterator SpriteIterator;
-
-enum Gender
-{
-    GENDER_MALE = 0,
-    GENDER_FEMALE = 1,
-    GENDER_UNSPECIFIED = 2
-};
 
 class Being : public Sprite, public ConfigListener
 {
@@ -93,29 +83,6 @@ class Being : public Sprite, public ConfigListener
             SIT,
             DEAD,
             HURT
-        };
-
-        enum Sprite
-        {
-            BASE_SPRITE = 0,
-            SHOE_SPRITE,
-            BOTTOMCLOTHES_SPRITE,
-            TOPCLOTHES_SPRITE,
-#ifdef EATHENA_SUPPORT
-            MISC1_SPRITE,
-            MISC2_SPRITE,
-#endif
-            HAIR_SPRITE,
-            HAT_SPRITE,
-#ifdef EATHENA_SUPPORT
-            CAPE_SPRITE,
-            GLOVES_SPRITE,
-#endif
-            WEAPON_SPRITE,
-#ifdef EATHENA_SUPPORT
-            SHIELD_SPRITE,
-#endif
-            VECTOREND_SPRITE
         };
 
         enum TargetCursorSize
@@ -149,7 +116,6 @@ class Being : public Sprite, public ConfigListener
         enum { DOWN = 1, LEFT = 2, UP = 4, RIGHT = 8 };
 
 #ifdef EATHENA_SUPPORT
-        Uint16 mX, mY;        /**< Tile coordinates */
         int mFrame;
         int mWalkTime;
 #endif
@@ -184,30 +150,30 @@ class Being : public Sprite, public ConfigListener
         virtual void setDestination(Uint16 destX, Uint16 destY);
 #else
         /**
-         * Returns the path to the being's current destination
-         */
-        virtual Path findPath();
-
-        /**
-         * Creates a path for the being from sx,sy to ex,ey
-         */
-        void setDestination(int sx, int sy, int ex, int ey);
-
-        /**
          * Creates a path for the being from current position to ex and ey
          */
         void setDestination(int ex, int ey);
-
-        /**
-         * Adjusts course to expected start point.
-         */
-        void adjustCourse(int srcX, int srcY);
 
         /**
          * Returns the destination for this being.
          */
         const Vector &getDestination() const { return mDest; }
 #endif
+
+        /**
+         * Returns the tile x or y coord
+         */
+        int getTileX() const
+        { return mX; }
+
+        int getTileY() const
+        { return mY; }
+
+        /**
+         * Sets the tile x or y coord
+         */
+        void setTileCoords(int x, int y)
+        { mX = x; mY = y; }
 
         /**
          * Puts a "speech balloon" above this being for the specified amount
@@ -247,41 +213,23 @@ class Being : public Sprite, public ConfigListener
          *
          * @param name The name that should appear.
          */
-        virtual void setName(const std::string &name)
-        { mName = name; }
+        virtual void setName(const std::string &name);
 
-        /**
-         * Gets the hair color for this being.
-         */
-        int getHairColor() const { return mHairColor; }
+        const bool getShowName() const
+        { return mShowName; }
 
-        /**
-         * Gets the hair style for this being.
-         */
-        int getHairStyle() const { return mHairStyle; }
+        virtual void setShowName(bool doShowName);
 
         /**
          * Get the number of hairstyles implemented
          */
-        static int getNumOfHairstyles() { return mNumberOfHairstyles; }
+        static int getNumOfHairstyles()
+        { return mNumberOfHairstyles; }
 
         /**
-         * Sets the hair style and color for this being.
+         * Get the number of layers used to draw the being
          */
-        virtual void setHairStyle(int style, int color);
-
-        /**
-         * Sets visible equipments for this being.
-         */
-        virtual void setSprite(int slot, int id,
-                               const std::string &color = "");
-
-        /**
-         * Sets the gender of this being.
-         */
-        virtual void setGender(Gender gender) { mGender = gender; }
-
-        Gender getGender() const { return mGender; }
+        int getNumberOfLayers() const;
 
 #ifdef EATHENA_SUPPORT
         /**
@@ -308,14 +256,21 @@ class Being : public Sprite, public ConfigListener
         /**
          * Returns the type of the being.
          */
-        virtual Type getType() const;
+        virtual Type getType() const { return UNKNOWN; }
 
         /**
-         * Sets the walk speed (in pixels per second).
+         * Sets the walk speed.
+         * in pixels per second for eAthena,
+         * in tiles per second for TMWserv.
          */
-        void setWalkSpeed(int speed) { mWalkSpeed = speed; }
+        void setWalkSpeed(float speed) { mWalkSpeed = speed; }
 
-        int getWalkSpeed() const { return mWalkSpeed; }
+        /**
+         * Gets the walk speed.
+         * in pixels per second for eAthena,
+         * in tiles per second for TMWserv (0.1 precision).
+         */
+        float getWalkSpeed() const { return mWalkSpeed; }
 
         /**
          * Sets the sprite id.
@@ -370,16 +325,30 @@ class Being : public Sprite, public ConfigListener
         virtual void draw(Graphics *graphics, int offsetX, int offsetY) const;
 
         /**
+         * Set the alpha opacity used to draw the being.
+         */
+        virtual void setAlpha(float alpha)
+        { mAlpha = alpha; }
+
+        /**
+         * Returns the current alpha opacity of the Being.
+         */
+        virtual float getAlpha() const
+        { return mAlpha; }
+
+        /**
          * Returns the X coordinate in pixels.
          */
-        int getPixelX() const { return mPx; }
+        int getPixelX() const
+        { return mPx; }
 
         /**
          * Returns the Y coordinate in pixels.
          *
          * @see Sprite::getPixelY()
          */
-        int getPixelY() const { return mPy; }
+        int getPixelY() const
+        { return mPy; }
 
 #ifdef EATHENA_SUPPORT
         /**
@@ -497,14 +466,14 @@ class Being : public Sprite, public ConfigListener
             internalTriggerEffect(effectId, false, true);
         }
 
-        static int getHairStyleCount();
-
         virtual AnimatedSprite *getSprite(int index) const
         { return mSprites[index]; }
 
         static void load();
 
-        void optionChanged(const std::string &value) {}
+        virtual void optionChanged(const std::string &value) {}
+
+        void flashName(int time);
 
     protected:
         /**
@@ -513,9 +482,9 @@ class Being : public Sprite, public ConfigListener
         void setPath(const Path &path);
 
         /**
-         * Let the sub-classes react to a replacement.
+         * Updates name's location.
          */
-        virtual void updateCoords() {}
+        virtual void updateCoords();
 
         /**
          * Gets the way the object blocks pathfinding for other objects
@@ -552,13 +521,22 @@ class Being : public Sprite, public ConfigListener
          */
         virtual void handleStatusEffect(StatusEffect *effect, int effectId);
 
+        virtual void showName();
+
         int mId;                        /**< Unique sprite id */
         Uint8 mDirection;               /**< Facing direction */
         Uint8 mSpriteDirection;         /**< Facing direction */
         Map *mMap;                      /**< Map on which this being resides */
         std::string mName;              /**< Name of character */
-        SpriteIterator mSpriteIterator;
+        MapSprite mMapSprite;
         bool mParticleEffects;          /**< Whether to display particles or not */
+
+        /**
+         * Holds a text object when the being displays it's name, 0 otherwise
+         */
+        FlashText *mDispName;
+        const gcn::Color *mNameColor;
+        bool mShowName;
 
         /** Engine-related infos about weapon. */
         const ItemInfo *mEquippedWeapon;
@@ -568,17 +546,16 @@ class Being : public Sprite, public ConfigListener
         Path mPath;
         std::string mSpeech;
         Text *mText;
-        int mHairStyle;
-        int mHairColor;
-        Gender mGender;
+        const gcn::Color *mTextColor;
         Uint16 mStunMode;               /**< Stun mode; zero if not stunned */
         std::set<int> mStatusEffects;   /**< set of active status effects */
 
-        const gcn::Color *mNameColor;
+        typedef std::vector<AnimatedSprite*> Sprites;
+        typedef Sprites::iterator SpriteIterator;
+        typedef Sprites::const_iterator SpriteConstIterator;
+        Sprites mSprites;
+        float mAlpha;                   /**< Alpha opacity to draw the sprite */
 
-        std::vector<AnimatedSprite*> mSprites;
-        std::vector<int> mSpriteIDs;
-        std::vector<std::string> mSpriteColors;
         ParticleList mStunParticleEffects;
         ParticleVector mStatusParticleEffects;
         ParticleList mChildParticleEffects;
@@ -598,11 +575,17 @@ class Being : public Sprite, public ConfigListener
         /** Speech Bubble components */
         SpeechBubble *mSpeechBubble;
 
-        int mWalkSpeed;                 /**< Walking speed (pixels/sec) */
+        /**
+         * Walk speed.
+         * In pixels per second for eAthena,
+         * In tiles per second (0.1 precision) for TMWserv.
+         */
+        float mWalkSpeed;
 
         Vector mPos;
         Vector mDest;
         int mPx, mPy;                   /**< Position in pixels */
+        int mX, mY;                     /**< Position on tile */
 
         /** Target cursor being used */
         SimpleAnimation* mUsedTargetCursor;
