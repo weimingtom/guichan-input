@@ -22,19 +22,18 @@
 
 #include "gui/setup_keyboard.h"
 
+#include "gui/gui.h"
 #include "gui/okdialog.h"
+#include "gui/setup.h"
 
 #include "gui/widgets/button.h"
+#include "gui/widgets/label.h"
 #include "gui/widgets/layouthelper.h"
 #include "gui/widgets/listbox.h"
 #include "gui/widgets/scrollarea.h"
 
-#include "keyboardconfig.h"
-
 #include "utils/gettext.h"
 #include "utils/stringutils.h"
-
-#include <SDL_keyboard.h>
 
 #include <guichan/listmodel.hpp>
 
@@ -73,8 +72,9 @@ Setup_Keyboard::Setup_Keyboard():
     mKeyList(new ListBox(mKeyListModel)),
     mKeySetting(false)
 {
-    keyboard.setSetupKeyboard(this);
     setName(_("Keyboard"));
+    setFocusable(true);
+    addKeyListener(this);
 
     refreshKeys();
 
@@ -87,16 +87,24 @@ Setup_Keyboard::Setup_Keyboard():
     mAssignKeyButton->addActionListener(this);
     mAssignKeyButton->setEnabled(false);
 
+    mClearKeyButton = new Button(_("Clear"), "clear", this);
+    mClearKeyButton->addActionListener(this);
+    mClearKeyButton->setEnabled(false);
+
     mMakeDefaultButton = new Button(_("Default"), "makeDefault", this);
     mMakeDefaultButton->addActionListener(this);
+
+    mCurrentKeyLabel = new Label();
 
     // Do the layout
     LayoutHelper h(this);
     ContainerPlacer place = h.getPlacer(0, 0);
 
-    place(0, 0, scrollArea, 4, 6).setPadding(2);
+    place(0, 0, scrollArea, 5, 6).setPadding(2);
     place(0, 6, mMakeDefaultButton);
-    place(3, 6, mAssignKeyButton);
+    place(1, 6, mCurrentKeyLabel, 2);
+    place(3, 6, mClearKeyButton);
+    place(4, 6, mAssignKeyButton);
 
     setDimension(gcn::Rectangle(0, 0, 365, 280));
 }
@@ -112,80 +120,94 @@ Setup_Keyboard::~Setup_Keyboard()
 
 void Setup_Keyboard::apply()
 {
-    keyUnresolved();
-
     if (keyboard.hasConflicts())
     {
         new OkDialog(_("Key Conflict(s) Detected"),
                      _("Resolve them, or gameplay may result in strange "
                        "behaviour."));
     }
-    keyboard.setEnabled(true);
     keyboard.store();
 }
 
 void Setup_Keyboard::cancel()
 {
-    keyUnresolved();
-
     keyboard.retrieve();
-    keyboard.setEnabled(true);
 
     refreshKeys();
 }
 
 void Setup_Keyboard::action(const gcn::ActionEvent &event)
 {
+    int i = mKeyList->getSelected();
     if (event.getSource() == mKeyList)
     {
         if (!mKeySetting)
+        {
             mAssignKeyButton->setEnabled(true);
+        }
+        if (!keyboard.keyMatch(i, KeyboardConfig::NULL_KEY))
+        {
+            mClearKeyButton->setEnabled(true);
+        }
     }
     else if (event.getId() == "assign")
     {
         mKeySetting = true;
+        requestFocus();
         mAssignKeyButton->setEnabled(false);
-        keyboard.setEnabled(false);
-        int i(mKeyList->getSelected());
-        keyboard.setNewKeyIndex(i);
+        mClearKeyButton->setEnabled(false);
         mKeyListModel->setElementAt(i, keyboard.getKeyCaption(i) + ": ?");
+    }
+    else if (event.getId() == "clear")
+    {
+        keyboard.setKeyData(i, KeyboardConfig::NULL_KEY);
+        refreshAssignedKey((KeyboardConfig::KeyAction) i);
+        mClearKeyButton->setEnabled(false);
     }
     else if (event.getId() == "makeDefault")
     {
-        keyboard.makeDefault();
+        keyboard.resetToDefaults();
         refreshKeys();
     }
 }
 
-void Setup_Keyboard::refreshAssignedKey(int index)
+void Setup_Keyboard::refreshAssignedKey(KeyboardConfig::KeyAction index)
 {
-    std::string caption;
-    char *temp = SDL_GetKeyName(
-        (SDLKey) keyboard.getKeyValue(index));
-    caption = keyboard.getKeyCaption(index) + ": " + toString(temp);
+    if (index < 0)
+        return;
+    std::string caption = keyboard.getKeyCaption(index) + ": " + keyboard.keyString(index);
     mKeyListModel->setElementAt(index, caption);
-}
-
-void Setup_Keyboard::newKeyCallback(int index)
-{
-    mKeySetting = false;
-    refreshAssignedKey(index);
-    mAssignKeyButton->setEnabled(true);
 }
 
 void Setup_Keyboard::refreshKeys()
 {
     for (int i = 0; i < keyboard.KEY_TOTAL; i++)
     {
-        refreshAssignedKey(i);
+        refreshAssignedKey((KeyboardConfig::KeyAction) i);
     }
 }
 
-void Setup_Keyboard::keyUnresolved()
+void Setup_Keyboard::keyPressed(gcn::KeyEvent &event)
 {
     if (mKeySetting)
     {
-        newKeyCallback(keyboard.getNewKeyIndex());
-        keyboard.setNewKeyIndex(keyboard.KEY_NO_VALUE);
+        mCurrentKey = keyboard.keyConvert(event);
+        mCurrentKeyLabel->setCaption(keyboard.keyString(mCurrentKey));
+        event.consume();
+    }
+}
+
+void Setup_Keyboard::keyReleased(gcn::KeyEvent &event)
+{
+    if (mKeySetting)
+    {
+        mKeySetting = false;
+        int i = mKeyList->getSelected();
+        keyboard.setKeyData(i, mCurrentKey);
+        mCurrentKey = KeyboardConfig::NULL_KEY;
+        mCurrentKeyLabel->setCaption("");
+        refreshAssignedKey((KeyboardConfig::KeyAction) i);
+        mAssignKeyButton->setEnabled(true);
+        event.consume();
     }
 }

@@ -42,6 +42,11 @@ void IntTextField::keyPressed(gcn::KeyEvent &event)
         setText(std::string());
         event.consume();
     }
+    else if (key.getValue() == Key::ENTER)
+    {
+        distributeActionEvent();
+        event.consume();
+    }
 
     if (!key.isNumber())
         return;

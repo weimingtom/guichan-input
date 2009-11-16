@@ -24,6 +24,7 @@
 #include "configuration.h"
 #include "equipment.h"
 #include "flooritem.h"
+#include "flooritemmanager.h"
 #include "game.h"
 #include "graphics.h"
 #include "inventory.h"
@@ -400,10 +401,40 @@ void LocalPlayer::setInvItem(int index, int id, int amount)
 }
 #endif
 
+void LocalPlayer::pickUp()
+{
+    const Vector &pos = player_node->getPosition();
+    Uint16 x = (int) pos.x / 32;
+    Uint16 y = (int) pos.y / 32;
+    FloorItem *item = floorItemManager->findByCoordinates(x, y);
+
+    // If none below the player, try the tile in front
+    // of the player
+    if (!item)
+    {
+        // Temporary until tile-based picking is
+        // removed.
+        switch (getSpriteDirection())
+        {
+            case DIRECTION_UP   : --y; break;
+            case DIRECTION_DOWN : ++y; break;
+            case DIRECTION_LEFT : --x; break;
+            case DIRECTION_RIGHT: ++x; break;
+            default: break;
+        }
+
+        item = floorItemManager->findByCoordinates(x, y);
+    }
+
+    if (item)
+        pickUp(item);
+}
+
 void LocalPlayer::pickUp(FloorItem *item)
 {
-    int dx = item->getX() - (int) getPosition().x / 32;
-    int dy = item->getY() - (int) getPosition().y / 32;
+    const Vector &pos = player_node->getPosition();
+    int dx = item->getX() - (int) pos.x / 32;
+    int dy = item->getY() - (int) pos.y / 32;
 
     if (dx * dx + dy * dy < 4)
     {
@@ -647,8 +678,9 @@ void LocalPlayer::stopWalking(bool sendToServer)
 #endif
         setDestination(getPosition().x, getPosition().y);
         if (sendToServer)
-             Net::getPlayerHandler()->setDestination(getPosition().x,
-                                                     getPosition().y);
+            Net::getPlayerHandler()->setDestination(getPosition().x,
+                                                    getPosition().y,
+                                                    mDirection);
         setAction(STAND);
     }
 

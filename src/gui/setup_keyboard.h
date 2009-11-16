@@ -22,15 +22,18 @@
 #ifndef GUI_SETUP_KEYBOARD_H
 #define GUI_SETUP_KEYBOARD_H
 
-#include <string>
-
-#include <guichan/actionlistener.hpp>
+#include "guichanfwd.h"
+#include "keyboardconfig.h"
 
 #include "gui/setuptab.h"
 
-#include "guichanfwd.h"
+#include <guichan/actionlistener.hpp>
+#include <guichan/keylistener.hpp>
 
-class Setup_Keyboard : public SetupTab, public gcn::ActionListener
+#include <string>
+
+class Setup_Keyboard : public SetupTab, public gcn::ActionListener,
+                       public gcn::KeyListener
 {
     public:
         /**
@@ -51,30 +54,27 @@ class Setup_Keyboard : public SetupTab, public gcn::ActionListener
         /**
          * Get an update on the assigned key.
          */
-        void refreshAssignedKey(int index);
-
-        /**
-         * The callback function when a new key has been pressed.
-         */
-        void newKeyCallback(int index);
+        void refreshAssignedKey(KeyboardConfig::KeyAction index);
 
         /**
          * Shorthand method to update all the keys.
          */
         void refreshKeys();
 
-        /**
-         * If a key function is unresolved, then this reverts it.
-         */
-        void keyUnresolved();
+        void keyPressed(gcn::KeyEvent &event);
+
+        void keyReleased(gcn::KeyEvent &event);
 
     private:
         class KeyListModel *mKeyListModel;
         gcn::ListBox *mKeyList;
 
         gcn::Button *mAssignKeyButton;
+        gcn::Button *mClearKeyButton;
         gcn::Button *mMakeDefaultButton;
 
+        gcn::Label *mCurrentKeyLabel;
+        KeyData mCurrentKey;
         bool mKeySetting; /**< flag to check if key being set. */
 };
 

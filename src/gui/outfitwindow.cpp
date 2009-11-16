@@ -27,6 +27,7 @@
 #include "inventory.h"
 #include "equipment.h"
 #include "item.h"
+#include "keyboardconfig.h"
 #include "log.h"
 
 #include "gui/widgets/button.h"
@@ -156,6 +157,8 @@ void OutfitWindow::action(const gcn::ActionEvent &event)
     {
         mItemsUnequip[mCurrentOutfit] = mUnequipCheck->isSelected();
     }
+    mCurrentLabel->setCaption(keyboard.keyString(keyboard.KEY_OUTFIT_1 +
+                                                 mCurrentOutfit));
 }
 
 void OutfitWindow::wearOutfit(int outfit)

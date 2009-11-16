@@ -84,6 +84,8 @@ Window::Window(const std::string &caption, bool modal, Window *parent,
 
     // Windows are invisible by default
     setVisible(false);
+    setTabInEnabled(true);
+    setTabOutEnabled(true);
 
     addWidgetListener(this);
 }
@@ -117,11 +119,20 @@ void Window::draw(gcn::Graphics *graphics)
 
     g->drawImageRect(0, 0, getWidth(), getHeight(), mSkin->getBorder());
 
+    if (this == gui->getFocusedWindow())
+    {
+        g->setColor(guiPalette->getColor(Palette::HIGHLIGHT));
+        g->fillRectangle(gcn::Rectangle(3, 3, getWidth() - 6, getTitleBarHeight()));
+    }
+
     // Draw title
     if (mShowTitle)
     {
         g->setColor(guiPalette->getColor(Palette::TEXT));
-        g->setFont(getFont());
+        if (this == gui->getFocusedWindow())
+            g->setFont(boldFont);
+        else
+            g->setFont(getFont());
         g->drawText(getCaption(), 7, 5, gcn::Graphics::LEFT);
     }
 
@@ -311,6 +322,8 @@ void Window::setVisible(bool visible, bool forceSticky)
         checkIfIsOffScreen();
 
     gcn::Window::setVisible((!forceSticky && isSticky()) || visible);
+
+    gui->focusTop(false);
 }
 
 void Window::scheduleDelete()
@@ -358,6 +371,9 @@ void Window::mousePressed(gcn::MouseEvent &event)
                 setSticky(!isSticky());
             }
         }
+
+        if (event.getSource() == this)
+            requestFocus();
 
         // Handle window resizing
         mouseResize = getResizeHandles(event);

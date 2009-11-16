@@ -156,6 +156,8 @@ class LocalPlayer : public Player
         void setInvItem(int index, int id, int amount);
 #endif
 
+        void pickUp();
+
         void pickUp(FloorItem *item);
 
 #ifdef EATHENA_SUPPORT

@@ -476,6 +476,7 @@ static void initEngine(const Options &options)
 
     // Initialize keyboard
     keyboard.init();
+    gui->getTop()->addKeyListener(&keyboard);
 
     // Initialise player relations
     player_relations.init();
@@ -1122,6 +1123,7 @@ int main(int argc, char *argv[])
 
                     logger->log("State: GAME");
                     game = new Game;
+                    gui->focusTop();
                     game->logic();
                     delete game;
                     game = 0;

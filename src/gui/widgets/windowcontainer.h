@@ -45,6 +45,10 @@ class WindowContainer : public Container
          */
         void scheduleDelete(gcn::Widget *widget);
 
+        void nextWindow();
+
+        void previousWindow();
+
     private:
         /**
          * List of widgets that are scheduled to be deleted.

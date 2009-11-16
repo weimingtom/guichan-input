@@ -195,7 +195,7 @@ void ItemContainer::distributeValueChangedEvent()
 
 void ItemContainer::keyPressed(gcn::KeyEvent &event)
 {
-    /*switch (event.getKey().getValue())
+    switch (event.getKey().getValue())
     {
         case Key::LEFT:
             moveHighlight(Left);
@@ -219,12 +219,16 @@ void ItemContainer::keyPressed(gcn::KeyEvent &event)
         case Key::RIGHT_CONTROL:
             mDescItems = true;
             break;
-    }*/
+        default:
+            return;
+    }
+
+    event.consume();
 }
 
 void ItemContainer::keyReleased(gcn::KeyEvent &event)
 {
-    /*switch (event.getKey().getValue())
+    switch (event.getKey().getValue())
     {
         case Key::LEFT_ALT:
         case Key::RIGHT_ALT:
@@ -233,7 +237,11 @@ void ItemContainer::keyReleased(gcn::KeyEvent &event)
         case Key::RIGHT_CONTROL:
             mDescItems = false;
             break;
-    }*/
+        default:
+            return;
+    }
+
+    event.consume();
 }
 
 void ItemContainer::mousePressed(gcn::MouseEvent &event)

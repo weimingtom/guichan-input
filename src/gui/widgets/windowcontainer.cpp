@@ -21,6 +21,10 @@
 
 #include "gui/widgets/windowcontainer.h"
 
+#include "../gui.h"
+
+#include "gui/widgets/window.h"
+
 #include "utils/dtor.h"
 
 WindowContainer *windowContainer = NULL;
@@ -37,3 +41,72 @@ void WindowContainer::scheduleDelete(gcn::Widget *widget)
 {
     mDeathList.push_back(widget);
 }
+
+void WindowContainer::nextWindow()
+{
+    Window *win = gui->getFocusedWindow();
+
+    if (!win)
+    {
+        mWidgets.front()->requestFocus();
+        return;
+    }
+
+    WidgetListIterator i = mWidgets.begin();
+
+    for (; i != mWidgets.end(); i++)
+    {
+        Widget *w = (*i);
+        if (w == win)
+            break;
+    }
+
+    i++;
+
+    if (i == mWidgets.end())
+        i = mWidgets.begin();
+
+    for (; i != mWidgets.end(); i++)
+    {
+        Widget *w = (*i);
+        if (w->isFocusable())
+        {
+            (*i)->requestFocus();
+        }
+    }
+}
+
+void WindowContainer::previousWindow()
+{
+    Window *win = gui->getFocusedWindow();
+
+    if (!win)
+    {
+        mWidgets.back()->requestFocus();
+        return;
+    }
+
+    WidgetListIterator i = mWidgets.end();
+
+    for (; i != mWidgets.begin(); i--)
+    {
+        Widget *w = (*i);
+        if (w == win)
+            break;
+    }
+
+    i--;
+
+    if (i == mWidgets.begin())
+        i = mWidgets.end();
+
+    for (; i != mWidgets.begin(); i++)
+    {
+        Widget *w = (*i);
+        if (w && w->isFocusable())
+        {
+            (*i)->requestFocus();
+        }
+    }
+}
+

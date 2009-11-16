@@ -359,7 +359,7 @@ void Viewport::mousePressed(gcn::MouseEvent &event)
                         keyboard.isKeyActive(keyboard.KEY_ATTACK))
                     {
                         player_node->attack(being,
-                            !keyboard.isKeyActive(keyboard.KEY_TARGET));
+                            !keyboard.isKeyActive(keyboard.KEY_TARGET_ATTACK));
                     }
                     else
                     {

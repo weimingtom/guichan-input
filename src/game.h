@@ -42,9 +42,11 @@ class Game : public ConfigListener
 
         void logic();
 
-        void handleInput();
-
         void optionChanged(const std::string &name);
+
+        static bool saveScreenshot();
+
+        static void quit();
 
     private:
         /** Used to determine whether to draw the next frame. */

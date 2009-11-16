@@ -113,10 +113,3 @@ void Engine::changeMap(const std::string &mapPath)
 
     Net::getGameHandler()->mapLoaded(mapPath);
 }
-
-void Engine::logic()
-{
-    beingManager->logic();
-    particleEngine->update();
-    gui->logic();
-}
