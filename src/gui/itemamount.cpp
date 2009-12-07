@@ -74,10 +74,6 @@ ItemAmountWindow::ItemAmountWindow(Usage usage, Window *parent, Item *item,
     if (!mMax)
         mMax = mItem->getQuantity();
 
-    // Save keyboard state
-    mEnabledKeyboard = keyboard.isEnabled();
-    keyboard.setEnabled(false);
-
     // Integer field
     mItemAmountTextField = new IntTextField(1);
     mItemAmountTextField->setRange(1, mMax);
@@ -210,7 +206,6 @@ void ItemAmountWindow::action(const gcn::ActionEvent &event)
 
 void ItemAmountWindow::close()
 {
-    keyboard.setEnabled(mEnabledKeyboard);
     scheduleDelete();
 }
 

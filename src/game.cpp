@@ -467,7 +467,7 @@ void Game::logic()
             // Quit event
             if (event.type == SDL_QUIT)
             {
-                done = true;
+                state = STATE_EXIT;
 
                 // We can safely skip everything else in here
                 return;
@@ -479,6 +479,7 @@ void Game::logic()
                     event.key.keysym.unicode = event.key.keysym.sym;
             }
 
+            gui->focusTop();
             guiInput->pushInput(event);
         }
 
@@ -550,7 +551,7 @@ void Game::quit()
 {
     if (!quitDialog)
     {
-        quitDialog = new QuitDialog(&done, &quitDialog);
+        quitDialog = new QuitDialog(&quitDialog);
         quitDialog->requestMoveToTop();
     }
     else

@@ -97,8 +97,6 @@ class ItemAmountWindow : public Window,
          * Item Amount buttons.
          */
         gcn::Slider *mItemAmountSlide;
-
-        bool mEnabledKeyboard;
 };
 
 #endif // ITEM_AMOUNT_WINDOW_H

@@ -101,6 +101,8 @@ Gui::Gui(Graphics *graphics):
     guiTop->setDimension(gcn::Rectangle(0, 0,
                 graphics->getWidth(), graphics->getHeight()));
     guiTop->setOpaque(false);
+    guiTop->setFocusable(true);
+    //guiTop->addKeyListener(keyboard);
     Window::setWindowContainer(guiTop);
     setTop(guiTop);
 
@@ -251,10 +253,8 @@ void Gui::handleMouseMoved(const gcn::MouseInput &mouseInput)
 
 void Gui::focusTop(bool force)
 {
-    if (!force && mFocusHandler->getFocused() != NULL)
-        return;
-
-    mFocusHandler->requestFocus(getTop());
+    if (force || !mFocusHandler->getFocused())
+        mFocusHandler->requestFocus(getTop());
 }
 
 Window *Gui::getFocusedWindow()
