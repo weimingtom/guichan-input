@@ -49,6 +49,10 @@ class LoginHandler : public MessageHandler, public Net::LoginHandler
         int supportedOptionalActions() const
         { return SetGenderOnRegister; }
 
+        void getRegistrationDetails();
+
+        unsigned int getMaxPasswordLength() const { return 25; }
+
         void loginAccount(LoginData *loginData);
 
         void logout();

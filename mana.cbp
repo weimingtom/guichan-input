@@ -11,7 +11,6 @@
 				<Option object_output=".objs\ea" />
 				<Option type="0" />
 				<Option compiler="gcc" />
-				<Option parameters='-u -d &quot;D:/mana/data&quot;' />
 				<Option projectResourceIncludeDirsRelation="0" />
 				<Compiler>
 					<Add option="-O3" />
@@ -22,6 +21,7 @@
 					<Add option="-DEATHENA_SUPPORT" />
 				</Compiler>
 				<Linker>
+					<Add option="-enable-auto-import" />
 					<Add library="guichan" />
 					<Add library="guichan_sdl" />
 					<Add library="guichan_opengl" />
@@ -80,7 +80,6 @@
 				<Option object_output=".objs\manaserv" />
 				<Option type="0" />
 				<Option compiler="gcc" />
-				<Option parameters='-u -d &quot;D:/mana/data&quot;' />
 				<Option projectResourceIncludeDirsRelation="0" />
 				<Compiler>
 					<Add option="-O3" />
@@ -91,6 +90,7 @@
 					<Add option="-DMANASERV_SUPPORT" />
 				</Compiler>
 				<Linker>
+					<Add option="-enable-auto-import" />
 					<Add library="guichan" />
 					<Add library="guichan_sdl" />
 					<Add library="guichan_opengl" />
@@ -180,7 +180,6 @@
 		<Unit filename="src\emoteshortcut.h" />
 		<Unit filename="src\engine.cpp" />
 		<Unit filename="src\engine.h" />
-		<Unit filename="src\equipment.cpp" />
 		<Unit filename="src\equipment.h" />
 		<Unit filename="src\flooritem.cpp" />
 		<Unit filename="src\flooritem.h" />
@@ -190,14 +189,6 @@
 		<Unit filename="src\game.h" />
 		<Unit filename="src\graphics.cpp" />
 		<Unit filename="src\graphics.h" />
-		<Unit filename="src\gui\buddywindow.cpp">
-			<Option target="Manaserv" />
-			<Option target="Unix Manaserv" />
-		</Unit>
-		<Unit filename="src\gui\buddywindow.h">
-			<Option target="Manaserv" />
-			<Option target="Unix Manaserv" />
-		</Unit>
 		<Unit filename="src\gui\buy.cpp" />
 		<Unit filename="src\gui\buy.h" />
 		<Unit filename="src\gui\buysell.cpp" />
@@ -228,22 +219,10 @@
 		<Unit filename="src\gui\focushandler.h" />
 		<Unit filename="src\gui\gui.cpp" />
 		<Unit filename="src\gui\gui.h" />
-		<Unit filename="src\gui\guildlistbox.cpp">
-			<Option target="Manaserv" />
-			<Option target="Unix Manaserv" />
-		</Unit>
-		<Unit filename="src\gui\guildlistbox.h">
-			<Option target="Manaserv" />
-			<Option target="Unix Manaserv" />
-		</Unit>
-		<Unit filename="src\gui\guildwindow.cpp">
-			<Option target="Manaserv" />
-			<Option target="Unix Manaserv" />
-		</Unit>
-		<Unit filename="src\gui\guildwindow.h">
-			<Option target="Manaserv" />
-			<Option target="Unix Manaserv" />
-		</Unit>
+		<Unit filename="src\gui\guildlistbox.cpp" />
+		<Unit filename="src\gui\guildlistbox.h" />
+		<Unit filename="src\gui\guildwindow.cpp" />
+		<Unit filename="src\gui\guildwindow.h" />
 		<Unit filename="src\gui\help.cpp" />
 		<Unit filename="src\gui\help.h" />
 		<Unit filename="src\gui\inventorywindow.cpp" />
@@ -333,14 +312,8 @@
 		<Unit filename="src\gui\table.h" />
 		<Unit filename="src\gui\tablemodel.cpp" />
 		<Unit filename="src\gui\tablemodel.h" />
-		<Unit filename="src\gui\textdialog.cpp">
-			<Option target="Manaserv" />
-			<Option target="Unix Manaserv" />
-		</Unit>
-		<Unit filename="src\gui\textdialog.h">
-			<Option target="Manaserv" />
-			<Option target="Unix Manaserv" />
-		</Unit>
+		<Unit filename="src\gui\textdialog.cpp" />
+		<Unit filename="src\gui\textdialog.h" />
 		<Unit filename="src\gui\textrenderer.h" />
 		<Unit filename="src\gui\trade.cpp" />
 		<Unit filename="src\gui\trade.h" />
@@ -488,14 +461,6 @@
 			<Option target="UNIX eAthena" />
 		</Unit>
 		<Unit filename="src\net\ea\chathandler.h">
-			<Option target="eAthena" />
-			<Option target="UNIX eAthena" />
-		</Unit>
-		<Unit filename="src\net\ea\equipmenthandler.cpp">
-			<Option target="eAthena" />
-			<Option target="UNIX eAthena" />
-		</Unit>
-		<Unit filename="src\net\ea\equipmenthandler.h">
 			<Option target="eAthena" />
 			<Option target="UNIX eAthena" />
 		</Unit>
@@ -926,16 +891,8 @@
 		<Unit filename="src\utils\gettext.h" />
 		<Unit filename="src\utils\mathutils.h" />
 		<Unit filename="src\utils\mutex.h" />
-		<Unit filename="src\utils\sha256.cpp">
-			<Option target="Manaserv" />
-			<Option target="Unix Manaserv" />
-			<Option target="UNIX eAthena" />
-		</Unit>
-		<Unit filename="src\utils\sha256.h">
-			<Option target="Manaserv" />
-			<Option target="Unix Manaserv" />
-			<Option target="UNIX eAthena" />
-		</Unit>
+		<Unit filename="src\utils\sha256.cpp" />
+		<Unit filename="src\utils\sha256.h" />
 		<Unit filename="src\utils\stringutils.cpp" />
 		<Unit filename="src\utils\stringutils.h" />
 		<Unit filename="src\utils\xml.cpp" />

@@ -153,6 +153,10 @@ SET(SRCS
     gui/focushandler.h
     gui/gui.cpp
     gui/gui.h
+    gui/guildlistbox.cpp
+    gui/guildlistbox.h
+    gui/guildwindow.cpp
+    gui/guildwindow.h
     gui/help.cpp
     gui/help.h
     gui/inventorywindow.cpp
@@ -365,7 +369,6 @@ SET(SRCS
     emoteshortcut.h
     engine.cpp
     engine.h
-    equipment.cpp
     equipment.h
     flooritem.cpp
     flooritem.h
@@ -456,8 +459,6 @@ SET(SRCS_EA
     net/ea/charserverhandler.h
     net/ea/chathandler.cpp
     net/ea/chathandler.h
-    net/ea/equipmenthandler.cpp
-    net/ea/equipmenthandler.h
     net/ea/gamehandler.cpp
     net/ea/gamehandler.h
     net/ea/generalhandler.cpp
@@ -492,12 +493,6 @@ SET(SRCS_EA
     )
 
 SET(SRCS_MANA
-    gui/buddywindow.cpp
-    gui/buddywindow.h
-    gui/guildlistbox.cpp
-    gui/guildlistbox.h
-    gui/guildwindow.cpp
-    gui/guildwindow.h
     net/manaserv/adminhandler.cpp
     net/manaserv/adminhandler.h
     net/manaserv/beinghandler.cpp

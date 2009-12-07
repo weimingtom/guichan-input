@@ -37,25 +37,22 @@
 #include "net/specialhandler.h"
 #include "net/tradehandler.h"
 
-#ifdef MANASERV_SUPPORT
-#include "net/manaserv/generalhandler.h"
-#else
 #include "net/ea/generalhandler.h"
-#endif
+#include "net/manaserv/generalhandler.h"
 
-extern Net::AdminHandler *adminHandler;
-extern Net::CharHandler *charHandler;
-extern Net::ChatHandler *chatHandler;
-extern Net::GeneralHandler *generalHandler;
-extern Net::InventoryHandler *inventoryHandler;
-extern Net::LoginHandler *loginHandler;
-extern Net::GameHandler *gameHandler;
-extern Net::GuildHandler *guildHandler;
-extern Net::NpcHandler *npcHandler;
-extern Net::PartyHandler *partyHandler;
-extern Net::PlayerHandler *playerHandler;
-extern Net::SpecialHandler *specialHandler;
-extern Net::TradeHandler *tradeHandler;
+Net::AdminHandler *adminHandler = NULL;
+Net::CharHandler *charHandler = NULL;
+Net::ChatHandler *chatHandler = NULL;
+Net::GeneralHandler *generalHandler = NULL;
+Net::InventoryHandler *inventoryHandler = NULL;
+Net::LoginHandler *loginHandler = NULL;
+Net::GameHandler *gameHandler = NULL;
+Net::GuildHandler *guildHandler = NULL;
+Net::NpcHandler *npcHandler = NULL;
+Net::PartyHandler *partyHandler = NULL;
+Net::PlayerHandler *playerHandler = NULL;
+Net::SpecialHandler *specialHandler = NULL;
+Net::TradeHandler *tradeHandler = NULL;
 
 Net::AdminHandler *Net::getAdminHandler()
 {
@@ -124,15 +121,13 @@ Net::TradeHandler *Net::getTradeHandler()
 
 namespace Net
 {
-    bool networkLoaded = false;
+    ServerInfo::Type networkType = ServerInfo::UNKNOWN;
 } // namespace Net
 
 void Net::connectToServer(const ServerInfo &server)
 {
-    // TODO: Actually query the server about itself and choose the netcode
-    // based on that
-
-    if (networkLoaded)
+    // Remove with ifdefs
+    if (networkType != ServerInfo::UNKNOWN)
     {
         getGeneralHandler()->reload();
     }
@@ -145,9 +140,50 @@ void Net::connectToServer(const ServerInfo &server)
 #endif
 
         getGeneralHandler()->load();
+
+        networkType = server.type;
+    }
+    // End remove section
+
+    // Uncomment after ifdefs removed
+    /*ServerInfo server = ServerInfo(inServer);
+    if (server.type == ServerInfo::UNKNOWN)
+    {
+        // TODO: Query the server about itself and choose the netcode based on
+        // that
     }
 
-    networkLoaded = true;
+    //if (networkType == server.type)
+    if (networkType != ServerInfo::UNKNOWN)
+    {
+        getGeneralHandler()->reload();
+    }
+    else
+    {
+        if (networkType != ServerInfo::UNKNOWN)
+        {
+            getGeneralHandler()->unload();
+        }
+
+        switch (server.type)
+        {
+            case ServerInfo::MANASERV:
+                new ManaServ::GeneralHandler;
+                break;
+
+            case ServerInfo::EATHENA:
+                new EAthena::GeneralHandler;
+                break;
+
+            default:
+                // Shouldn't happen...
+                break;
+        }
+
+        getGeneralHandler()->load();
+
+        networkType = server.type;
+    }*/
 
     getLoginHandler()->setServer(server);
 

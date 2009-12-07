@@ -22,6 +22,7 @@
 #include "gui/serverdialog.h"
 
 #include "gui/okdialog.h"
+#include "gui/sdlinput.h"
 
 #include "gui/widgets/button.h"
 #include "gui/widgets/label.h"
@@ -149,8 +150,9 @@ ServerDialog::ServerDialog(ServerInfo *serverInfo, const std::string &dir):
     // Make sure the list has enough height
     getLayout().setRowHeight(3, 80);
 
-
     reflowLayout(300, 0);
+
+    addKeyListener(this);
 
     center();
     setFieldsReadOnly(true);
@@ -171,6 +173,10 @@ ServerDialog::ServerDialog(ServerInfo *serverInfo, const std::string &dir):
 
 ServerDialog::~ServerDialog()
 {
+    if (mDownload)
+    {
+        mDownload->cancel();
+    }
     delete mServersListModel;
 }
 
@@ -241,6 +247,20 @@ void ServerDialog::action(const gcn::ActionEvent &event)
     else if (event.getId() == "addEntry")
     {
         setFieldsReadOnly(false);
+    }
+}
+
+void ServerDialog::keyPressed(gcn::KeyEvent &keyEvent)
+{
+    gcn::Key key = keyEvent.getKey();
+
+    if (key.getValue() == Key::ESCAPE)
+    {
+        state = STATE_EXIT;
+    }
+    else if (key.getValue() == Key::ENTER)
+    {
+        action(gcn::ActionEvent(NULL, mConnectButton->getActionEventId()));
     }
 }
 
@@ -321,8 +341,7 @@ void ServerDialog::downloadServerList()
     std::string listFile = config.getValue("onlineServerList", "void");
     // if there is no entry, try to load the file from the default updatehost
     if (listFile == "void")
-        listFile = config.getValue("updatehost", "http://updates.themanaworld.org")
-            + "/serverlist.xml";
+        listFile = "http://manasource.org/serverlist.xml";
 
     mDownload = new Net::Download(this, listFile, &downloadUpdate);
     mDownload->setFile(mDir + "/serverlist.xml");
@@ -350,9 +369,10 @@ void ServerDialog::loadServers()
         {
             if (xmlStrEqual(server->name, BAD_CAST "server"))
             {
-                //check wether the build matches
-                if (compareStrI(XML::getProperty(server, "type", "unknown"),
-                                SERVER_BUILD))
+                // check wether the build matches (remove with last instances
+                // if _SUPPORT ifdefs)
+                std::string type = XML::getProperty(server, "type", "unknown");
+                if (compareStrI(type, SERVER_BUILD))
                 {
                     continue;
                 }
@@ -364,6 +384,18 @@ void ServerDialog::loadServers()
                 {
                     if (xmlStrEqual(subnode->name, BAD_CAST "connection"))
                     {
+                        if (compareStrI(type, "manaserv"))
+                        {
+                            currentServer.type = ServerInfo::MANASERV;
+                        }
+                        else if (compareStrI(type, "eathena"))
+                        {
+                            currentServer.type = ServerInfo::EATHENA;
+                        }
+                        else
+                        {
+                            currentServer.type = ServerInfo::UNKNOWN;
+                        }
                         currentServer.hostname = XML::getProperty(subnode, "hostname", std::string());
                         currentServer.port = XML::getProperty(subnode, "port", DEFAULT_PORT);
                     }

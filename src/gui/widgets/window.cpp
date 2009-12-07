@@ -290,6 +290,14 @@ void Window::widgetResized(const gcn::Event &event)
     }
 }
 
+void Window::widgetHidden(const gcn::Event &event)
+{
+    if (gui)
+    {
+        gui->setCursorType(Gui::CURSOR_POINTER);
+    }
+}
+
 void Window::setCloseButton(bool flag)
 {
     mCloseButton = flag;
@@ -317,6 +325,9 @@ void Window::setVisible(bool visible)
 
 void Window::setVisible(bool visible, bool forceSticky)
 {
+    if (visible == isVisible())
+        return; // Nothing to do
+
     // Check if the window is off screen...
     if (visible)
         checkIfIsOffScreen();

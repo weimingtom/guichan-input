@@ -836,13 +836,6 @@ int main(int argc, char *argv[])
                     break;
 
                 case SDL_KEYDOWN:
-                    if (event.key.keysym.sym == SDLK_ESCAPE)
-                    {
-                        if (!quitDialog)
-                            quitDialog = new QuitDialog(&quitDialog);
-                        else
-                            quitDialog->requestMoveToTop();
-                    }
                     break;
             }
 
@@ -870,10 +863,6 @@ int main(int argc, char *argv[])
                  Net::getGameHandler()->isConnected())
         {
             Net::getLoginHandler()->disconnect();
-
-#ifdef MANASERV_SUPPORT
-            state = STATE_GAME;
-#endif
         }
         else if (state == STATE_CONNECT_SERVER && oldstate == STATE_CHOOSE_SERVER)
         {
@@ -885,6 +874,13 @@ int main(int argc, char *argv[])
         {
             Net::getCharHandler()->setCharInfo(&charInfo);
             state = STATE_LOGIN;
+        }
+        else if (state == STATE_WORLD_SELECT && oldstate == STATE_UPDATE)
+        {
+            if (Net::getLoginHandler()->getWorlds().size() < 2)
+            {
+                state = STATE_LOGIN;
+            }
         }
         else if (oldstate == STATE_START || oldstate == STATE_GAME)
         {
@@ -1145,6 +1141,12 @@ int main(int argc, char *argv[])
                     currentDialog = new OkDialog(_("Error"), errorMessage);
                     currentDialog->addActionListener(&accountListener);
                     currentDialog = NULL; // OkDialog deletes itself
+                    break;
+
+                case STATE_REGISTER_PREP:
+                    logger->log("State: REGISTER_PREP");
+                    Net::getLoginHandler()->getRegistrationDetails();
+                    currentDialog = new ConnectionDialog(STATE_LOGIN);
                     break;
 
                 case STATE_REGISTER:

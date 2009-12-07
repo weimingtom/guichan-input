@@ -99,6 +99,10 @@ mana_SOURCES = gui/widgets/avatar.cpp \
 	      gui/focushandler.h \
 	      gui/gui.cpp \
 	      gui/gui.h \
+	      gui/guildlistbox.cpp \
+	      gui/guildlistbox.h \
+	      gui/guildwindow.cpp \
+	      gui/guildwindow.h \
 	      gui/help.cpp \
 	      gui/help.h \
 	      gui/inventorywindow.cpp \
@@ -311,7 +315,6 @@ mana_SOURCES = gui/widgets/avatar.cpp \
 	      emoteshortcut.h \
 	      engine.cpp \
 	      engine.h \
-	      equipment.cpp \
 	      equipment.h \
 	      flooritem.cpp \
 	      flooritem.h \
@@ -391,12 +394,6 @@ mana_SOURCES = gui/widgets/avatar.cpp \
 if SERVER_MANASERV
 mana_CXXFLAGS += -DMANASERV_SUPPORT
 mana_SOURCES += \
-	      gui/buddywindow.cpp \
-	      gui/buddywindow.h \
-	      gui/guildlistbox.cpp \
-	      gui/guildlistbox.h \
-	      gui/guildwindow.cpp \
-	      gui/guildwindow.h \
 	      net/manaserv/adminhandler.cpp \
 	      net/manaserv/adminhandler.h \
 	      net/manaserv/beinghandler.cpp \
@@ -461,8 +458,6 @@ mana_SOURCES += \
 	      net/ea/charserverhandler.h \
 	      net/ea/chathandler.cpp \
 	      net/ea/chathandler.h \
-	      net/ea/equipmenthandler.cpp \
-	      net/ea/equipmenthandler.h \
 	      net/ea/gamehandler.cpp \
 	      net/ea/gamehandler.h \
 	      net/ea/generalhandler.cpp \

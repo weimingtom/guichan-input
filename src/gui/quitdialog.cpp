@@ -23,8 +23,11 @@
 
 #include "main.h"
 
+#include "gui/widgets/layout.h"
 #include "gui/widgets/button.h"
 #include "gui/widgets/radiobutton.h"
+
+#include "gui/sdlinput.h"
 
 #include "net/charhandler.h"
 #include "net/net.h"
@@ -36,27 +39,16 @@
 QuitDialog::QuitDialog(QuitDialog** pointerToMe):
     Window(_("Quit"), true, NULL), mMyPointer(pointerToMe)
 {
-
-    mLogoutQuit = new RadioButton(_("Quit"), "quitdialog");
     mForceQuit = new RadioButton(_("Quit"), "quitdialog");
+    mLogoutQuit = new RadioButton(_("Quit"), "quitdialog");
     mSwitchAccountServer = new RadioButton(_("Switch server"), "quitdialog");
     mSwitchCharacter = new RadioButton(_("Switch character"), "quitdialog");
     mOkButton = new Button(_("OK"), "ok", this);
     mCancelButton = new Button(_("Cancel"), "cancel", this);
 
-    setContentSize(200, 91);
+    addKeyListener(this);
 
-    mLogoutQuit->setPosition(5, 5);
-    mForceQuit->setPosition(5, 5);
-    mSwitchAccountServer->setPosition(5, 14 + mLogoutQuit->getHeight());
-    mSwitchCharacter->setPosition(5,
-           23 + mLogoutQuit->getHeight() + mSwitchAccountServer->getHeight());
-    mCancelButton->setPosition(
-           200 - mCancelButton->getWidth() - 5,
-           91 - mCancelButton->getHeight() - 5);
-    mOkButton->setPosition(
-           mCancelButton->getX() - mOkButton->getWidth() - 5,
-           91 - mOkButton->getHeight() - 5);
+    ContainerPlacer place = getPlacer(0, 0);
 
     //All states, when we're not logged in to someone.
     if (state == STATE_CHOOSE_SERVER ||
@@ -66,26 +58,29 @@ QuitDialog::QuitDialog(QuitDialog** pointerToMe):
         state == STATE_UPDATE ||
         state == STATE_LOAD_DATA)
     {
-        mForceQuit->setSelected(true);
-        add(mForceQuit);
+        placeOption(place, mForceQuit);
     }
     else
     {
         // Only added if we are connected to an accountserver or gameserver
-        mLogoutQuit->setSelected(true);
-        add(mLogoutQuit);
-        add(mSwitchAccountServer);
+        placeOption(place, mLogoutQuit);
+        placeOption(place, mSwitchAccountServer);
 
         // Only added if we are connected to a gameserver
-        if (state == STATE_GAME) add(mSwitchCharacter);
+        if (state == STATE_GAME) placeOption(place, mSwitchCharacter);
     }
 
-    add(mOkButton);
-    add(mCancelButton);
+    mOptions[0]->setSelected(true);
 
+    place = getPlacer(0, 1);
+
+    place(1, 0, mOkButton);
+    place(2, 0, mCancelButton);
+
+    reflowLayout(150, 0);
     setLocationRelativeTo(getParent());
     setVisible(true);
-
+    requestModalFocus();
     mOkButton->requestFocus();
 }
 
@@ -97,6 +92,12 @@ QuitDialog::~QuitDialog()
     delete mLogoutQuit;
     delete mSwitchAccountServer;
     delete mSwitchCharacter;
+}
+
+void QuitDialog::placeOption(ContainerPlacer &place, gcn::RadioButton *option)
+{
+    place(0, mOptions.size(), option, 3);
+    mOptions.push_back(option);
 }
 
 void QuitDialog::action(const gcn::ActionEvent &event)
@@ -123,4 +124,52 @@ void QuitDialog::action(const gcn::ActionEvent &event)
         }
     }
     scheduleDelete();
+}
+
+void QuitDialog::keyPressed(gcn::KeyEvent &keyEvent)
+{
+    const gcn::Key &key = keyEvent.getKey();
+    int dir = 0;
+
+    switch (key.getValue())
+    {
+        case Key::ENTER:
+            action(gcn::ActionEvent(NULL, mOkButton->getActionEventId()));
+            break;
+        case Key::ESCAPE:
+            action(gcn::ActionEvent(NULL, mCancelButton->getActionEventId()));
+            break;
+        case Key::UP:
+            dir = -1;
+            break;
+        case Key::DOWN:
+            dir = 1;
+            break;
+    }
+
+    if (dir != 0)
+    {
+        std::vector<gcn::RadioButton*>::iterator it = mOptions.begin();
+
+        for (; it < mOptions.end(); it++)
+        {
+            if ((*it)->isSelected())
+                break;
+        }
+
+        if (it == mOptions.end())
+        {
+            mOptions[0]->setSelected(true);
+            return;
+        }
+        else if (it == mOptions.begin() && dir < 0)
+            it = mOptions.end();
+
+        it += dir;
+
+        if (it == mOptions.end())
+            it = mOptions.begin();
+
+        (*it)->setSelected(true);
+    }
 }

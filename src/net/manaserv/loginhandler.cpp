@@ -33,8 +33,7 @@
 #include "utils/gettext.h"
 #include "utils/sha256.h"
 
-Net::LoginHandler *loginHandler;
-
+extern Net::LoginHandler *loginHandler;
 
 namespace ManaServ {
 
@@ -51,6 +50,7 @@ LoginHandler::LoginHandler()
         APMSG_EMAIL_CHANGE_RESPONSE,
         APMSG_LOGOUT_RESPONSE,
         APMSG_UNREGISTER_RESPONSE,
+        APMSG_REGISTER_INFO_RESPONSE,
         0
     };
     handledMessages = _messages;
@@ -207,6 +207,33 @@ void LoginHandler::handleMessage(Net::MessageIn &msg)
             }
         }
             break;
+
+        case APMSG_REGISTER_INFO_RESPONSE:
+        {
+            int allowed = msg.readInt8();
+
+            if (allowed)
+            {
+                mMinUserNameLength = msg.readInt8();
+                mMaxUserNameLength = msg.readInt8();
+                std::string captchaURL = msg.readString();
+                std::string captchaInstructions = msg.readString();
+
+                printf("%s: %s\n", captchaURL.c_str(), captchaInstructions.c_str());
+
+                state = STATE_REGISTER;
+            }
+            else
+            {
+                errorMessage = msg.readString();
+
+                if (errorMessage.empty())
+                    errorMessage = _("Client registration is not allowed. "
+                                     "Please contact server administration.");
+                state = STATE_LOGIN_ERROR;
+            }
+        }
+            break;
     }
 }
 
@@ -271,6 +298,10 @@ void LoginHandler::handleRegisterResponse(Net::MessageIn &msg)
             case REGISTER_EXISTS_EMAIL:
                 errorMessage = _("Email address already exists.");
                 break;
+            case REGISTER_CAPTCHA_WRONG:
+                errorMessage = _("You took too long with the captcha or your "
+                                 "response was incorrect.");
+                break;
             default:
                 errorMessage = _("Unknown error.");
                 break;
@@ -301,6 +332,27 @@ bool LoginHandler::isConnected()
 void LoginHandler::disconnect()
 {
     accountServerConnection->disconnect();
+
+    if (state == STATE_CONNECT_GAME)
+    {
+        state = STATE_GAME;
+    }
+}
+
+void LoginHandler::getRegistrationDetails()
+{
+    MessageOut msg(PAMSG_REQUEST_REGISTER_INFO);
+    accountServerConnection->send(msg);
+}
+
+unsigned int LoginHandler::getMinUserNameLength() const
+{
+    return mMinUserNameLength;
+}
+
+unsigned int LoginHandler::getMaxUserNameLength() const
+{
+    return mMaxUserNameLength;
 }
 
 void LoginHandler::loginAccount(LoginData *loginData)
@@ -357,11 +409,10 @@ void LoginHandler::registerAccount(LoginData *loginData)
 
     msg.writeInt32(0); // client version
     msg.writeString(loginData->username);
-    // When registering, the password and email hash is assumed by server.
-    // Hence, data can be validated safely server-side.
-    // This is the only time we send a clear password.
-    msg.writeString(loginData->password);
+    // Use a hashed password for privacy reasons
+    msg.writeString(sha256(loginData->username + loginData->password));
     msg.writeString(loginData->email);
+    msg.writeString(loginData->captchaResponse);
 
     accountServerConnection->send(msg);
 }

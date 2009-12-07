@@ -35,7 +35,7 @@
 #include "utils/gettext.h"
 #include "utils/stringutils.h"
 
-Net::LoginHandler *loginHandler;
+extern Net::LoginHandler *loginHandler;
 
 namespace EAthena {
 
@@ -97,6 +97,7 @@ void LoginHandler::handleMessage(Net::MessageIn &msg)
 
              len = msg.readInt16() - 4;
              mUpdateHost = msg.readString(len);
+             loginData.updateHost = mUpdateHost;
 
              logger->log("Received update host \"%s\" from login server.",
                      mUpdateHost.c_str());
@@ -206,6 +207,12 @@ void LoginHandler::disconnect()
 {
     if (mNetwork->getServer() == mServer)
         mNetwork->disconnect();
+}
+
+void LoginHandler::getRegistrationDetails()
+{
+    // Not supported, so move on
+    state = STATE_REGISTER;
 }
 
 void LoginHandler::loginAccount(LoginData *loginData)
